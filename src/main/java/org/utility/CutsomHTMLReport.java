@@ -3,6 +3,9 @@ package org.utility;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
@@ -60,13 +63,31 @@ public class CutsomHTMLReport implements ITestListener, ISuiteListener
 		long seconds = (duration / 1000) % 60;
 		long minutes = (duration / (1000 * 60)) % 60;
 		String durationStr =  minutes + " min " + seconds + " sec";
-		report();
+		reader();
 		SummaryReportGenerator.generateReport(passCount.get(), failCount.get(), noRunCount.get(),durationStr);
+		if (System.getProperty("isSend").toLowerCase().contains("yes")||System.getProperty("isSend")!=null)
+		{
+			EmailSender.sendEmail();
+		}
 	}
 
-	public void report()
+	public void reader()
 	{
-		getProperties(customPath() + "\\src\\main\\resources\\object.properties");
+		String resourcePath = "/object.properties";
+	    try (InputStream is = CutsomHTMLReport.class.getResourceAsStream(resourcePath)) {
+	        if (is == null) {
+	            throw new FileNotFoundException("Resource not found: " + resourcePath);
+	        }
+	        Properties props = new Properties();
+	        props.load(is);
+	        for (String name : props.stringPropertyNames()) {
+	            String value = props.getProperty(name);
+	            System.setProperty(name, value);
+	        }
+	        System.out.println("Properties loaded successfully from JAR.");
+	    } catch (IOException e) {
+	        e.printStackTrace();
+	    }
 	}
 
 	public static void getProperties(String propertyFile)
