@@ -29,6 +29,14 @@ public class SummaryReportGenerator
 		{
 			e.printStackTrace();
 		}
+		if (System.getProperty("isSend") != null && System.getProperty("isSend").equalsIgnoreCase("yes")) {
+		    try {
+		        Class.forName("org.utility.EmailSender");
+		        EmailSender.sendEmail();
+		    } catch (ClassNotFoundException e) {
+		        System.err.println("EmailSender class not found - email functionality disabled");
+		    }
+		}
 	}
 
 	private static String percent(int count, int total)
@@ -64,7 +72,7 @@ public class SummaryReportGenerator
 	    }
 	}
 	
-	public static String getProductLogo1(String productName)
+	public static String getProductLogoByUrl(String productName)
 	{
 		if (productName.equalsIgnoreCase("resul"))
 		{

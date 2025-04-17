@@ -4,8 +4,6 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
@@ -65,10 +63,6 @@ public class CutsomHTMLReport implements ITestListener, ISuiteListener
 		String durationStr =  minutes + " min " + seconds + " sec";
 		reader();
 		SummaryReportGenerator.generateReport(passCount.get(), failCount.get(), noRunCount.get(),durationStr);
-		if (System.getProperty("isSend").toLowerCase().contains("yes")||System.getProperty("isSend")!=null)
-		{
-			EmailSender.sendEmail();
-		}
 	}
 
 	public void reader()
