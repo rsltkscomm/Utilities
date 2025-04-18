@@ -29,7 +29,7 @@ public class SummaryReportGenerator
 		{
 			e.printStackTrace();
 		}
-		if (System.getProperty("isSend") != null && System.getProperty("isSend").equalsIgnoreCase("yes")) {
+		if (System.getProperty("isReportSend") != null && System.getProperty("isReportSend").equalsIgnoreCase("yes")) {
 		    try {
 		        Class.forName("org.utility.EmailSender");
 		        EmailSender.sendEmail();
@@ -196,9 +196,10 @@ public class SummaryReportGenerator
 	{
 		if (productName.toLowerCase().contains("marketing star"))
 		{
-			return "style=\"margin: 5px;padding-left: 250px;padding-bottom: 30px;height: 90px;width: 400px;\"";
+			return "style=\"margin: 5px;padding-left: 100px;padding-bottom: 30px;height: 90px;width: 300px;\"";
+		}else {
+			return "style=\"margin: 5px;padding-left: 180px;padding-bottom: 30px;height: 90px;width: 300px;\"";
 		}
-		return "";
 	}
 	
 	
@@ -277,13 +278,13 @@ public class SummaryReportGenerator
 				+ "      });\n"
 				+ "    </script>\n"
 				+ "\n"
-				+ "    <title>Cucumber Reports - Features Overview</title>\n"
+				+ "    <title>Automation Reports - Features Overview</title>\n"
 				+ "  </head>\n"
 				+ "\n"
 				+ "  <body>\n"
 				+ "    <div id=\"header\">\n"
 				+ "      <img id=\"resultickslogo\" src=\"https://www.resulticks.com/images/logos/resulticks-logo-blue.svg\" />\n"
-				+ "      <h1>TEST SUMMARY REPORT</h1>\n"
+				+ "      <h1>AUTOMATION - TEST SUMMARY REPORT</h1>\n"
 				+ "      <img id=\"logo\" "+getStyle(productName)+" src=\""+"{{logoImage}}"+"\" />\n"
 				+ "    </div>\n"
 				+ "\n"
@@ -356,7 +357,7 @@ public class SummaryReportGenerator
 				+ "              </tr>\n"
 				+ "              <tr class=\"info\">\n"
 				+ "                <th>Requested by</th>\n"
-				+ "                <td>Automation Team</td>\n"
+				+ "                <td>"+System.getProperty("user.name")+"</td>\n"
 				+ "              </tr>\n"
 				+ "            </tbody>\n"
 				+ "          </table>\n"

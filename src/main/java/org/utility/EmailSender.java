@@ -26,7 +26,7 @@ public class EmailSender {
         String recipientEmails = System.getProperty("recipientEmails");
 
         String htmlFilePath = System.getProperty("user.dir") + "\\TestExecutionSummary.html";
-        String subject = "✅ Automation Test Suite Execution Completed";
+        String subject = System.getProperty("subject");
         String htmlContent = getMailHtml();
 
         Properties props = setSmtpProperties(host, port);
