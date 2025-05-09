@@ -4,6 +4,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -34,6 +36,7 @@ public class CutsomHTMLReport implements ITestListener, ISuiteListener
 	private final List<String> noRunMethods = new LinkedList<>();
 
 	private long startTime;
+	private String dateTime;
 
 	/**
 	 * Called when the suite starts. Captures start time.
@@ -41,6 +44,7 @@ public class CutsomHTMLReport implements ITestListener, ISuiteListener
 	@Override
 	public void onStart(ISuite suite)
 	{
+		dateTime=currentTime();
 		startTime = System.currentTimeMillis();
 		System.out.println("Test suite started: " + suite.getName());
 	}
@@ -92,7 +96,7 @@ public class CutsomHTMLReport implements ITestListener, ISuiteListener
 		loadPropertiesFromJar();
 
 		// Generate summary report
-		SummaryReportGenerator.generateReport(passCount.get(), failCount.get(), noRunCount.get(), durationStr);
+		SummaryReportGenerator.generateReport(passCount.get(), failCount.get(), noRunCount.get(), durationStr,dateTime);
 	}
 
 	public void filterCount(List<String> passMethod, List<String> failMethod, List<String> noRunMethod)
@@ -178,5 +182,11 @@ public class CutsomHTMLReport implements ITestListener, ISuiteListener
 		long seconds = (durationMillis / 1000) % 60;
 		long minutes = (durationMillis / (1000 * 60)) % 60;
 		return minutes + " min " + seconds + " sec";
+	}
+
+	private String currentTime(){
+		SimpleDateFormat formatter = new SimpleDateFormat("dd-MMM-yyyy HH:mm:ss");
+        Date date = new Date();
+        return formatter.format(date);
 	}
 }
