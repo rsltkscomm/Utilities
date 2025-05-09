@@ -31,15 +31,15 @@
 				<directory>src/main/resources</directory>
 			</resource>
 			<resource>
-				<directory>${project.basedir}/css</directory>
-				<targetPath>static/css</targetPath>
+				<directory>css</directory>
+				<targetPath>css</targetPath>
 				<includes>
 					<include>**/*</include>
 				</includes>
 			</resource>
 			<resource>
-				<directory>${project.basedir}/js</directory>
-				<targetPath>static/js</targetPath>
+				<directory>js</directory>
+				<targetPath>js</targetPath>
 				<includes>
 					<include>**/*</include>
 				</includes>
