@@ -10,11 +10,9 @@ body {
 }
 
 #logo {
-    margin: 19px;
-    padding-left:17%;
-    padding-top: 1%;
-    height: 40px;
-    width: 400px;
+    margin: 5px;
+    height: 62px;
+    width: 100px;
     /* animation: rotateLogo 2s linear normal; */
   }
 
@@ -34,9 +32,18 @@ body {
 }
 
   #header h1{
-    padding-left: 17%;
-    margin:25px;
-    font-size: 200%;
+    margin-top:15px;
+    font-size: 160%;
+    text-align: center;
+  }
+
+  
+  #header p{
+    margin:9px;
+    font-size: 50%;
+    text-align: center;
+    color: black;
+    width: 940px;
   }
 
   #header{
@@ -44,7 +51,7 @@ body {
     width: 100%;
     background-color: white;
     display: flex;
-    gap: 3%;
+    gap: 1%;
     margin-bottom: 5%;  
     font-family: Arial, sans-serif;
     box-shadow: 6px 10px 20px black;
@@ -333,5 +340,3 @@ pre {
 #footer {
     padding-right: 20px;
 }
-
-
