@@ -74,6 +74,7 @@ public class SummaryReportGenerator
 	
 	public static String getLogo(String productLogo)
 	{
+		System.out.println(productLogo);
 		return productLogo;
 	}
 	
