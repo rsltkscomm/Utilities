@@ -46,15 +46,15 @@ public class SummaryReportGenerator
 
 	public static String customReportHtml(int pass, int fail, int noRun, String duration,String startTime)
 	{
+		String productName = System.getProperty("ProductName");
 		int total = pass + fail + noRun;	
-		html = getReportHtml(pass, fail, noRun, total, duration,startTime);
+		html = getReportHtml(productName, pass, fail, noRun, total, duration,startTime);
 		getCssAndJsPath("${JQUERY_JS}", "src/main/resources/js/jquery.min.js");
 		getCssAndJsPath("${TABLESORTER_JS}", "/js/jquery.tablesorter.min.js");
 		getCssAndJsPath("${BOOTSTRAP_CSS}", "/css/bootstrap.min.css");
 		getCssAndJsPath("${CUCUMBER_CSS}", "/css/cucumber.css");
 		getCssAndJsPath("${MOMENT_JS}", "/js/moment.min.js");
-		getImageToBase64("{{companylogoImage}}", getLogo(System.getProperty("CompanyLogo")));
-		getImageToBase64("{{productlogoImage}}", getLogo(System.getProperty("ProductLogo")));
+		getImageToBase64("{{logoImage}}", getProductLogo(productName));
 		System.out.println(html);
 		return html;
 	}
@@ -72,10 +72,40 @@ public class SummaryReportGenerator
 	    }
 	}
 	
-	public static String getLogo(String productLogo)
+	public static String getProductLogoByUrl(String productName)
 	{
-		System.out.println(productLogo);
-		return productLogo;
+		if (productName.equalsIgnoreCase("resul"))
+		{
+			return System.getProperty("resullogo");
+		} else if (productName.equalsIgnoreCase("marketingstar"))
+		{
+			return System.getProperty("marketingstarlogo");
+		} else if (productName.equalsIgnoreCase("smartdx"))
+		{
+			return System.getProperty("smartdxlogo");
+		} else if (productName.equalsIgnoreCase("grape"))
+		{
+			return System.getProperty("grapelogo");
+		}
+		return "";
+	}
+	
+	public static String getProductLogo(String productName)
+	{
+		if (productName.equalsIgnoreCase("resul"))
+		{
+			return "/images/resul.svg";
+		} else if (productName.equalsIgnoreCase("marketingstar"))
+		{
+			return "/images/marketingstar.svg";
+		} else if (productName.equalsIgnoreCase("smartdx"))
+		{
+			return "/images/smartdx.svg";
+		} else if (productName.equalsIgnoreCase("grape"))
+		{
+			return "/images/grape.svg";
+		}
+		return "";
 	}
 	
 	public static void getCssAndJsPath(String key, String resourcePath) {
@@ -135,22 +165,46 @@ public class SummaryReportGenerator
 	public static String getModuleName()
 	{
 		String testName = System.getProperty("SuiteName");
-		String name = testName.substring(0, 1).toUpperCase()+testName.substring(1).toLowerCase();
-		return name;
+		if (testName.toLowerCase().contains("audience"))
+		{
+			return "Audience";
+		} else if (testName.toLowerCase().contains("communication"))
+		{
+			return "Communication";
+		} else if (testName.toLowerCase().contains("analytics"))
+		{
+			return "Analytics";
+		} else if (testName.toLowerCase().contains("preferences"))
+		{
+			return "Preferences";
+		} else if (testName.toLowerCase().contains("accountsetup"))
+		{
+			return "Account Setup";
+		} else if (testName.toLowerCase().contains("daily"))
+		{
+			return "Daily Checklist";
+		} else if (testName.toLowerCase().contains("deployment"))
+		{
+			return "Deployment Checklist";
+		} else
+		{
+			return "All module";
+		}
 	}
 
-	public static String companyLogoStyle(String companyLogoStyle)
+	public static String getStyle(String productName)
 	{
-		return "style=\""+companyLogoStyle+"\"";
+		// if (productName.toLowerCase().contains("marketing star"))
+		// {
+		// 	return "style=\"margin: 1px;padding-left: 5px;padding-bottom: 70px;height: 140px;width: 400px;\"";
+		// }else {
+		// 	return "style=\"style=\"margin: 5px;padding-left: 10px;padding-bottom: 30px;height: 80px;width: 300px;\"";
+		// }
+		return "";
 	}
 	
-	public static String productLogoStyle(String productLogoStyle)
-	{
-		return "style=\""+productLogoStyle+"\"";
-	}
 	
-	
-	public static String getReportHtml(int pass,int fail,int noRun,int total,String duration,String startTime)
+	public static String getReportHtml(String productName,int pass,int fail,int noRun,int total,String duration,String startTime)
 	{
 		return "<!DOCTYPE html>\n"
 				+ "<html>\n"
@@ -230,10 +284,10 @@ public class SummaryReportGenerator
 				+ "\n"
 				+ "  <body>\n"
 				+ "    <div id=\"header\">\n"
-				+ "      <img id=\"resultickslogo\" "+companyLogoStyle(System.getProperty("CompanyLogoStyle"))+" src=\""+"{{companylogoImage}}"+"\" />\n"
+				+ "      <img id=\"resultickslogo\" src=\"https://www.resulticks.com/images/logos/resulticks-logo-blue.svg\" />\n"
 				+ "      <h1>AUTOMATION - TEST SUMMARY REPORT"
-				+"       <p>Environment : "+System.getProperty("Environment")+" || Release Version: "+System.getProperty("ReleaseVersion")+" || Browser: "+System.getProperty("Browser")+" || Account: "+System.getProperty("Account")+" || Username: "+System.getProperty("UserName")+" || Requestor: "+System.getProperty("user.name")+"|| Date & time : "+startTime+"</p></h1>\n"
-				+ "      <img id=\"logo\" "+productLogoStyle(System.getProperty("ProductLogoStyle"))+" src=\""+"{{productlogoImage}}"+"\" />\n"
+				+"       <p>Environment : "+System.getProperty("Environment")+" || Release Version: "+System.getProperty("ReleaseVersion")+" || Browser: "+System.getProperty("Browser")+" || Account: "+System.getProperty("Account")+" || Username: "+System.getProperty("UserName")+" || Requestor: "+System.getProperty("user.name")+" || Date & time : "+startTime+"</p></h1>\n"
+				+ "      <img id=\"logo\" "+getStyle(productName)+" src=\""+"{{logoImage}}"+"\" />\n"
 				+ "    </div>\n"
 				+ "\n"
 				+ "    <div class=\"container-fluid\" id=\"report\">\n"
