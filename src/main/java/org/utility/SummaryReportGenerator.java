@@ -49,13 +49,12 @@ public class SummaryReportGenerator
 		String productName = System.getProperty("ProductName");
 		int total = pass + fail + noRun;	
 		html = getReportHtml(productName, pass, fail, noRun, total, duration,startTime);
-		getCssAndJsPath("${JQUERY_JS}", "src/main/resources/js/jquery.min.js");
+		getCssAndJsPath("${JQUERY_JS}", "/js/jquery.min.js");
 		getCssAndJsPath("${TABLESORTER_JS}", "/js/jquery.tablesorter.min.js");
 		getCssAndJsPath("${BOOTSTRAP_CSS}", "/css/bootstrap.min.css");
 		getCssAndJsPath("${CUCUMBER_CSS}", "/css/cucumber.css");
 		getCssAndJsPath("${MOMENT_JS}", "/js/moment.min.js");
 		getImageToBase64("{{logoImage}}", getProductLogo(productName));
-		System.out.println(html);
 		return html;
 	}
 	
