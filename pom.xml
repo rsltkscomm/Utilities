@@ -44,6 +44,13 @@
 					<include>**/*</include>
 				</includes>
 			</resource>
+			<resource>
+				<directory>images</directory>
+				<targetPath>images</targetPath>
+				<includes>
+					<include>**/*</include>
+				</includes>
+			</resource>
 		</resources>
 		<plugins>
 			<plugin>
