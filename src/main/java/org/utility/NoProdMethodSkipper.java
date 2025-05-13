@@ -24,7 +24,6 @@ public class NoProdMethodSkipper implements IInvokedMethodListener
 			{
 				throw new SkipException("This method is disabled in the production environment.");
 			}
-			}
 		}
 	}
 
