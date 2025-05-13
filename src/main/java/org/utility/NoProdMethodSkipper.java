@@ -16,7 +16,7 @@ public class NoProdMethodSkipper implements IInvokedMethodListener
 		Method actualMethod = method.getTestMethod().getConstructorOrMethod().getMethod();
 		if (actualMethod.isAnnotationPresent(NoProd.class))
 		{
-			if (!System.getProperty("defaultRun").equalsIgnoreCase("yes"))
+			if (!System.getProperty("restrictRun").equalsIgnoreCase("yes"))
 			{
 			if (System.getProperty("ProdRun").equalsIgnoreCase("no") && System.getProperty("Environment").equalsIgnoreCase("run"))
 			{
