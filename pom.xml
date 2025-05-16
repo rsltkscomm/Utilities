@@ -51,6 +51,13 @@
 					<include>**/*</include>
 				</includes>
 			</resource>
+			<resource>
+				<directory>tessdata</directory>
+				<targetPath>tessdata</targetPath>
+				<includes>
+					<include>**/*</include>
+				</includes>
+			</resource>
 		</resources>
 		<plugins>
 			<plugin>
