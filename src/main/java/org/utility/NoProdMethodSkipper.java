@@ -16,7 +16,7 @@ public class NoProdMethodSkipper implements IInvokedMethodListener
 		Method actualMethod = method.getTestMethod().getConstructorOrMethod().getMethod();
 		if (actualMethod.isAnnotationPresent(NoProd.class))
 		{
-			if (!System.getProperty("restrictRun").equalsIgnoreCase("yes"))
+			if (System.getProperty("restrictRun").equalsIgnoreCase("yes"))
 			{
 				throw new SkipException("This method is disabled in the production environment.");
 			}
