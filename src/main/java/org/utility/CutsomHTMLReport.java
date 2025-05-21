@@ -179,9 +179,10 @@ public class CutsomHTMLReport implements ITestListener, ISuiteListener
 	 */
 	private String formatDuration(long durationMillis)
 	{
-		long seconds = (durationMillis / 1000) % 60;
-		long minutes = (durationMillis / (1000 * 60)) % 60;
-		return minutes + " min " + seconds + " sec";
+	    long seconds = (durationMillis / 1000) % 60;
+	    long minutes = (durationMillis / (1000 * 60)) % 60;
+	    long hours = durationMillis / (1000 * 60 * 60);
+	    return hours + " hr " + minutes + " min " + seconds + " sec";
 	}
 
 	private String currentTime(){
