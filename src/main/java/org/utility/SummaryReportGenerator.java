@@ -252,7 +252,7 @@ public class SummaryReportGenerator
 				+ "          title: \"Test Execution Summary Chart\",\n"
 				+ "          chartArea: { width: \"150%\", top: 60, left: 100 },\n"
 				+ "          pieHole: 0.4,\n"
-				+ "          backgroundColor: '#00000000'\n"
+				+ "          backgroundColor: '#00000000',\n"
 				+ "          slices: { \n"
 				+ "          0: { color: 'green' },\n"
 				+ "          1: { color: 'red' }, \n"
