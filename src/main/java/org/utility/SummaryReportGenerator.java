@@ -257,7 +257,7 @@ public class SummaryReportGenerator
 				+ "          0: { color: 'green' },\n"
 				+ "          1: { color: 'red' }, \n"
 				+ "          2: { color: 'yellow' } \n"
-				+ "          }      \n"
+				+ "          },      \n"
 				+ "         };\n"
 				+ "\n"
 				+ "        var chart = new google.visualization.PieChart(\n"
