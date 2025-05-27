@@ -178,7 +178,7 @@ public class SummaryReportGenerator
 	}
 	
 	
-	public static String getReportHtml1(String productName,int pass,int fail,int noRun,int total,String duration,String startTime)
+	public static String getReportHtml(String productName,int pass,int fail,int noRun,int total,String duration,String startTime)
 	{
 		return "<!DOCTYPE html>\n"
 				+ "<html>\n"
@@ -350,7 +350,7 @@ public class SummaryReportGenerator
 				+ "</html>";
 	}
 	
-	public static String getReportHtml(String productName,int pass,int fail,int noRun,int total,String duration,String startTime)
+	public static String getReportHtml1(String productName,int pass,int fail,int noRun,int total,String duration,String startTime)
 	{
 		return "<!DOCTYPE html>\n"
 				+ "<html lang=\"en\">\n"
