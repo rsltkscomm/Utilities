@@ -164,30 +164,11 @@ public class SummaryReportGenerator
 	public static String getModuleName()
 	{
 		String testName = System.getProperty("SuiteName");
-		if (testName.toLowerCase().contains("audience"))
-		{
-			return "Audience";
-		} else if (testName.toLowerCase().contains("communication"))
-		{
-			return "Communication";
-		} else if (testName.toLowerCase().contains("analytics"))
-		{
-			return "Analytics";
-		} else if (testName.toLowerCase().contains("preferences"))
-		{
-			return "Preferences";
-		} else if (testName.toLowerCase().contains("accountsetup"))
-		{
-			return "Account Setup";
-		} else if (testName.toLowerCase().contains("daily"))
-		{
-			return "Daily Checklist";
-		} else if (testName.toLowerCase().contains("deployment"))
-		{
-			return "Deployment Checklist";
-		} else
+		if (testName.equalsIgnoreCase("all"))
 		{
 			return "All module";
+		}else {
+			return testName;
 		}
 	}
 
@@ -197,7 +178,7 @@ public class SummaryReportGenerator
 	}
 	
 	
-	public static String getReportHtml1(String productName,int pass,int fail,int noRun,int total,String duration,String startTime)
+	public static String getReportHtml(String productName,int pass,int fail,int noRun,int total,String duration,String startTime)
 	{
 		return "<!DOCTYPE html>\n"
 				+ "<html>\n"
@@ -369,7 +350,7 @@ public class SummaryReportGenerator
 				+ "</html>";
 	}
 	
-	public static String getReportHtml(String productName,int pass,int fail,int noRun,int total,String duration,String startTime)
+	public static String getReportHtml1(String productName,int pass,int fail,int noRun,int total,String duration,String startTime)
 	{
 		return "<!DOCTYPE html>\n"
 				+ "<html lang=\"en\">\n"

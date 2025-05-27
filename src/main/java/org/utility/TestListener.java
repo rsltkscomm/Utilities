@@ -12,7 +12,7 @@ import org.testng.ITestContext;
 import org.testng.ITestListener;
 import org.testng.ITestResult;
 
-public class TestListener extends RetryAnalyzer implements ITestListener
+public class TestListener implements ITestListener
 {
 
 	public static String curr_Dir = System.getProperty("user.dir");
