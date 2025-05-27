@@ -164,30 +164,11 @@ public class SummaryReportGenerator
 	public static String getModuleName()
 	{
 		String testName = System.getProperty("SuiteName");
-		if (testName.toLowerCase().contains("audience"))
-		{
-			return "Audience";
-		} else if (testName.toLowerCase().contains("communication"))
-		{
-			return "Communication";
-		} else if (testName.toLowerCase().contains("analytics"))
-		{
-			return "Analytics";
-		} else if (testName.toLowerCase().contains("preferences"))
-		{
-			return "Preferences";
-		} else if (testName.toLowerCase().contains("accountsetup"))
-		{
-			return "Account Setup";
-		} else if (testName.toLowerCase().contains("daily"))
-		{
-			return "Daily Checklist";
-		} else if (testName.toLowerCase().contains("deployment"))
-		{
-			return "Deployment Checklist";
-		} else
+		if (testName.equalsIgnoreCase("all"))
 		{
 			return "All module";
+		}else {
+			return testName;
 		}
 	}
 
