@@ -18,11 +18,15 @@ public class NoProdMethodSkipper implements IInvokedMethodListener
 		{
 			if (System.getProperty("restrictRun").equalsIgnoreCase("yes"))
 			{
-				throw new SkipException("This method is disabled in the production environment.");
+				throw new SkipException("This script is restricted.");
 			}
 			if (System.getProperty("ProdRun").equalsIgnoreCase("no") && System.getProperty("Environment").equalsIgnoreCase("run"))
 			{
 				throw new SkipException("This method is disabled in the production environment.");
+			}
+			if (System.getProperty("ProdRun").equalsIgnoreCase("no") && System.getProperty("Environment").equalsIgnoreCase("run19"))
+			{
+				throw new SkipException("This method is disabled in the pre-production environment.");
 			}
 		}
 	}
