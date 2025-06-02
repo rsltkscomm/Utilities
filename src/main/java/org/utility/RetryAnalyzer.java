@@ -8,26 +8,26 @@ import org.testng.IRetryAnalyzer;
 import org.testng.ITestResult;
 import org.testng.annotations.ITestAnnotation;
 
-public class RetryAnalyzer implements IRetryAnalyzer, IAnnotationTransformer
-{
+/**
+ * RetryAnalyzer for retrying failed TestNG test cases once.
+ */
+public class RetryAnalyzer implements IRetryAnalyzer, IAnnotationTransformer {
 
-	int count = 1;
-	int retryMaxLimit = 1;
-
-	@Override
-	public void transform(ITestAnnotation annotation, Class testclass, Constructor testconstructor, Method testmethod)
-	{
-		annotation.setRetryAnalyzer(RetryAnalyzer.class);
-	}
+	private int retryCount = 0;
+	private static final int MAX_RETRY_LIMIT = 1;
 
 	@Override
-	public boolean retry(ITestResult result)
-	{
-		if (count <= retryMaxLimit)
-		{
-			count++;
+	public boolean retry(ITestResult result) {
+		if (retryCount < MAX_RETRY_LIMIT) {
+			retryCount++;
 			return true;
 		}
 		return false;
+	}
+
+	// ✅ Must use raw types to match TestNG's interface
+	@Override
+	public void transform(ITestAnnotation annotation, Class testClass, Constructor testConstructor, Method testMethod) {
+		annotation.setRetryAnalyzer(RetryAnalyzer.class);
 	}
 }
