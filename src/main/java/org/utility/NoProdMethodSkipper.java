@@ -41,8 +41,4 @@ public class NoProdMethodSkipper implements IInvokedMethodListener {
 		}
 	}
 
-	@Override
-	public void afterInvocation(IInvokedMethod method, ITestResult testResult) {
-		// No action needed after test method invocation
-	}
 }

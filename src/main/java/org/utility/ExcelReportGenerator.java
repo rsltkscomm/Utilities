@@ -78,6 +78,93 @@ public class ExcelReportGenerator {
 			}
 		}
 	}
+	
+	public static void writeAutomationCreatedData(String defaultPath,String sheetName,String createdDataname,String createdDate,String createdTime)
+	{
+		String filePath = defaultPath+ sheetName + ".xlsx";
+		Workbook workbook;
+		File file = new File(filePath);
+      try
+      {
+    	  if (file.exists())
+  		  {
+  			FileInputStream fis = new FileInputStream(file);
+  			workbook = new XSSFWorkbook(fis);
+  			fis.close();
+  		  }
+    	  else
+  		  {
+  			workbook = new XSSFWorkbook();
+  			workbook.createSheet(sheetName);
+  		  }
+    	 Sheet sheet = workbook.getSheet(sheetName);
+  		if (sheet == null)
+  		{
+  			sheet = workbook.createSheet(sheetName);
+  		}
+  		Row headerRow = sheet.getRow(0);
+		if (headerRow == null)
+		{
+			headerRow = sheet.createRow(0);
+		}
+ 
+		CellStyle headerStyle = createHeaderCellStyle(workbook);
+ 
+		// Set headers
+		if (headerRow.getCell(0) == null)
+		{
+			Cell cell = headerRow.createCell(0);
+			cell.setCellValue("Name");
+			cell.setCellStyle(headerStyle);
+		}
+		if (headerRow.getCell(1) == null)
+		{
+			Cell cell = headerRow.createCell(1);
+			cell.setCellValue("Date");
+			cell.setCellStyle(headerStyle);
+		}
+		if (headerRow.getCell(2) == null)
+		{
+			Cell cell = headerRow.createCell(2);
+			cell.setCellValue("Time");
+			cell.setCellStyle(headerStyle);
+		}
+
+		int newRowNum = sheet.getLastRowNum()+1;
+		Row newRow = sheet.createRow(newRowNum);
+		for (Cell cell : headerRow)
+		{
+			String header=cell.getStringCellValue();
+			int columnindex = cell.getColumnIndex();
+			if (header.equalsIgnoreCase("Name"))
+			{
+	              Cell namevaluecell = newRow.createCell(columnindex);
+	              namevaluecell.setCellValue(createdDataname);
+			}
+			else if (header.equalsIgnoreCase("Date"))
+			{
+				 Cell namevaluecell = newRow.createCell(columnindex);
+	             namevaluecell.setCellValue(createdDate);
+			}
+			else if (header.equalsIgnoreCase("Time"))
+			{
+				 Cell namevaluecell = newRow.createCell(columnindex);
+	             namevaluecell.setCellValue(createdTime);
+			}
+			else
+			{
+				System.out.println("Header now Fount");
+			}
+
+		}
+		workbook.close();	  
+	 } 
+      catch (Exception e)
+      {
+		e.printStackTrace();
+	  }
+
+	}
 
 	private static Sheet getOrCreateSheet(Workbook workbook, String name) {
 		Sheet sheet = workbook.getSheet(name);

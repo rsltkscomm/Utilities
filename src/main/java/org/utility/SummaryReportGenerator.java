@@ -178,7 +178,7 @@ public class SummaryReportGenerator {
 				+ "      <img id=\"resultickslogo\" src=\"https://www.resulticks.com/images/logos/resulticks-logo-blue.svg\" />\n"
 				+ "      <h1>AUTOMATION - TEST SUMMARY REPORT"
 				+"       <p>Environment : "+System.getProperty("Environment")+" || Release Version: "+System.getProperty("ReleaseVersion")+" || Browser: "+System.getProperty("Browser")+" || Account: "+System.getProperty("Account")+" || Username: "+System.getProperty("UserName")+" || Requestor: "+System.getProperty("user.name")+" || Date & time : "+startTime+"</p></h1>\n"
-				+ "      <img id=\"logo\" "+getStyle(productName)+" src=\""+"{{logoImage}}"+"\" />\n"
+				+ "      <img id=\"logo\" src=\""+"{{logoImage}}"+"\" />\n"
 				+ "    </div>\n"
 				+ "\n"
 				+ "    <div class=\"container-fluid\" id=\"report\">\n"
