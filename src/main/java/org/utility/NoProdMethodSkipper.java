@@ -14,27 +14,29 @@ public class NoProdMethodSkipper implements IInvokedMethodListener
 	public void beforeInvocation(IInvokedMethod method, ITestResult testResult)
 	{
 		Method actualMethod = method.getTestMethod().getConstructorOrMethod().getMethod();
+
 		if (actualMethod.isAnnotationPresent(NoProd.class))
 		{
-			if (System.getProperty("restrictRun").equalsIgnoreCase("yes"))
+			String restrictRun = System.getProperty("restrictRun", "no");
+			String prodRun = System.getProperty("ProdRun", "yes");
+			String environment = System.getProperty("Environment", "").toLowerCase();
+
+			if ("yes".equalsIgnoreCase(restrictRun))
 			{
 				throw new SkipException("This script is restricted.");
 			}
-			if (System.getProperty("ProdRun").equalsIgnoreCase("no") && System.getProperty("Environment").equalsIgnoreCase("run"))
+
+			if ("no".equalsIgnoreCase(prodRun))
 			{
-				throw new SkipException("This method is disabled in the production environment.");
-			}
-			if (System.getProperty("ProdRun").equalsIgnoreCase("no") && System.getProperty("Environment").equalsIgnoreCase("run19"))
-			{
-				throw new SkipException("This method is disabled in the pre-production environment.");
+				switch (environment)
+				{
+				case "run":
+					throw new SkipException("This method is disabled in the production environment.");
+				case "run19":
+					throw new SkipException("This method is disabled in the pre-production environment.");
+				}
 			}
 		}
-	}
-
-	@Override
-	public void afterInvocation(IInvokedMethod method, ITestResult testResult)
-	{
-		// no-op
 	}
 
 }
