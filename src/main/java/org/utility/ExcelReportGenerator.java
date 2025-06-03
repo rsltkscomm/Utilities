@@ -79,9 +79,10 @@ public class ExcelReportGenerator {
 		}
 	}
 	
-	public static void writeAutomationCreatedData(String defaultPath,String sheetName,String createdDataname,String createdDate,String createdTime)
+	public static void writeAutomationCreatedData(String createdDataname,String createdDate,String createdTime)
 	{
-		String filePath = defaultPath+ sheetName + ".xlsx";
+		String sheetName = System.getProperty("AutomationDataSheetName");
+		String filePath = System.getProperty("AutomationDataPath")+ sheetName + ".xlsx";
 		Workbook workbook;
 		File file = new File(filePath);
       try
