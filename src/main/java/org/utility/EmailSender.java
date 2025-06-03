@@ -23,7 +23,7 @@ public class EmailSender {
 
         Properties props = getSmtpProperties(host, port);
         Session session = createSession(props, senderEmail, senderPassword);
-        session.setDebug(true);
+        session.setDebug(false);
 
         try {
             Message message = prepareMessage(session, senderEmail, recipientEmails, subject);
