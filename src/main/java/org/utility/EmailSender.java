@@ -33,7 +33,7 @@ public class EmailSender {
             addHtmlPart(multipart, getMailHtml());
 
             // Attach files
-            attachFile(multipart, excelFilePath, "TestSummary.xlsx");
+            attachFile(multipart, excelFilePath, "PageLoadTime.xlsx");
             attachFile(multipart, htmlFilePath, "TestExecutionSummary.html");
 
             message.setContent(multipart);
