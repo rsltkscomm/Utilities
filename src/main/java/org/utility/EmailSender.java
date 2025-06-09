@@ -10,7 +10,7 @@ import jakarta.mail.internet.*;
 
 public class EmailSender {
 
-    public static void sendEmail() {
+    public static void sendEmail(String filePaths,String fileNames) {
         String host = System.getProperty("host");
         String port = System.getProperty("port");
         String senderEmail = System.getProperty("senderEmail");
@@ -18,12 +18,9 @@ public class EmailSender {
         String recipientEmails = System.getProperty("recipientEmails");
         String subject = System.getProperty("subject");
 
-        String htmlFilePath = System.getProperty("user.dir") + "\\TestExecutionSummary.html";
-        String excelFilePath = System.getProperty("ResulExcelPath");
-
         Properties props = getSmtpProperties(host, port);
         Session session = createSession(props, senderEmail, senderPassword);
-        session.setDebug(true);
+        session.setDebug(false);
 
         try {
             Message message = prepareMessage(session, senderEmail, recipientEmails, subject);
@@ -33,14 +30,14 @@ public class EmailSender {
             addHtmlPart(multipart, getMailHtml());
 
             // Attach files
-            attachFile(multipart, excelFilePath, "TestSummary.xlsx");
-            attachFile(multipart, htmlFilePath, "TestExecutionSummary.html");
-
+            String[] filePath = filePaths.split(",");
+            String[] fileName = fileNames.split(",");
+            for (int i = 0; i < filePath.length; i++)
+			{
+            	 attachFile(multipart, filePath[i], fileName[i]);
+			}
             message.setContent(multipart);
             Transport.send(message);
-
-            System.out.println("✅ Email sent successfully with HTML content and attachments.");
-
         } catch (Exception e) {
             System.err.println("❌ Failed to send email: " + e.getMessage());
             e.printStackTrace();
