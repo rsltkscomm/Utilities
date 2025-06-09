@@ -1,10 +1,8 @@
 package org.utility;
 
 import java.io.*;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import java.util.Properties;
 
 public class SummaryReportGenerator {
 
@@ -18,15 +16,6 @@ public class SummaryReportGenerator {
 			writer.write(reportHtml);
 		} catch (IOException e) {
 			e.printStackTrace();
-		}
-
-		if ("yes".equalsIgnoreCase(System.getProperty("isReportSend"))) {
-			try {
-				Class.forName("org.utility.EmailSender");
-				EmailSender.sendEmail();
-			} catch (ClassNotFoundException e) {
-				System.err.println("EmailSender class not found - email functionality disabled");
-			}
 		}
 	}
 
