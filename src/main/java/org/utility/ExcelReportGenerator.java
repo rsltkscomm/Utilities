@@ -74,7 +74,10 @@ public class ExcelReportGenerator {
 				System.out.println("Workbook for " + sheetName + " updated successfully.");
 
 			} catch (Exception e) {
-				e.printStackTrace();
+				StringWriter sw = new StringWriter();
+				PrintWriter pw = new PrintWriter(sw);
+				e.printStackTrace(pw);
+				System.out.println(sw.toString());
 			}
 		}
 	}
