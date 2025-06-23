@@ -13,26 +13,33 @@ public class SummaryReportGenerator {
 		String filePath = System.getProperty("user.dir") + File.separator + "TestExecutionSummary.html";
 
 		try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
-			writer.write(reportHtml);
-			if ("yes".equalsIgnoreCase(System.getProperty("isReportSend")))
-			{
-				try
-				{
-					Class.forName("org.utility.EmailSender");
-					String htmlFilePath = System.getProperty("user.dir") + "\\TestExecutionSummary.html";
-					String excelFilePath = System.getProperty("user.dir") +"\\TestSummary.xlsx";
-					if (new File(excelFilePath).exists())
-					{
-						EmailSender.sendEmail(excelFilePath, "TestSummary.xlsx");
-					}
-					EmailSender.sendEmail(htmlFilePath, "TestExecutionSummary.html");
-				} catch (ClassNotFoundException e)
-				{
-					System.err.println("EmailSender class not found - email functionality disabled");
-				}
-			}
+		    writer.write(reportHtml);
+
+		    if ("yes".equalsIgnoreCase(System.getProperty("isReportSend"))) {
+		        try {
+		            String htmlFilePath = System.getProperty("user.dir") + File.separator + "TestExecutionSummary.html";
+		            String excelFilePath = System.getProperty("user.dir") + File.separator + "TestSummary.xlsx";
+
+		            File htmlFile = new File(htmlFilePath);
+		            File excelFile = new File(excelFilePath);
+
+		            if (excelFile.exists()) {
+		                EmailSender.sendEmail(excelFilePath, "TestSummary.xlsx");
+		            }else {
+		            	System.err.println("File not available --> "+excelFile);
+		            }
+		            if (htmlFile.exists()) {
+		                EmailSender.sendEmail(htmlFilePath, "TestExecutionSummary.html");
+		            }else {
+		            	System.err.println("File not available --> "+htmlFilePath);
+		            }
+
+		        } catch (Exception e) {
+		            System.err.println("Error sending email: " + e.getMessage());
+		        }
+		    }
 		} catch (IOException e) {
-			e.printStackTrace();
+		    e.printStackTrace();
 		}
 	}
 
