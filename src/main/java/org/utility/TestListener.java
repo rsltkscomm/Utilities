@@ -40,7 +40,7 @@ public class TestListener implements ITestListener
 			{
 				directory.mkdirs();
 			}
-			outputPath = directoryPath + File.separator + safeSuiteName + ".xlsx";
+			outputPath =System.getProperty("user.dir") +"\\TestSummary.xlsx";
 			System.setProperty("ResulExcelPath", outputPath);
 		}
 		testResults.clear();
