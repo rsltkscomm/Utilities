@@ -6,102 +6,119 @@ import java.util.Base64;
 
 public class SummaryReportGenerator {
 
-	private static String html = "";
+    private static String html = "";
 
-	public static void generateReport(int pass, int fail, int noRun, String duration, String startTime) {
-		String reportHtml = customReportHtml(pass, fail, noRun, duration, startTime);
-		String filePath = System.getProperty("user.dir") + File.separator + "TestExecutionSummary.html";
+    public static void generateReport(int pass, int fail, int noRun, String duration, String startTime) {
+        String reportHtml = customReportHtml(pass, fail, noRun, duration, startTime);
+        String reportPath = System.getProperty("user.dir") + File.separator + "TestExecutionSummary.html";
 
-		try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
-		    writer.write(reportHtml);
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(reportPath))) {
+            writer.write(reportHtml);
 
-		    if ("yes".equalsIgnoreCase(System.getProperty("isReportSend"))) {
-		        try {
-		            String htmlFilePath = System.getProperty("user.dir") + File.separator + "TestExecutionSummary.html";
-		            String excelFilePath = System.getProperty("user.dir") + File.separator + "TestSummary.xlsx";
+            if ("yes".equalsIgnoreCase(System.getProperty("isReportSend"))) {
+                try {
+                    String htmlFilePath = reportPath;
+                    String excelFilePath = System.getProperty("user.dir") + File.separator + "TestSummary.xlsx";
 
-		            File htmlFile = new File(htmlFilePath);
-		            File excelFile = new File(excelFilePath);
+                    File htmlFile = new File(htmlFilePath);
+                    File excelFile = new File(excelFilePath);
 
-		            if (excelFile.exists()) {
-		                EmailSender.sendEmail(excelFilePath, "TestSummary.xlsx");
-		            }else {
-		            	System.err.println("File not available --> "+excelFile);
-		            }
-		            if (htmlFile.exists()) {
-		                EmailSender.sendEmail(htmlFilePath, "TestExecutionSummary.html");
-		            }else {
-		            	System.err.println("File not available --> "+htmlFilePath);
-		            }
+                    StringBuilder filePaths = new StringBuilder();
+                    StringBuilder fileNames = new StringBuilder();
 
-		        } catch (Exception e) {
-		            System.err.println("Error sending email: " + e.getMessage());
-		        }
-		    }
-		} catch (IOException e) {
-		    e.printStackTrace();
-		}
-	}
+                    if (htmlFile.exists()) {
+                        filePaths.append(htmlFilePath);
+                        fileNames.append("TestExecutionSummary.html");
+                    } else {
+                        System.err.println("⚠️ HTML Report not found: " + htmlFilePath);
+                    }
 
-	private static String percent(int count, int total) {
-		return String.format("%.2f%%", (count * 100.0 / total));
-	}
+                    if (excelFile.exists()) {
+                        if (filePaths.length() > 0) {
+                            filePaths.append(",");
+                            fileNames.append(",");
+                        }
+                        filePaths.append(excelFilePath);
+                        fileNames.append("TestSummary.xlsx");
+                    } else {
+                        System.err.println("⚠️ Excel file not found: " + excelFilePath);
+                    }
 
-	public static String customReportHtml(int pass, int fail, int noRun, String duration, String startTime) {
-		String productName = System.getProperty("ProductName");
-		int total = pass + fail + noRun;
-		html = getReportHtml(productName, pass, fail, noRun, total, duration, startTime);
+                    if (filePaths.length() > 0) {
+                        EmailSender.sendEmail(filePaths.toString(), fileNames.toString());
+                    } else {
+                        System.err.println("⚠️ No files available to send.");
+                    }
 
-		replaceResourceContent("${JQUERY_JS}", "/js/jquery.min.js");
-		replaceResourceContent("${TABLESORTER_JS}", "/js/jquery.tablesorter.min.js");
-		replaceResourceContent("${BOOTSTRAP_CSS}", "/css/bootstrap.min.css");
-		replaceResourceContent("${CUCUMBER_CSS}", "/css/cucumber.css");
-		replaceResourceContent("${MOMENT_JS}", "/js/moment.min.js");
+                } catch (Exception e) {
+                    System.err.println("❌ Error sending email: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
-		replaceImageWithBase64("{{logoImage}}", getProductLogo(productName));
+    private static String percent(int count, int total) {
+        return String.format("%.2f%%", (count * 100.0 / total));
+    }
 
-		return html;
-	}
+    public static String customReportHtml(int pass, int fail, int noRun, String duration, String startTime) {
+        String productName = System.getProperty("ProductName");
+        int total = pass + fail + noRun;
+        html = getReportHtml(productName, pass, fail, noRun, total, duration, startTime);
 
-	private static void replaceResourceContent(String key, String resourcePath) {
-		try (InputStream is = SummaryReportGenerator.class.getResourceAsStream(resourcePath)) {
-			if (is == null) {
-				System.err.println("Resource not found: " + resourcePath);
-				return;
-			}
-			String content = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-			html = html.replace(key, content);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
+        replaceResourceContent("${JQUERY_JS}", "/js/jquery.min.js");
+        replaceResourceContent("${TABLESORTER_JS}", "/js/jquery.tablesorter.min.js");
+        replaceResourceContent("${BOOTSTRAP_CSS}", "/css/bootstrap.min.css");
+        replaceResourceContent("${CUCUMBER_CSS}", "/css/cucumber.css");
+        replaceResourceContent("${MOMENT_JS}", "/js/moment.min.js");
 
-	private static void replaceImageWithBase64(String key, String path) {
-		try (InputStream is = SummaryReportGenerator.class.getResourceAsStream(path)) {
-			if (is != null) {
-				byte[] bytes = is.readAllBytes();
-				String base64 = Base64.getEncoder().encodeToString(bytes);
-				html = html.replace(key, "data:image/svg+xml;base64," + base64);
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
+        replaceImageWithBase64("{{logoImage}}", getProductLogo(productName));
 
-	private static String getProductLogo(String productName) {
-		switch (productName.toLowerCase()) {
-			case "resul": return "/images/resul.svg";
-			case "marketingstar": return "/images/marketingstar.svg";
-			case "smartdx": return "/images/smartdx.svg";
-			case "grape": return "/images/grape.svg";
-			default: return "";
-		}
-	}
+        return html;
+    }
 
-	public static String getModuleName() {
-		String suiteName = System.getProperty("SuiteName");
-		return "all".equalsIgnoreCase(suiteName) ? "All module" : suiteName;
-	}
+    private static void replaceResourceContent(String key, String resourcePath) {
+        try (InputStream is = SummaryReportGenerator.class.getResourceAsStream(resourcePath)) {
+            if (is == null) {
+                System.err.println("⚠️ Resource not found: " + resourcePath);
+                return;
+            }
+            String content = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+            html = html.replace(key, content);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void replaceImageWithBase64(String key, String path) {
+        try (InputStream is = SummaryReportGenerator.class.getResourceAsStream(path)) {
+            if (is != null) {
+                byte[] bytes = is.readAllBytes();
+                String base64 = Base64.getEncoder().encodeToString(bytes);
+                html = html.replace(key, "data:image/svg+xml;base64," + base64);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static String getProductLogo(String productName) {
+        switch (productName.toLowerCase()) {
+            case "resul": return "/images/resul.svg";
+            case "marketingstar": return "/images/marketingstar.svg";
+            case "smartdx": return "/images/smartdx.svg";
+            case "grape": return "/images/grape.svg";
+            default: return "";
+        }
+    }
+
+    public static String getModuleName() {
+        String suiteName = System.getProperty("SuiteName");
+        return "all".equalsIgnoreCase(suiteName) ? "All module" : suiteName;
+    }
 
 	public static String getReportHtml(String productName,int pass,int fail,int noRun,int total,String duration,String startTime)
 	{
