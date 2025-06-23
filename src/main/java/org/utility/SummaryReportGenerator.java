@@ -14,7 +14,7 @@ public class SummaryReportGenerator {
 
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(reportPath))) {
             writer.write(reportHtml);
-
+            Class.forName("org.utility.EmailSender");
             if ("yes".equalsIgnoreCase(System.getProperty("isReportSend"))) {
                 try {
                     String htmlFilePath = reportPath;
@@ -46,6 +46,8 @@ public class SummaryReportGenerator {
 
                     if (filePaths.length() > 0) {
                         EmailSender.sendEmail(filePaths.toString(), fileNames.toString());
+                        System.out.println(filePaths.toString());
+                        System.out.println(fileNames.toString());
                     } else {
                         System.err.println("⚠️ No files available to send.");
                     }
@@ -55,7 +57,7 @@ public class SummaryReportGenerator {
                     e.printStackTrace();
                 }
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
