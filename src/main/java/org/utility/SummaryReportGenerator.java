@@ -14,6 +14,23 @@ public class SummaryReportGenerator {
 
 		try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
 			writer.write(reportHtml);
+			if ("yes".equalsIgnoreCase(System.getProperty("isReportSend")))
+			{
+				try
+				{
+					Class.forName("org.utility.EmailSender");
+					String htmlFilePath = System.getProperty("user.dir") + "\\TestExecutionSummary.html";
+					String excelFilePath = System.getProperty("user.dir") +"\\TestSummary.xlsx";
+					if (new File(excelFilePath).exists())
+					{
+						EmailSender.sendEmail(excelFilePath, "TestSummary.xlsx");
+					}
+					EmailSender.sendEmail(htmlFilePath, "TestExecutionSummary.html");
+				} catch (ClassNotFoundException e)
+				{
+					System.err.println("EmailSender class not found - email functionality disabled");
+				}
+			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
