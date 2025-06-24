@@ -14,52 +14,59 @@ public class SummaryReportGenerator {
 
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(reportPath))) {
             writer.write(reportHtml);
-            Class.forName("org.utility.EmailSender");
-            if ("yes".equalsIgnoreCase(System.getProperty("isReportSend"))) {
-                try {
-                    String htmlFilePath = reportPath;
-                    String excelFilePath = System.getProperty("user.dir") + File.separator + "TestSummary.xlsx";
-
-                    File htmlFile = new File(htmlFilePath);
-                    File excelFile = new File(excelFilePath);
-
-                    StringBuilder filePaths = new StringBuilder();
-                    StringBuilder fileNames = new StringBuilder();
-
-                    if (htmlFile.exists()) {
-                        filePaths.append(htmlFilePath);
-                        fileNames.append("TestExecutionSummary.html");
-                    } else {
-                        System.err.println("⚠️ HTML Report not found: " + htmlFilePath);
-                    }
-
-                    if (excelFile.exists()) {
-                        if (filePaths.length() > 0) {
-                            filePaths.append(",");
-                            fileNames.append(",");
-                        }
-                        filePaths.append(excelFilePath);
-                        fileNames.append("TestSummary.xlsx");
-                    } else {
-                        System.err.println("⚠️ Excel file not found: " + excelFilePath);
-                    }
-
-                    if (filePaths.length() > 0) {
-                        EmailSender.sendEmail(filePaths.toString(), fileNames.toString());
-                        System.out.println(filePaths.toString());
-                        System.out.println(fileNames.toString());
-                    } else {
-                        System.err.println("⚠️ No files available to send.");
-                    }
-
-                } catch (Exception e) {
-                    System.err.println("❌ Error sending email: " + e.getMessage());
-                    e.printStackTrace();
-                }
-            }
         } catch (Exception e) {
             e.printStackTrace();
         }
+        
+        try
+		{
+        	 Class.forName("org.utility.EmailSender");
+             if ("yes".equalsIgnoreCase(System.getProperty("isReportSend"))) {
+                 try {
+                     String htmlFilePath = reportPath;
+                     String excelFilePath = System.getProperty("user.dir") + File.separator + "TestSummary.xlsx";
+
+                     File htmlFile = new File(htmlFilePath);
+                     File excelFile = new File(excelFilePath);
+
+                     StringBuilder filePaths = new StringBuilder();
+                     StringBuilder fileNames = new StringBuilder();
+
+                     if (htmlFile.exists()) {
+                         filePaths.append(htmlFilePath);
+                         fileNames.append("TestExecutionSummary.html");
+                     } else {
+                         System.err.println("⚠️ HTML Report not found: " + htmlFilePath);
+                     }
+
+                     if (excelFile.exists()) {
+                         if (filePaths.length() > 0) {
+                             filePaths.append(",");
+                             fileNames.append(",");
+                         }
+                         filePaths.append(excelFilePath);
+                         fileNames.append("TestSummary.xlsx");
+                     } else {
+                         System.err.println("⚠️ Excel file not found: " + excelFilePath);
+                     }
+
+                     if (filePaths.length() > 0) {
+                         EmailSender.sendEmail(filePaths.toString(), fileNames.toString());
+                         System.out.println(filePaths.toString());
+                         System.out.println(fileNames.toString());
+                     } else {
+                         System.err.println("⚠️ No files available to send.");
+                     }
+
+                 } catch (Exception e) {
+                     System.err.println("❌ Error sending email: " + e.getMessage());
+                     e.printStackTrace();
+                 }
+             }
+		} catch (Exception e)
+		{
+			e.printStackTrace();
+		}
     }
 
     private static String percent(int count, int total) {
