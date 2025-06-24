@@ -137,10 +137,7 @@ public class SummaryReportGenerator {
 				<html>
 				<head>
 				    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-				     <link
-				  rel="stylesheet"
-				  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
-				/>
+
 				    <script>
 				        // === jquery.min.js ===
 				        ${JQUERY_JS}
@@ -218,7 +215,7 @@ public class SummaryReportGenerator {
 
 				        <img id="logo" src="{{logoImage}}" />
 
-				        <h1>AUTOMATION - TEST SUMMARY REPORT</h1>
+				        <h1>AUTOMATION - TEST SUMMARY REPORT
 				        <p>
 				            Environment: %s ||
 				            Release Version: %s ||
@@ -228,7 +225,7 @@ public class SummaryReportGenerator {
 				            Requestor: %s ||
 				            Date & time: %s
 				        </p>
-
+                        </h1>
 				        <div>
 				            <a id="comprehensive-report-btn" href="test-output/SingleReport.html">
 				                Comprehensive Report <i class="fas fa-arrow-right"></i>
