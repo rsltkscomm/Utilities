@@ -129,175 +129,191 @@ public class SummaryReportGenerator {
         return "all".equalsIgnoreCase(suiteName) ? "All module" : suiteName;
     }
 
-	public static String getReportHtml(String productName,int pass,int fail,int noRun,int total,String duration,String startTime)
+    public static String getReportHtml(String productName, int pass, int fail, int noRun, int total, String duration, String startTime)
 	{
-		return "<!DOCTYPE html>\n"
-				+ "<html>\n"
-				+ "  <head>\n"
-				+ "    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n"
-				+ "\n"
-				+ "   <script>\n"
-				+ "      // === jquery.min.js ===\n"
-				+ "      ${JQUERY_JS}\n"
-				+ "    </script>\n"
-				+ "	<script>\n"
-				+ "      // === jquery.tablesorter.min.js ===\n"
-				+ "      ${TABLESORTER_JS}\n"
-				+ "    </script>\n"
-				+ "	\n"
-				+ "	<style>\n"
-				+ "      /* === bootstrap.min.css === */\n"
-				+ "      ${BOOTSTRAP_CSS}\n"
-				+ "    </style>\n"
-				+ "\n"
-				+ "   <style>\n"
-				+ "      /* === cucumber.css === */\n"
-				+ "      ${CUCUMBER_CSS}\n"
-				+ "    </style>\n"
-				+ "	\n"
-				+ "	<script>\n"
-				+ "      // === moment.min.js ===\n"
-				+ "      ${MOMENT_JS}\n"
-				+ "    </script>\n"
-				+ "\n"
-				+ "    <!-- Google Charts Loader -->\n"
-				+ "    <script type=\"text/javascript\" src=\"https://www.gstatic.com/charts/loader.js\"></script>\n"
-				+ "    <script type=\"text/javascript\">\n"
-				+ "      // Load the 'corechart' package for PieChart\n"
-				+ "      google.charts.load(\"current\", { packages: [\"corechart\"] });\n"
-				+ "\n"
-				+ "      // Set a callback function to draw the chart after the Google Charts library is loaded\n"
-				+ "      google.charts.setOnLoadCallback(drawChart);\n"
-				+ "\n"
-				+ "      // Function to draw the chart\n"
-				+ "      function drawChart() {\n"
-				+ "        // Create data for the chart\n"
-				+ "        var data = google.visualization.arrayToDataTable([\n"
-				+ "          [\"Status\", \"Count\"],\n"
-				+ "          [\"Pass\", "+pass+"],\n"
-				+ "          [\"Fail\", "+fail+"],\n"
-				+ "          [\"Skip\", "+noRun+"]\n"
-				+ "        ]);\n"
-				+ "\n"
-				+ "        // Chart options\n"
-				+ "        var options = {\n"
-				+ "          title: \"Test Execution Summary Chart\",\n"
-				+ "          chartArea: { width: \"150%\", top: 60, left: 100 },\n"
-				+ "          pieHole: 0.4,\n"
-				+ "          backgroundColor: '#00000000',\n"
-				+ "          slices: { \n"
-				+ "          0: { color: 'green' },\n"
-				+ "          1: { color: 'red' }, \n"
-				+ "          2: { color: 'yellow' } \n"
-				+ "          },      \n"
-				+ "         };\n"
-				+ "\n"
-				+ "        var chart = new google.visualization.PieChart(\n"
-				+ "          document.getElementById(\"piechart\")\n"
-				+ "        );\n"
-				+ "        chart.draw(data, options);\n"
-				+ "      }\n"
-				+ "    </script>\n"
-				+ "\n"
-				+ "    <script>\n"
-				+ "      $(document).ready(function () {\n"
-				+ "        $(\"#tablesorter\").tablesorter({\n"
-				+ "          textAttribute: \"data-value\",\n"
-				+ "          selectorHeaders: \"> thead tr:not(.dont-sort) th\",\n"
-				+ "          sortStable: true\n"
-				+ "        });\n"
-				+ "      });\n"
-				+ "    </script>\n"
-				+ "\n"
-				+ "    <title>Automation Reports - Features Overview</title>\n"
-				+ "  </head>\n"
-				+ "\n"
-				+ "  <body>\n"
-				+ "    <div id=\"header\">\n"
-				+ "      <img id=\"resultickslogo\" src=\"https://www.resulticks.com/images/logos/resulticks-logo-blue.svg\" />\n"
-				+ "      <h1>AUTOMATION - TEST SUMMARY REPORT"
-				+"       <p>Environment : "+System.getProperty("Environment")+" || Release Version: "+System.getProperty("ReleaseVersion")+" || Browser: "+System.getProperty("Browser")+" || Account: "+System.getProperty("Account")+" || Username: "+System.getProperty("UserName")+" || Requestor: "+System.getProperty("user.name")+" || Date & time : "+startTime+"</p></h1>\n"
-				+ "      <img id=\"logo\" src=\""+"{{logoImage}}"+"\" />\n"
-				+ "    </div>\n"
-				+ "\n"
-				+ "    <div class=\"container-fluid\" id=\"report\">\n"
-				+ "      <div class=\"row\">\n"
-				+ "        <div class=\"col-md-10 col-md-offset-1\">\n"
-				+ "          <table id=\"tablesorter\" class=\"stats-table table-hover\">\n"
-				+ "            <thead>\n"
-				+ "              <tr class=\"header dont-sort\">\n"
-				+ "                <th></th>\n"
-				+ "                <th colspan=\"8\">Status</th>\n"
-				+ "              </tr>\n"
-				+ "              <tr>\n"
-				+ "                <th>Module</th>\n"
-				+ "                <th class=\"passed\">Passed</th>\n"
-				+ "                <th class=\"passed\">Passed %</th>\n"
-				+ "                <th class=\"failed\">Failed</th>\n"
-				+ "                <th class=\"failed\">Failed %</th>\n"
-				+ "                <th class=\"skipped\">Skipped</th>\n"
-				+ "                <th class=\"skipped\">Skipped %</th>\n"
-				+ "                <th class=\"total\">Total</th>\n"
-				+ "                <th>Duration</th>\n"
-				+ "              </tr>\n"
-				+ "            </thead>\n"
-				+ "            <tbody>\n"
-				+ "              <tr>\n"
-				+ "                <td class=\"tagname\" style=\"text-align: center;\">"+getModuleName()+"</td>\n"
-				+ "                <td class=\"passed\">"+pass+"</td>\n"
-				+ "                <td class=\"passed\">"+percent(pass, total)+"</td>\n"
-				+ "                <td class=\"failed\">"+fail+"</td>\n"
-				+ "                <td class=\"failed\">"+percent(fail, total)+"</td>\n"
-				+ "                <td class=\"skipped\">"+noRun+"</td>\n"
-				+ "                <td class=\"skipped\">"+percent(noRun, total)+"</td>\n"
-				+ "                <td class=\"total\">"+total+"</td>\n"
-				+ "                <td class=\"duration\" data-value=\"8243950600\" style=\"text-align: center;\">"+duration+"</td>\n"
-				+ "              </tr>\n"
-				+ "            </tbody>\n"
-				+ "          </table>\n"
-				+ "        </div>\n"
-				+ "      </div>\n"
-				+ "    </div>\n"
-				+ "\n"
-				+ "    <div id=\"report-lead\" class=\"container-fluid\">\n"
-				+ "      <div class=\"col-md-10 col-md-offset-1\">\n"
-				+ "        <h2>Specifications & Statistics</h2>\n"
-				+ "        <p>The following graphs show passing and failing statistics</p>\n"
-				+ "      </div>\n"
-				+ "    </div>\n"
-				+ "\n"
-				+ "    <div>\n"
-				+ "      <div id=\"footer\">\n"
-				+ "        <div class=\"col-md-3 col-md-offset-2\">\n"
-				+ "          <table class=\"table table-bordered\" id=\"classifications\">\n"
-				+ "            <tbody>\n"
-				+ "              <tr class=\"info\">\n"
-				+ "                <th>Test</th>\n"
-				+ "                <td>Functional Testing</td>\n"
-				+ "              </tr>\n"
-				+ "              <tr class=\"info\">\n"
-				+ "                <th>Version</th>\n"
-				+ "                <td>"+System.getProperty("ReleaseVersion")+"</td>\n"
-				+ "              </tr>\n"
-				+ "              <tr class=\"info\">\n"
-				+ "                <th>Browser</th>\n"
-				+ "                <td>"+System.getProperty("Browser")+"</td>\n"
-				+ "              </tr>\n"
-				+ "              <tr class=\"info\">\n"
-				+ "                <th>Environment</th>\n"
-				+ "                <td>"+System.getProperty("Environment")+"</td>\n"
-				+ "              </tr>\n"
-				+ "              <tr class=\"info\">\n"
-				+ "                <th>Requested by</th>\n"
-				+ "                <td>"+System.getProperty("user.name")+"</td>\n"
-				+ "              </tr>\n"
-				+ "            </tbody>\n"
-				+ "          </table>\n"
-				+ "        </div>\n"
-				+ "        <div id=\"piechart\" style=\"width: 500px; height: 300px;\"></div>\n"
-				+ "      </div>\n"
-				+ "    </div>\n"
-				+ "  </body>\n"
-				+ "</html>";
+
+		return """
+				<!DOCTYPE html>
+				<html>
+				<head>
+				    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+
+				    <script>
+				        // === jquery.min.js ===
+				        ${JQUERY_JS}
+				    </script>
+
+				    <script>
+				        // === jquery.tablesorter.min.js ===
+				        ${TABLESORTER_JS}
+				    </script>
+
+				    <style>
+				        /* === bootstrap.min.css === */
+				        ${BOOTSTRAP_CSS}
+				    </style>
+
+				    <style>
+				        /* === cucumber.css === */
+				        ${CUCUMBER_CSS}
+				    </style>
+
+				    <script>
+				        // === moment.min.js ===
+				        ${MOMENT_JS}
+				    </script>
+
+				    <!-- Google Charts Loader -->
+				    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+				    <script type="text/javascript">
+				        google.charts.load("current", { packages: ["corechart"] });
+				        google.charts.setOnLoadCallback(drawChart);
+
+				        function drawChart() {
+				            var data = google.visualization.arrayToDataTable([
+				                ["Status", "Count"],
+				                ["Pass", %d],
+				                ["Fail", %d],
+				                ["Skip", %d]
+				            ]);
+
+				            var options = {
+				                title: "Test Execution Summary Chart",
+				                chartArea: { width: "150%%", top: 60, left: 100 },
+				                pieHole: 0.4,
+				                backgroundColor: '#00000000',
+				                slices: {
+				                    0: { color: 'green' },
+				                    1: { color: 'red' },
+				                    2: { color: 'yellow' }
+				                }
+				            };
+
+				            var chart = new google.visualization.PieChart(document.getElementById("piechart"));
+				            chart.draw(data, options);
+				        }
+				    </script>
+
+				    <script>
+				        $(document).ready(function () {
+				            $("#tablesorter").tablesorter({
+				                textAttribute: "data-value",
+				                selectorHeaders: "> thead tr:not(.dont-sort) th",
+				                sortStable: true
+				            });
+				        });
+				    </script>
+
+				    <title>Automation Reports - Features Overview</title>
+				</head>
+
+				<body>
+				    <div id="header">
+				        <img id="resultickslogo" src="https://www.resulticks.com/images/logos/resulticks-logo-blue.svg" />
+
+				        <div style="width: 1px; height: 48px; background-color: grey; margin-top: 20px;"></div>
+
+				        <img id="logo" src="{{logoImage}}" />
+
+				        <h1>AUTOMATION - TEST SUMMARY REPORT</h1>
+				        <p>
+				            Environment: %s ||
+				            Release Version: %s ||
+				            Browser: %s ||
+				            Account: %s ||
+				            Username: %s ||
+				            Requestor: %s ||
+				            Date & time: %s
+				        </p>
+
+				        <div>
+				            <a id="comprehensive-report-btn" href="test-output/SingleReport.html">
+				                Comprehensive Report <i class="fas fa-arrow-right"></i>
+				            </a>
+				        </div>
+				    </div>
+
+				    <div class="container-fluid" id="report">
+				        <div class="row">
+				            <div class="col-md-10 col-md-offset-1">
+				                <table id="tablesorter" class="stats-table table-hover">
+				                    <thead>
+				                        <tr class="header dont-sort">
+				                            <th></th>
+				                            <th colspan="8">Status</th>
+				                        </tr>
+				                        <tr>
+				                            <th>Module</th>
+				                            <th class="passed">Passed</th>
+				                            <th class="passed">Passed %%</th>
+				                            <th class="failed">Failed</th>
+				                            <th class="failed">Failed %%</th>
+				                            <th class="skipped">Skipped</th>
+				                            <th class="skipped">Skipped %%</th>
+				                            <th class="total">Total</th>
+				                            <th>Duration</th>
+				                        </tr>
+				                    </thead>
+				                    <tbody>
+				                        <tr>
+				                            <td class="tagname" style="text-align: center;">%s</td>
+				                            <td class="passed">%d</td>
+				                            <td class="passed">%s</td>
+				                            <td class="failed">%d</td>
+				                            <td class="failed">%s</td>
+				                            <td class="skipped">%d</td>
+				                            <td class="skipped">%s</td>
+				                            <td class="total">%d</td>
+				                            <td class="duration" data-value="8243950600" style="text-align: center;">%s</td>
+				                        </tr>
+				                    </tbody>
+				                </table>
+				            </div>
+				        </div>
+				    </div>
+
+				    <div id="report-lead" class="container-fluid">
+				        <div class="col-md-10 col-md-offset-1">
+				            <h2>Specifications & Statistics</h2>
+				            <p>The following graphs show passing and failing statistics</p>
+				        </div>
+				    </div>
+
+				    <div>
+				        <div id="footer">
+				            <div class="col-md-3 col-md-offset-2">
+				                <table class="table table-bordered" id="classifications">
+				                    <tbody>
+				                        <tr class="info">
+				                            <th>Test</th>
+				                            <td>Functional Testing</td>
+				                        </tr>
+				                        <tr class="info">
+				                            <th>Version</th>
+				                            <td>%s</td>
+				                        </tr>
+				                        <tr class="info">
+				                            <th>Browser</th>
+				                            <td>%s</td>
+				                        </tr>
+				                        <tr class="info">
+				                            <th>Environment</th>
+				                            <td>%s</td>
+				                        </tr>
+				                        <tr class="info">
+				                            <th>Requested by</th>
+				                            <td>%s</td>
+				                        </tr>
+				                    </tbody>
+				                </table>
+				            </div>
+				            <div id="piechart" style="width: 500px; height: 300px;"></div>
+				        </div>
+				    </div>
+				</body>
+				</html>
+				""".formatted(pass, fail, noRun, System.getProperty("Environment"), System.getProperty("ReleaseVersion"), System.getProperty("Browser"), System.getProperty("Account"), System.getProperty("UserName"), System.getProperty("user.name"),
+				startTime, getModuleName(), pass, percent(pass, total), fail, percent(fail, total), noRun, percent(noRun, total), total, duration, System.getProperty("ReleaseVersion"), System.getProperty("Browser"), System.getProperty("Environment"),
+				System.getProperty("user.name"));
 	}
 }
