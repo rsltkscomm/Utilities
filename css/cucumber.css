@@ -1,361 +1,426 @@
 body {
-    /* Shifts body so navigation bar does not overlap it.
+        /* Shifts body so navigation bar does not overlap it.
     Make sure to include this after the core Bootstrap CSS. */
-    padding-top: 0px;
-    /* overflow-y: overlay; */
-    background-image: url("https://img.freepik.com/free-photo/gray-abstract-wireframe-technology-background_53876-101941.jpg");
-    background-size: cover; 
-    background-position: center; 
-    background-attachment: fixed; 
-}
+        padding-top: 0px;
+        /* overflow-y: overlay; */
+        background-image: url("https://img.freepik.com/free-photo/gray-abstract-wireframe-technology-background_53876-101941.jpg");
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+      }
 
-#logo {
-    margin-top: 6px;
-    padding-left:8px;
-    padding-top: 1%;
-    height: 60px;
-    width: 120px;
-    /* animation: rotateLogo 2s linear normal; */
-  }
+      #logo {
+        margin: 5px;
+        height: 62px;
+        width: 100px;
+        padding-top: 15px;
+        /* animation: rotateLogo 2s linear normal; */
+      }
 
-  #resultickslogo{
-    height: 80px;
-    width: 200px;
-    padding-left: 2%;
-  }
+      #resultickslogo {
+        height: 80px;
+        width: 200px;
+        padding-left: 2%;
+      }
 
-  @keyframes rotateLogo {
-    from {
-        transform: translateX(-250px);
-    }
-    to {
-        transform: translateX(0);
-    }
-}
+      @keyframes rotateLogo {
+        from {
+          transform: translateX(-250px);
+        }
+        to {
+          transform: translateX(0);
+        }
+      }
 
-  #header h1{
-    padding-left: 17%;
-    margin:25px;
-    font-size: 200%;
-    /* box-shadow: 6px 10px 20px black; */
-  }
+      #header h1 {
+        margin-top: 15px;
+        font-size: 160%;
+        text-align: center;
+      }
 
-  #header{
-    height:80px;
-    width: 100%;
-    background-color: white;
-    display: flex;
-    gap: 1px;
-    margin-bottom: 5%;
-    font-family: Arial, sans-serif;
-    box-shadow: 6px 10px 20px black;
-    border-radius: 8px;
-    color: #00006e;
-    position: relative;
-    background-size: auto; 
-    background-position: center; 
-    background-attachment: fixed; 
-  }
+      #header p {
+        margin: 9px auto;
+        font-size: 50%;
+        text-align: center;
+        color: black;
+        max-width: 940px;
+        width: 100%;
+      }
 
-  #piechart{
-    border-radius: 20%;
-  }
+      #header {
+        height: 80px;
+        width: 100%;
+        background-color: white;
+        display: flex;
+        gap: 0.5%;
+        margin-bottom: 5%;
+        font-family: Arial, sans-serif;
+        box-shadow: 6px 10px 20px black;
+        border-radius: 8px;
+        color: #00006e;
+        position: relative;
+        background-size: auto;
+        background-position: center;
+        background-attachment: fixed;
+        border-left: 1px solid black;
+      }
 
-  #footer{
-    width: 100%;
-    display: flex;
-    gap: 10%;
-  }
+      #piechart {
+        border-radius: 100%;
+        margin-left: 12%;
+        width: 220px;
+      }
 
-  #classifications{
-    margin-top: 10%;
-    height: 80%;
-    width: 100%;
-  }
+      #footer {
+        width: 100%;
+        display: flex;
+        gap: 10%;
+      }
 
-  #classifications,#build-info,#tablesorter{
-    box-shadow: 6px 10px 20px black;
-  }
+      #classifications {
+        margin-top: 10%;
+        height: 80%;
+        width: 100%;
+      }
 
-  #header li{
-    padding-left: 140px;
-    padding-top: 15px;
-  }
+      #classifications,
+      #build-info,
+      #tablesorter {
+        box-shadow: 6px 10px 20px black;
+      }
 
-  #build-info th,td{
-    font-weight: 700;
-  }
+      #header li {
+        padding-left: 140px;
+        padding-top: 15px;
+      }
 
-h2 {
-    font-size: 24px;
-}
+      #build-info th,
+      td {
+        font-weight: 700;
+      }
 
-a {
-    color: #0097da;
-}
+      h2 {
+        font-size: 24px;
+      }
 
-a:hover {
-    color: #00587f;
-}
+      a {
+        color: #0097da;
+      }
 
-.header-tag-name {
-    color: gray;
-    font-style: italic;
-}
+      a:hover {
+        color: #00587f;
+      }
 
-.keyword {
-    font-weight: bold;
-}
+      .header-tag-name {
+        color: gray;
+        font-style: italic;
+      }
 
-.argument {
-    font-weight: bold;
-}
+      .keyword {
+        font-weight: bold;
+      }
 
-.indention {
-    padding-left: 3px;
-}
+      .argument {
+        font-weight: bold;
+      }
 
-.inner-level {
-    margin-top: 5px;
-    margin-left: 20px;
-    padding-bottom: 2px;
-    padding-left: 1px;
-}
+      .indention {
+        padding-left: 3px;
+      }
 
-.element {
-    margin-bottom: 15px;
-    padding-left: 3px;
-}
+      .inner-level {
+        margin-top: 5px;
+        margin-left: 20px;
+        padding-bottom: 2px;
+        padding-left: 1px;
+      }
 
-/* left line along each section */
-.element, .steps, .hooks-after, .hooks-before {
-    box-shadow: -1px 0 lightgray;
-    transition: box-shadow 0.3s;
-}
-.element:hover, .steps:hover, .hooks-after:hover, .hooks-before:hover {
-    box-shadow: -3px 0 #6ce;
-}
+      .element {
+        margin-bottom: 15px;
+        padding-left: 3px;
+      }
 
-.description, .comment {
-    font-style: italic;
-    background-color: beige;
-    white-space: pre;
-}
+      /* left line along each section */
+      .element,
+      .steps,
+      .hooks-after,
+      .hooks-before {
+        box-shadow: -1px 0 lightgray;
+        transition: box-shadow 0.3s;
+      }
+      .element:hover,
+      .steps:hover,
+      .hooks-after:hover,
+      .hooks-before:hover {
+        box-shadow: -3px 0 #6ce;
+      }
 
-.message, .output, .embedding {
-    background-color: #dfdfdf;
-    overflow: auto;
-}
+      .description,
+      .comment {
+        font-style: italic;
+        background-color: beige;
+        white-space: pre;
+      }
 
-/*
+      .message,
+      .output,
+      .embedding {
+        background-color: #dfdfdf;
+        overflow: auto;
+      }
+
+      /*
    same as <pre> from bootstrap library.
    padding and overflow-x added.
 */
-.embedding-content {
-    padding: 10px;
-    margin-left: 10px;
-    margin-right: 10px;
-    margin-bottom: 10px;
-    font-size: 13px;
-    overflow-x: auto;
-    line-height: 1.42857143;
-    color: #333;
-    word-break: break-all;
-    word-wrap: break-word;
-    background-color: #f5f5f5;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
+      .embedding-content {
+        padding: 10px;
+        margin-left: 10px;
+        margin-right: 10px;
+        margin-bottom: 10px;
+        font-size: 13px;
+        overflow-x: auto;
+        line-height: 1.42857143;
+        color: #333;
+        word-break: break-all;
+        word-wrap: break-word;
+        background-color: #f5f5f5;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
 
-.html-content {
-    position: relative;
-    /* proportion value to aspect ratio 16:9 (9 / 16 = 0.5625 or 56.25%) */
-    padding: 0 0 56.25%;
-    height: 0;
-    overflow: hidden;
-}
+      .html-content {
+        position: relative;
+        /* proportion value to aspect ratio 16:9 (9 / 16 = 0.5625 or 56.25%) */
+        padding: 0 0 56.25%;
+        height: 0;
+        overflow: hidden;
+      }
 
-.html-content iframe {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    border:none;
-}
+      .html-content iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border: none;
+      }
 
-.download-button {
-    float: right;
-    margin-right: 10px;
-    color: #333;
-}
+      .download-button {
+        float: right;
+        margin-right: 10px;
+        color: #333;
+      }
 
-/* names of those classes must be the same as name of the statuses (to lower case) in Status class  */
-.passed {
-    background-color: #92DD96;
-}
+      /* names of those classes must be the same as name of the statuses (to lower case) in Status class  */
+      .passed {
+        background-color: #92dd96;
+      }
 
-.failed {
-    background-color: #F2928C;
-}
+      .failed {
+        background-color: #f2928c;
+      }
 
-.skipped {
-    background-color: #8AF;
-}
+      .skipped {
+        background-color: #8af;
+      }
 
-.pending {
-    background-color: #F5F28F;
-}
+      .pending {
+        background-color: #f5f28f;
+      }
 
-.undefined {
-    background-color: #F5B975;
-}
+      .undefined {
+        background-color: #f5b975;
+      }
 
-/** additional space before Given keyword to keep space between steps **/
-.step-name-Given {
-    margin-top: 5px;
-}
+      /** additional space before Given keyword to keep space between steps **/
+      .step-name-Given {
+        margin-top: 5px;
+      }
 
-.step-name-And {
-    padding-left: 10px;
-}
+      .step-name-And {
+        padding-left: 10px;
+      }
 
-.lead-duration {
-    float: right;
-    padding-right: 15px;
-}
+      .lead-duration {
+        float: right;
+        padding-right: 15px;
+      }
 
-table.stats-table {
-    background-color: white;
-    color: black;
-    margin-bottom: 20px;
-    width: 100%;
-}
+      table.stats-table {
+        background-color: white;
+        color: black;
+        margin-bottom: 20px;
+        width: 100%;
+      }
 
-table.stats-table th, table.stats-table td {
-    border: 1px solid gray;
-    padding: 5px;
-    text-align: center;
-}
+      table.stats-table th,
+      table.stats-table td {
+        border: 1px solid gray;
+        padding: 5px;
+        text-align: center;
+      }
 
-table.stats-table tr.header {
-    background-color: #66CCEE;
-}
+      table.stats-table tr.header {
+        background-color: #66ccee;
+      }
 
-table.stats-table tfoot {
-    font-weight: bold;
-}
+      table.stats-table tfoot {
+        font-weight: bold;
+      }
 
-tfoot.total, td.total, th.total {
-    background-color: lightgray;
-}
+      tfoot.total,
+      td.total,
+      th.total {
+        background-color: lightgray;
+      }
 
-table.stats-table td.duration {
-    text-align: right;
-    white-space: nowrap;
-}
+      table.stats-table td.duration {
+        text-align: right;
+        white-space: nowrap;
+      }
 
-table.stats-table td.tagname {
-    text-align: left;
-}
+      table.stats-table td.tagname {
+        text-align: left;
+      }
 
-table.stats-table td.location, .location {
-    font-family: monospace;
-    text-align: left;
-}
+      table.stats-table td.location,
+      .location {
+        font-family: monospace;
+        text-align: left;
+      }
 
-table.step-arguments {
-    margin-bottom: 5px;
-    margin-left: 25px;
-    margin-top: 3px;
-}
+      table.step-arguments {
+        margin-bottom: 5px;
+        margin-left: 25px;
+        margin-top: 3px;
+      }
 
-table.step-arguments th, table.step-arguments td {
-    border: 1px solid gray;
-    padding: 3px;
-    text-align: left;
-}
+      table.step-arguments th,
+      table.step-arguments td {
+        border: 1px solid gray;
+        padding: 3px;
+        text-align: left;
+      }
 
-table#tablesorter thead tr:not(.dont-sort) th {
-    cursor: pointer;
-}
+      table#tablesorter thead tr:not(.dont-sort) th {
+        cursor: pointer;
+      }
 
-tr:hover {
-    transition: background-color 0.3s;
-}
+      tr:hover {
+        transition: background-color 0.3s;
+      }
 
-.collapsable-control {
-    cursor: pointer;
-}
+      .collapsable-control {
+        cursor: pointer;
+      }
 
-.chevron:after {
-    content: "\f078";
-}
+      .chevron:after {
+        content: "\f078";
+      }
 
-.collapsed .chevron:after {
-    content: "\f054";
-}
+      .collapsed .chevron:after {
+        content: "\f054";
+      }
 
-.footer {
-    font-size: smaller;
-    text-align: center;
-    margin-top: 30px;
-}
+      .footer {
+        font-size: smaller;
+        text-align: center;
+        margin-top: 30px;
+      }
 
+      /* Custom Bootstrap CSS overloading. */
+      .carousel-indicators {
+        bottom: 0;
+      }
 
+      .carousel-indicators li {
+        border: 1px solid black;
+      }
 
-/* Custom Bootstrap CSS overloading. */
-.carousel-indicators {
-    bottom: 0;
-}
+      .carousel-indicators .active {
+        background-color: black;
+      }
 
-.carousel-indicators li {
-    border: 1px solid black;
-}
+      .carousel-control {
+        font-size: 40px;
+        padding-top: 150px;
+      }
 
-.carousel-indicators .active {
-    background-color: black;
-}
+      .carousel-control.right,
+      .carousel-control.left {
+        background-image: none;
+        color: #eee;
+      }
 
-.carousel-control {
-    font-size: 40px;
-    padding-top: 150px;;
-}
+      pre {
+        margin: 10px;
+      }
 
-.carousel-control.right, .carousel-control.left {
-    background-image: none;
-    color: #eee;
-}
+      #footer {
+        padding-right: 20px;
+      }
 
-pre {
-    margin: 10px;
-}
+      @media screen and (max-width: 768px) {
+        #resultickslogo {
+          height: 60px;
+          width: auto;
+        }
 
-#footer {
-    padding-right: 20px;
-}
+        #logo {
+          height: 40px;
+          width: auto;
+          transform: translateY(-2px);
+          box-shadow: 6px 10px 20px black;
+        }
 
- #comprehensive-report-btn {
+        #logo::before {
+          content: "";
+          display: inline-block;
+          width: 1px;
+          height: 1em;
+          background-color: black;
+          margin-right: 8px;
+        }
+        #comprehensivereport {
+          border: 1px solid black;
+          height: 20px;
+          width: 20px;
+          background-color: black;
+        }
+
+        #header p {
+          width: 100%;
+          font-size: 40%;
+        }
+      }
+      #comprehensive-report-btn {
         display: inline-flex;
         align-items: center;
-        padding: 10px 20px;
-        background: #3498db;
+        padding: 4px;
+        background: #00006e;
         color: white;
         text-decoration: none;
         border-radius: 30px;
-        font-weight: 600;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        font-weight: 200;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         transition: all 0.3s ease;
+        margin-top: 18px;
+        text-align: center;
+        font-weight: bold;
       }
-      
+
       #comprehensive-report-btn:hover {
-        background: #2980b9;
+        background: #00006e;
         transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        box-shadow: 6px 10px 20px black;
       }
-      
+
       #comprehensive-report-btn i {
         margin-left: 8px;
         font-size: 14px;
       }
-      
+
+      #comprehensive-report-btn a {
+        margin-left: 70px;
+      }
