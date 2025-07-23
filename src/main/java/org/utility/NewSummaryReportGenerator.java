@@ -146,8 +146,6 @@ public class NewSummaryReportGenerator
 		replaceImageWithBase64("{{logoImage}}", getProductLogo(productName));
 		replaceImageWithBase64("{{detailedReportIcon}}", "/images/report-icon.svg");
 
-		System.out.println(html);
-
 		return html;
 	}
 
