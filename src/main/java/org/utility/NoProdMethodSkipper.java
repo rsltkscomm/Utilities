@@ -1,6 +1,5 @@
 package org.utility;
 
-import java.lang.reflect.Method;
 import org.testng.IInvokedMethod;
 import org.testng.IInvokedMethodListener;
 import org.testng.ITestResult;
@@ -10,27 +9,27 @@ public class NoProdMethodSkipper implements IInvokedMethodListener {
 
     @Override
     public void beforeInvocation(IInvokedMethod method, ITestResult testResult) {
-        Method actualMethod = method.getTestMethod().getConstructorOrMethod().getMethod();
-
-        // Proceed only if the method is marked with @NoProd
-        if (!actualMethod.isAnnotationPresent(NoProd.class)) {
-            return;
-        }
-
-        // Fetch and normalize system properties
-        String restrictRun = System.getProperty("restrictRun", "yes").toLowerCase(); // Default to "yes"
+        String restrictRun = System.getProperty("restrictRun", "yes").toLowerCase(); // default = "yes"
         String environment = System.getProperty("Environment", "").toLowerCase();
+        String url = System.getProperty("Environment").toUpperCase() + "_" + System.getProperty("ReleaseVersion");
 
-        // Always restrict "run" environment regardless of restrictRun setting
-        if ("run".equals(environment)) {
-            throw new SkipException("Execution is always restricted in 'run' environment for @NoProd methods");
+        boolean isLiveEnv = "run".equals(environment) || url.contains("liv.") || url.contains("run.");
+        boolean isRun19 = url.contains("run19");
+
+        // ✅ Block fully live environments always
+        if (isLiveEnv) {
+            throw new SkipException("Execution is restricted in 'live' environment for @NoProd methods");
         }
 
-        // Additional restriction based on flag (if not in run environment)
+        // ✅ Block RUN19 unless explicitly allowed
+        if (isRun19 && !"no".equals(restrictRun)) {
+            throw new SkipException("Execution in RUN19 is restricted unless restrictRun=no is set");
+        }
+
+        // ✅ Also block all other environments if restrictRun is set to yes
         if ("yes".equals(restrictRun)) {
             throw new SkipException("Execution restricted by restrictRun=yes configuration");
         }
-        
-        // If we get here, the test will execute
+
     }
 }
