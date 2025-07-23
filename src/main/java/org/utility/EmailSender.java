@@ -38,6 +38,7 @@ public class EmailSender {
 			}
             message.setContent(multipart);
             Transport.send(message);
+            System.out.println("✅ Email sent successfully to: " + recipientEmails);
         } catch (Exception e) {
             System.err.println("❌ Failed to send email: " + e.getMessage());
             e.printStackTrace();
