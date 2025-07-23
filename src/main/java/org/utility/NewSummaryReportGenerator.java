@@ -18,6 +18,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.utility.EmailSender;
+
 import com.google.gson.Gson;
 
 public class NewSummaryReportGenerator
@@ -144,8 +146,6 @@ public class NewSummaryReportGenerator
 		replaceImageWithBase64("{{logoImage}}", getProductLogo(productName));
 		replaceImageWithBase64("{{detailedReportIcon}}", "/images/report-icon.svg");
 
-		System.out.println(html);
-
 		return html;
 	}
 
@@ -254,65 +254,69 @@ public class NewSummaryReportGenerator
 
 	                            .header {
 	                    background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
-	                    color: white;
-	                    padding: 20px 0;
-	                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-	                    text-align: center;
-	                    position: relative;
+	                   color: white;
+        padding: 10px 0;
+        text-align: center;
+        position: relative;
 	                }
 
-	                .header-content {
-	                    max-width: 1400px;
-	                    margin: 0 auto;
-	                    padding: 0 20px;
-	                    display: flex;
-	                    align-items: center;
-	                    justify-content: flex-start;
-	                    gap: 20px;
-	                }
+	                 .header-content {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0 20px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 50px;
+        margin-bottom: 0px;
+      }
 
-	                .header-text {
-	                    text-align: left;
-	                }
+      .header-text {
+        text-align: left;
+      }
 
-	                .header h1 {
-	                    font-size: 2em;
-	                    margin-bottom: 5px;
-	                    color: white;
-	                    margin-left: 50px;
-	                }
+      .header h1 {
+        font-size: 2em;
+        margin-bottom: 5px;
+        color: white;
+        margin-left: 80px;
+      }
 
-	                .header p {
-	                    font-size: 1.2em;
-	                    opacity: 0.9;
-	                    color: white;
-	                    text-align: center;
-	                    margin-bottom: 20px;
-	                }
+      .header p {
+        font-size: 1.2em;
+        opacity: 0.9;
+        color: white;
+        text-align: center;
+        margin-bottom: 20px;
+        border-radius: 22px;
+      }
 
-	                .logo-container {
-	                    display: flex;
-	                    align-items: center;
-	                    gap: 15px;
-	                }
+      .logo-container {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+      }
 
-	                .logo-divider {
-	                    width: 1px;
-	                    height: 60px;
-	                    background-color: rgba(255,255,255,0.3);
-	                }
+      .logo-divider {
+        width: 1px;
+        height: 60px;
+        background-color: rgba(255, 255, 255, 0.3);
+      }
 
-	                #resulticks-logo {
-	                    height: 60px;
-	                    width: 200px;
-	                    object-fit: contain;
-	                }
+      #resulticks-logo {
+        height: 60px;
+        width: 200px;
+        object-fit: contain;
+        margin-left: 30px;
+      }
 
-	                #resul-logo {
-	                    height: 40px;
-	                    width: 100px;
-	                    object-fit: contain;
-	                }
+      #resul-logo {
+        height: 40px;
+        width: 100px;
+        object-fit: contain;
+        align-items: end;
+        margin-left: 90px;
+      }
 
 	                            .environment-info {
 	                                background: #f8f9fa;
@@ -324,8 +328,8 @@ public class NewSummaryReportGenerator
 
 	                            .environment-grid {
 	                                max-width: 1400px;
-	                                margin: 0 auto;
-	                                padding: 0 20px;
+	                                margin: 0px 0px 0px 20px;
+	                                padding: 20px 10px 10px 10px;
 	                                display: grid;
 	                                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 	                                gap: 23px;
@@ -569,17 +573,25 @@ public class NewSummaryReportGenerator
 	                    </head>
 	                    <body>
 	                       <div class="header">
-	                <div class="header-content">
-	                    <div class="logo-container">
-	                        <img id="resulticks-logo" src="https://www.resulticks.com/images/logos/resulticks-logo-blue.svg" alt="Resulticks Logo" />
-	                        <div class="logo-divider"></div>
-	                        <img id="resul-logo" src="https://run19.resul.io/assets/resulticks-logo-blue-bff3c259.svg" alt="Resul Logo" />
-	                    </div>
-	                    <div class="header-text">
-	                        <h1>AUTOMATION - TEST SUMMARY REPORT</h1>
-	                        <p>Comprehensive Test Execution Report with Analytics</p>
-	                    </div>
-	                </div>
+      <div class="header-content">
+        <div class="logo-container">
+          <img
+            id="resulticks-logo"
+            src="https://www.resulticks.com/images/logos/resulticks-logo-blue.svg"
+            alt="Resulticks Logo"
+          />
+        </div>  
+        <div class="header-text">
+          <h1>AUTOMATION - TEST SUMMARY REPORT</h1>
+          <p>Comprehensive Test Execution Report with Analytics</p>
+        </div>
+        <img
+          id="resul-logo"
+          src="https://run19.resul.io/assets/resulticks-logo-blue-bff3c259.svg"
+          alt="Resul Logo"
+        />
+      </div>
+    </div>
 
 	                        <div class="environment-info">
 	                            <div class="environment-grid">
