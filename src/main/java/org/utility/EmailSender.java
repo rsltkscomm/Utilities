@@ -16,7 +16,7 @@ public class EmailSender {
         String senderEmail = System.getProperty("senderEmail");
         String senderPassword = System.getProperty("senderPassword");
         String recipientEmails = System.getProperty("recipientEmails");
-        String subject = System.getProperty("subject");
+        String subject = System.getProperty("IsPageLoadReport").toLowerCase().equals("yes") ? System.getProperty("pageloadsubject"):System.getProperty("subject");
 
         Properties props = getSmtpProperties(host, port);
         Session session = createSession(props, senderEmail, senderPassword);
