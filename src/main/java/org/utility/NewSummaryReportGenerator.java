@@ -65,68 +65,83 @@ public class NewSummaryReportGenerator
 		return new Gson().toJson(modules);
 	}
 
-	public static void generateReport(int pass, int fail, int noRun, String duration, String startTime) {
-	    String reportPath = System.getProperty("user.dir") + File.separator + "TestExecutionSummary.html";
-	    
-	    // 1. Generate and save the HTML report
-	    try (BufferedWriter writer = new BufferedWriter(new FileWriter(reportPath))) {
-	        String reportHtml = customReportHtml(pass, fail, noRun, duration, startTime);
-	        writer.write(reportHtml);
-	    } catch (Exception e) {
-	        System.err.println("❌ Failed to generate HTML report: " + e.getMessage());
-	        e.printStackTrace();
-	        return; // Exit if report generation fails
-	    }
+	public static void generateReport(int pass, int fail, int noRun, String duration, String startTime)
+	{
+		String customreport = System.getProperty("user.dir") + File.separator + "TestExecutionSummary.html";
+		String pageloadReportPath = System.getProperty("user.dir") + File.separator + "TestReport.html";
+		String reportPath = System.getProperty("IsPageLoadReport").toLowerCase().equals("yes") ? pageloadReportPath : customreport;
 
-	    // 2. Check if email should be sent
-	    if (!"yes".equalsIgnoreCase(System.getProperty("isReportSend"))) {
-	        return; // Skip email if not required
-	    }
+		// 1. Generate and save the HTML report
+		try (BufferedWriter writer = new BufferedWriter(new FileWriter(reportPath)))
+		{
+			String reportHtml = customReportHtml(pass, fail, noRun, duration, startTime);
+			writer.write(reportHtml);
+		} catch (Exception e)
+		{
+			System.err.println("❌ Failed to generate HTML report: " + e.getMessage());
+			e.printStackTrace();
+			return; // Stop further execution if report generation fails
+		}
 
-	    // 3. Prepare attachments (HTML + optional Excel)
-	    List<String> filePaths = new ArrayList<>();
-	    List<String> fileNames = new ArrayList<>();
+		// 2. Check if email should be sent
+		if (!"yes".equalsIgnoreCase(System.getProperty("isReportSend")))
+		{
+			return; // Exit if email is not required
+		}
 
-	    // Add HTML report
-	    File htmlFile = new File(reportPath);
-	    if (htmlFile.exists()) {
-	        filePaths.add(reportPath);
-	        fileNames.add("TestExecutionSummary.html");
-	    } else {
-	        System.err.println("⚠️ HTML report not found: " + reportPath);
-	        return; // Exit if HTML file missing
-	    }
+		// 3. Prepare attachments
+		List<String> filePaths = new ArrayList<>();
+		List<String> fileNames = new ArrayList<>();
 
-	    // Add Excel report if enabled
-	    if ("yes".equalsIgnoreCase(System.getProperty("isExcelAttach"))) {
-	        String excelFilePath = System.getProperty("user.dir") + File.separator + "TestSummary.xlsx";
-	        File excelFile = new File(excelFilePath);
-	        if (excelFile.exists()) {
-	            filePaths.add(excelFilePath);
-	            fileNames.add("TestSummary.xlsx");
-	        } else {
-	            System.err.println("⚠️ Excel file not found: " + excelFilePath);
-	        }
-	    }
+		// Add HTML report
+		File htmlFile = new File(reportPath);
+		if (htmlFile.exists())
+		{
+			filePaths.add(reportPath);
+			fileNames.add(System.getProperty("IsPageLoadReport").toLowerCase().equals("yes") ? "PageloadReport.html" : "TestExecutionSummary.html");
+		} else
+		{
+			System.err.println("⚠️ HTML report not found: " + reportPath);
+			return; // Stop if HTML report is missing
+		}
 
-	    // 4. Send email if there are attachments
-	    if (!filePaths.isEmpty()) {
-	        try {
-	            String paths = String.join(",", filePaths);
-	            String names = String.join(",", fileNames);
-	            
-	            System.out.println("Attachments:");
-	            System.out.println("Paths: " + paths);
-	            System.out.println("Names: " + names);
-	            
-	            EmailSender.sendEmail(paths, names);
-	        } catch (Exception e) {
-	            System.err.println("❌ Failed to send email: " + e.getMessage());
-	            e.printStackTrace();
-	        }
-	    } else {
-	        System.err.println("⚠️ No files available to attach.");
-	    }
+		// Add Excel report if required
+		if ("yes".equalsIgnoreCase(System.getProperty("isExcelAttach")))
+		{
+			String excelFilePath = System.getProperty("user.dir") + File.separator + "TestSummary.xlsx";
+			File excelFile = new File(excelFilePath);
+			if (excelFile.exists())
+			{
+				filePaths.add(excelFilePath);
+				fileNames.add("TestSummary.xlsx");
+			} else
+			{
+				System.err.println("⚠️ Excel file not found: " + excelFilePath);
+			}
+		}
+
+		// 4. Send email with attachments (only once)
+		try
+		{
+			if (!filePaths.isEmpty())
+			{
+				String paths = String.join(",", filePaths);
+				String names = String.join(",", fileNames);
+
+				System.out.println("📤 Sending email with attachments:");
+				System.out.println("Paths: " + paths);
+				System.out.println("Names: " + names);
+
+				EmailSender.sendEmail(paths, names);
+			} else
+			{
+				System.err.println("⚠️ No files available to attach.");
+			}
+		} catch (Exception e)
+		{
+			System.err.println("❌ Failed to send email: " + e.getMessage());
+			e.printStackTrace();
+		}
 	}
 
 	private static String percent(int count, int total)
@@ -226,575 +241,575 @@ public class NewSummaryReportGenerator
 
 	public static String getReportHtml(String productName, int pass, int fail, int noRun, int total, String duration, String startTime)
 	{
-	    String base64Report = encodeFileToBase64("test-output/Report.html");
-	    boolean isReportAvailable = !base64Report.isEmpty();
-	    String moduleDataJson = getModuleDataJson();
+		String base64Report = encodeFileToBase64("test-output/Report.html");
+		boolean isReportAvailable = !base64Report.isEmpty();
+		String moduleDataJson = getModuleDataJson();
 
-	    return String.format(
-	            """
-	                    <!DOCTYPE html>
-	                    <html lang="en">
-	                    <head>
-	                        <meta charset="UTF-8">
-	                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-	                        <title>Automation Test Summary Report</title>
-	                        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-	                        <style>
-	                            * {
-	                                margin: 0;
-	                                padding: 0;
-	                                box-sizing: border-box;
-	                            }
+		return String.format(
+				"""
+						                 <!DOCTYPE html>
+						                 <html lang="en">
+						                 <head>
+						                     <meta charset="UTF-8">
+						                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+						                     <title>Automation Test Summary Report</title>
+						                     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+						                     <style>
+						                         * {
+						                             margin: 0;
+						                             padding: 0;
+						                             box-sizing: border-box;
+						                         }
 
-	                            body {
-	                                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-	                                background: #f5f5f5;
-	                                color: #333;
-	                            }
+						                         body {
+						                             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+						                             background: #f5f5f5;
+						                             color: #333;
+						                         }
 
-	                            .header {
-	                    background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
-	                   color: white;
-        padding: 10px 0;
-        text-align: center;
-        position: relative;
-	                }
+						                         .header {
+						                 background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+						                color: white;
+						    padding: 10px 0;
+						    text-align: center;
+						    position: relative;
+						             }
 
-	                 .header-content {
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: 0 20px;
-        display: flex;
-        align-items: center;
-        justify-content: flex-start;
-        gap: 50px;
-        margin-bottom: 0px;
-      }
+						              .header-content {
+						    max-width: 1400px;
+						    margin: 0 auto;
+						    padding: 0 20px;
+						    display: flex;
+						    align-items: center;
+						    justify-content: flex-start;
+						    gap: 50px;
+						    margin-bottom: 0px;
+						  }
 
-      .header-text {
-        text-align: left;
-      }
+						  .header-text {
+						    text-align: left;
+						  }
 
-      .header h1 {
-        font-size: 2em;
-        margin-bottom: 5px;
-        color: white;
-        margin-left: 80px;
-      }
+						  .header h1 {
+						    font-size: 2em;
+						    margin-bottom: 5px;
+						    color: white;
+						    margin-left: 80px;
+						  }
 
-      .header p {
-        font-size: 1.2em;
-        opacity: 0.9;
-        color: white;
-        text-align: center;
-        margin-bottom: 20px;
-        border-radius: 22px;
-      }
+						  .header p {
+						    font-size: 1.2em;
+						    opacity: 0.9;
+						    color: white;
+						    text-align: center;
+						    margin-bottom: 20px;
+						    border-radius: 22px;
+						  }
 
-      .logo-container {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-      }
+						  .logo-container {
+						    display: flex;
+						    align-items: center;
+						    gap: 15px;
+						  }
 
-      .logo-divider {
-        width: 1px;
-        height: 60px;
-        background-color: rgba(255, 255, 255, 0.3);
-      }
+						  .logo-divider {
+						    width: 1px;
+						    height: 60px;
+						    background-color: rgba(255, 255, 255, 0.3);
+						  }
 
-      #resulticks-logo {
-        height: 60px;
-        width: 200px;
-        object-fit: contain;
-        margin-left: 30px;
-      }
+						  #resulticks-logo {
+						    height: 60px;
+						    width: 200px;
+						    object-fit: contain;
+						    margin-left: 30px;
+						  }
 
-      #resul-logo {
-        height: 40px;
-        width: 100px;
-        object-fit: contain;
-        align-items: end;
-        margin-left: 90px;
-      }
+						  #resul-logo {
+						    height: 40px;
+						    width: 100px;
+						    object-fit: contain;
+						    align-items: end;
+						    margin-left: 90px;
+						  }
 
-	                            .environment-info {
-	                                background: #f8f9fa;
-	                                border-bottom: 1px solid #ddd;
-	                                padding: 10px 0;
-	                                font-size: 0.85em;
-	                                color: #666;
-	                            }
+						                         .environment-info {
+						                             background: #f8f9fa;
+						                             border-bottom: 1px solid #ddd;
+						                             padding: 10px 0;
+						                             font-size: 0.85em;
+						                             color: #666;
+						                         }
 
-	                            .environment-grid {
-	                                max-width: 1400px;
-	                                margin: 0px 0px 0px 20px;
-	                                padding: 20px 10px 10px 10px;
-	                                display: grid;
-	                                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-	                                gap: 23px;
-	                            }
+						                         .environment-grid {
+						                             max-width: 1400px;
+						                             margin: 0px 0px 0px 20px;
+						                             padding: 20px 10px 10px 10px;
+						                             display: grid;
+						                             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+						                             gap: 23px;
+						                         }
 
-	                            .env-item {
-	                                display: flex;
-	                                align-items: center;
-	                                gap: 5px;
-	                            }
+						                         .env-item {
+						                             display: flex;
+						                             align-items: center;
+						                             gap: 5px;
+						                         }
 
-	                            .env-label {
-	                                font-weight: bold;
-	                                color: #333;
-	                            }
+						                         .env-label {
+						                             font-weight: bold;
+						                             color: #333;
+						                         }
 
-	                            .container {
-	                                max-width: 1400px;
-	                                margin: 0 auto;
-	                                padding: 20px;
-	                            }
+						                         .container {
+						                             max-width: 1400px;
+						                             margin: 0 auto;
+						                             padding: 20px;
+						                         }
 
-	                            .stats-grid {
-	                                display: grid;
-	                                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-	                                gap: 20px;
-	                                margin-bottom: 30px;
-	                            }
+						                         .stats-grid {
+						                             display: grid;
+						                             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+						                             gap: 20px;
+						                             margin-bottom: 30px;
+						                         }
 
-	                            .stat-card {
-	                                background: white;
-	                                padding: 5px;
-	                                border-radius: 10px;
-	                                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-	                                text-align: center;
-	                                transition: transform 0.3s ease;
-	                            }
+						                         .stat-card {
+						                             background: white;
+						                             padding: 5px;
+						                             border-radius: 10px;
+						                             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+						                             text-align: center;
+						                             transition: transform 0.3s ease;
+						                         }
 
-	                            .stat-card:hover {
-	                                transform: translateY(-5px);
-	                            }
+						                         .stat-card:hover {
+						                             transform: translateY(-5px);
+						                         }
 
-	                            .stat-number {
-	                                font-size: 2.5em;
-	                                font-weight: bold;
-	                                margin-bottom: 10px;
-	                            }
+						                         .stat-number {
+						                             font-size: 2.5em;
+						                             font-weight: bold;
+						                             margin-bottom: 10px;
+						                         }
 
-	                            .stat-label {
-	                                color: #666;
-	                                font-size: 1.1em;
-	                            }
+						                         .stat-label {
+						                             color: #666;
+						                             font-size: 1.1em;
+						                         }
 
-	                            .passed { color: #28a745; }
-	                            .failed { color: #dc3545; }
-	                            .skipped { color: #ffc107; }
-	                            .total { color: #007bff; }
+						                         .passed { color: #28a745; }
+						                         .failed { color: #dc3545; }
+						                         .skipped { color: #ffc107; }
+						                         .total { color: #007bff; }
 
-	                            .charts-section {
-	                                background: white;
-	                                border-radius: 10px;
-	                                padding: 30px;
-	                                margin-bottom: 30px;
-	                                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-	                            }
-	                            
-	                            .charts-section h2{
-                color: black;
-                text-align: left;
-            }
+						                         .charts-section {
+						                             background: white;
+						                             border-radius: 10px;
+						                             padding: 30px;
+						                             margin-bottom: 30px;
+						                             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+						                         }
 
-            .charts-section h3{
-                color: black;
-                 text-align: left;
-                 margin-left: 10px;
-            }
+						                         .charts-section h2{
+						            color: black;
+						            text-align: left;
+						        }
 
-	                            .analytics-dashboard {
-	                                display: grid;
-	                                grid-template-columns: 0.4fr 1.6fr;
-	                                gap: 30px;
-	                                margin-top: 20px;
-	                            }
+						        .charts-section h3{
+						            color: black;
+						             text-align: left;
+						             margin-left: 10px;
+						        }
 
-	                            .chart-side {
-	                                display: flex;
-	                                flex-direction: column;
-	                                align-items: center;
-	                            }
+						                         .analytics-dashboard {
+						                             display: grid;
+						                             grid-template-columns: 0.4fr 1.6fr;
+						                             gap: 30px;
+						                             margin-top: 20px;
+						                         }
 
-	                            .table-side {
-	                                display: flex;
-	                                flex-direction: column;
-	                            }
+						                         .chart-side {
+						                             display: flex;
+						                             flex-direction: column;
+						                             align-items: center;
+						                         }
 
-	                            .module-table {
-	                                width: 100%%;
-	                                border-collapse: collapse;
-	                                margin-top: 20px;
-	                                background: white;
-	                                border-radius: 8px;
-	                                overflow: hidden;
-	                                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-	                                border: 1px solid #ddd;
-	                            }
+						                         .table-side {
+						                             display: flex;
+						                             flex-direction: column;
+						                         }
 
-	                            .module-table th {
-	                                background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
-	                                color: white;
-	                                padding: 15px 12px;
-	                                text-align: center;
-	                                font-weight: 600;
-	                                font-size: 0.9em;
-	                            }
+						                         .module-table {
+						                             width: 100%%;
+						                             border-collapse: collapse;
+						                             margin-top: 20px;
+						                             background: white;
+						                             border-radius: 8px;
+						                             overflow: hidden;
+						                             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+						                             border: 1px solid #ddd;
+						                         }
 
-	                            .module-table th:first-child {
-	                                text-align: left;
-	                            }
+						                         .module-table th {
+						                             background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+						                             color: white;
+						                             padding: 15px 12px;
+						                             text-align: center;
+						                             font-weight: 600;
+						                             font-size: 0.9em;
+						                         }
 
-	                            .module-table td {
-	                                padding: 12px;
-	                                text-align: center;
-	                                border-bottom: 1px solid #eee;
-	                                font-size: 0.9em;
-	                            }
+						                         .module-table th:first-child {
+						                             text-align: left;
+						                         }
 
-	                            .module-table td:first-child {
-	                                text-align: left;
-	                            }
+						                         .module-table td {
+						                             padding: 12px;
+						                             text-align: center;
+						                             border-bottom: 1px solid #eee;
+						                             font-size: 0.9em;
+						                         }
 
-	                            .module-table tr:nth-child(even) {
-	                                background: #f8f9fa;
-	                            }
+						                         .module-table td:first-child {
+						                             text-align: left;
+						                         }
 
-	                            .module-table tr:hover {
-	                                background: #e3f2fd;
-	                            }
+						                         .module-table tr:nth-child(even) {
+						                             background: #f8f9fa;
+						                         }
 
-	                            .module-name {
-	                                font-weight: 600;
-	                                color: #333;
-	                                text-align: left;
-	                            }
+						                         .module-table tr:hover {
+						                             background: #e3f2fd;
+						                         }
 
-	                            .status-count {
-	                                font-weight: bold;
-	                            }
+						                         .module-name {
+						                             font-weight: 600;
+						                             color: #333;
+						                             text-align: left;
+						                         }
 
-	                            .count-passed { color: #28a745; }
-	                            .count-failed { color: #dc3545; }
-	                            .count-skipped { color: #ffc107; }
-	                            .count-total { color: #007bff; }
+						                         .status-count {
+						                             font-weight: bold;
+						                         }
 
-	                            .progress-bar {
-	                                width: 100%%;
-	                                height: 6px;
-	                                background: #e9ecef;
-	                                border-radius: 3px;
-	                                overflow: hidden;
-	                                margin-top: 5px;
-	                            }
+						                         .count-passed { color: #28a745; }
+						                         .count-failed { color: #dc3545; }
+						                         .count-skipped { color: #ffc107; }
+						                         .count-total { color: #007bff; }
 
-	                            .progress-fill {
-	                                height: 100%%;
-	                                background: linear-gradient(90deg, #28a745, #20c997);
-	                                transition: width 0.3s ease;
-	                            }
+						                         .progress-bar {
+						                             width: 100%%;
+						                             height: 6px;
+						                             background: #e9ecef;
+						                             border-radius: 3px;
+						                             overflow: hidden;
+						                             margin-top: 5px;
+						                         }
 
-	                            .chart-container {
-	                                background: #f8f9fa;
-	                                border-radius: 8px;
-	                                padding: 20px;
-	                                text-align: center;
-	                                min-height: 400px;
-	                                display: flex;
-	                                flex-direction: column;
-	                                align-items: center;
-	                                justify-content: center;
-	                            }
+						                         .progress-fill {
+						                             height: 100%%;
+						                             background: linear-gradient(90deg, #28a745, #20c997);
+						                             transition: width 0.3s ease;
+						                         }
 
-	                            .chart-title {
-	                                font-size: 1.5em;
-	                                font-weight: bold;
-	                                margin-bottom: 20px;
-	                                color: #333;
-	                            }
+						                         .chart-container {
+						                             background: #f8f9fa;
+						                             border-radius: 8px;
+						                             padding: 20px;
+						                             text-align: center;
+						                             min-height: 400px;
+						                             display: flex;
+						                             flex-direction: column;
+						                             align-items: center;
+						                             justify-content: center;
+						                         }
 
-	                            .chart-canvas {
-	                                max-width: 300px;
-	                                max-height: 300px;
-	                            }
+						                         .chart-title {
+						                             font-size: 1.5em;
+						                             font-weight: bold;
+						                             margin-bottom: 20px;
+						                             color: #333;
+						                         }
 
-	                            .footer {
-	                                background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
-	                                color: white;
-	                                text-align: center;
-	                                padding: 20px;
-	                                margin-top: 30px;
-	                            }
-	                            
-	                            .footer-note {
-	                                color: white;
-	                                font-style: italic;
-	                                font-weight: 400;
-	                            }
-	                            
-	                            .email-link {
-	                                color: white;
-	                                text-decoration: underline;
-	                            }
-	                            
-	                            .email-link:hover {
-	                                color: #f0f0f0;
-	                            }
+						                         .chart-canvas {
+						                             max-width: 300px;
+						                             max-height: 300px;
+						                         }
 
-	                            @media (max-width: 768px) {
-	                                .stats-grid {
-	                                    grid-template-columns: repeat(2, 1fr);
-	                                }
+						                         .footer {
+						                             background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+						                             color: white;
+						                             text-align: center;
+						                             padding: 20px;
+						                             margin-top: 30px;
+						                         }
 
-	                                .environment-grid {
-	                                    grid-template-columns: 1fr;
-	                                }
+						                         .footer-note {
+						                             color: white;
+						                             font-style: italic;
+						                             font-weight: 400;
+						                         }
 
-	                                .analytics-dashboard {
-	                                    grid-template-columns: 1fr;
-	                                    gap: 20px;
-	                                }
+						                         .email-link {
+						                             color: white;
+						                             text-decoration: underline;
+						                         }
 
-	                                .module-table {
-	                                    font-size: 0.8em;
-	                                }
+						                         .email-link:hover {
+						                             color: #f0f0f0;
+						                         }
 
-	                                .module-table th,
-	                                .module-table td {
-	                                    padding: 8px 6px;
-	                                }
-	                                
-	                            }
-	                        </style>
-	                    </head>
-	                    <body>
-	                       <div class="header">
-      <div class="header-content">
-        <div class="logo-container">
-          <img
-            id="resulticks-logo"
-            src="https://www.resulticks.com/images/logos/resulticks-logo-blue.svg"
-            alt="Resulticks Logo"
-          />
-        </div>  
-        <div class="header-text">
-          <h1>AUTOMATION - TEST SUMMARY REPORT</h1>
-          <p>Comprehensive Test Execution Report with Analytics</p>
-        </div>
-        <img
-          id="resul-logo"
-          src="https://run19.resul.io/assets/resulticks-logo-blue-bff3c259.svg"
-          alt="Resul Logo"
-        />
-      </div>
-    </div>
+						                         @media (max-width: 768px) {
+						                             .stats-grid {
+						                                 grid-template-columns: repeat(2, 1fr);
+						                             }
 
-	                        <div class="environment-info">
-	                            <div class="environment-grid">
-	                                <div class="env-item">
-	                                    <span class="env-label">Environment:</span>
-	                                    <span>%s</span>
-	                                </div>
-	                                <div class="env-item">
-	                                    <span class="env-label">Account:</span>
-	                                    <span>%s</span>
-	                                </div>
-	                                <div class="env-item">
-	                                    <span class="env-label">Browser:</span>
-	                                    <span>%s</span>
-	                                </div>
-	                                <div class="env-item">
-	                                    <span class="env-label">Username:</span>
-	                                    <span>%s</span>
-	                                </div>
-	                                <div class="env-item">
-	                                    <span class="env-label">Release Version:</span>
-	                                    <span>%s</span>
-	                                </div>
-	                                <div class="env-item">
-	                                    <span class="env-label">Requested By:</span>
-	                                    <span>%s</span>
-	                                </div>
-	                                <div class="env-item">
-	                                    <span class="env-label">Machine User:</span>
-	                                    <span>%s</span>
-	                                </div>
-	                                <div class="env-item">
-	                                    <span class="env-label">Execution Date:</span>
-	                                    <span>%s</span>
-	                                </div>
-	                            </div>
-	                        </div>
+						                             .environment-grid {
+						                                 grid-template-columns: 1fr;
+						                             }
 
-	                        <div class="container">
-	                            <!-- Statistics Overview -->
-	                            <div class="stats-grid">
-	                                <div class="stat-card">
-	                                    <div class="stat-number passed">%d</div>
-	                                    <div class="stat-label">Passed Tests</div>
-	                                </div>
-	                                <div class="stat-card">
-	                                    <div class="stat-number failed">%d</div>
-	                                    <div class="stat-label">Failed Tests</div>
-	                                </div>
-	                                <div class="stat-card">
-	                                    <div class="stat-number skipped">%d</div>
-	                                    <div class="stat-label">Skipped Tests</div>
-	                                </div>
-	                                <div class="stat-card">
-	                                    <div class="stat-number total">%d</div>
-	                                    <div class="stat-label">Total Tests</div>
-	                                </div>
-	                            </div>
+						                             .analytics-dashboard {
+						                                 grid-template-columns: 1fr;
+						                                 gap: 20px;
+						                             }
 
-	                            <!-- Pie Chart Section -->
-	                            <div class="charts-section">
-	                                <h2>📊 Test Analytics Dashboard</h2>
+						                             .module-table {
+						                                 font-size: 0.8em;
+						                             }
 
-	                                <!-- Analytics Dashboard -->
-	                                <div class="analytics-dashboard">
-	                                    <!-- Table Side (Now Left) -->
-	                                    <div class="table-side">
-	                                        <h3>📋 Module-wise Test Results</h3>
-	                                        <table class="module-table">
-	                                            <thead>
-	                                                <tr>
-	                                                    <th>Module</th>
-	                                                    <th>Total</th>
-	                                                    <th>Passed</th>
-	                                                    <th>Failed</th>
-	                                                    <th>Skipped</th>
-	                                                    <th>Success %%</th>
-	                                                </tr>
-	                                            </thead>
-	                                            <tbody id="moduleTableBody">
-	                                                <!-- Table data will be populated by JavaScript -->
-	                                            </tbody>
-	                                        </table>
-	                                    </div>
+						                             .module-table th,
+						                             .module-table td {
+						                                 padding: 8px 6px;
+						                             }
 
-	                                    <!-- Chart Side (Now Right) -->
-	                                    <div class="chart-side">
-	                                        <div class="chart-container">
-	                                            <div class="chart-title">Test Execution Summary</div>
-	                                            <canvas id="mainChart" class="chart-canvas" width="400" height="400"></canvas>
-	                                        </div>
-	                                    </div>
-	                                </div>
-	                            </div>
-	                        </div>
+						                         }
+						                     </style>
+						                 </head>
+						                 <body>
+						                    <div class="header">
+						  <div class="header-content">
+						    <div class="logo-container">
+						      <img
+						        id="resulticks-logo"
+						        src="https://www.resulticks.com/images/logos/resulticks-logo-blue.svg"
+						        alt="Resulticks Logo"
+						      />
+						    </div>
+						    <div class="header-text">
+						      <h1>AUTOMATION - TEST SUMMARY REPORT</h1>
+						      <p>Comprehensive Test Execution Report with Analytics</p>
+						    </div>
+						    <img
+						      id="resul-logo"
+						      src="https://run19.resul.io/assets/resulticks-logo-blue-bff3c259.svg"
+						      alt="Resul Logo"
+						    />
+						  </div>
+						</div>
 
-	                        <div class="footer">
-	                            <div class="footer-note">
-	                                <i class="fas fa-envelope"></i> For any queries or support, please reach out to the Automation Testing Team at -
-	                                <a href="mailto:qaautomation@resulticks.com" class="email-link">qaautomation@resulticks.com</a>.
-	                            </div>
-	                        </div>
+						                     <div class="environment-info">
+						                         <div class="environment-grid">
+						                             <div class="env-item">
+						                                 <span class="env-label">Environment:</span>
+						                                 <span>%s</span>
+						                             </div>
+						                             <div class="env-item">
+						                                 <span class="env-label">Account:</span>
+						                                 <span>%s</span>
+						                             </div>
+						                             <div class="env-item">
+						                                 <span class="env-label">Browser:</span>
+						                                 <span>%s</span>
+						                             </div>
+						                             <div class="env-item">
+						                                 <span class="env-label">Username:</span>
+						                                 <span>%s</span>
+						                             </div>
+						                             <div class="env-item">
+						                                 <span class="env-label">Release Version:</span>
+						                                 <span>%s</span>
+						                             </div>
+						                             <div class="env-item">
+						                                 <span class="env-label">Requested By:</span>
+						                                 <span>%s</span>
+						                             </div>
+						                             <div class="env-item">
+						                                 <span class="env-label">Machine User:</span>
+						                                 <span>%s</span>
+						                             </div>
+						                             <div class="env-item">
+						                                 <span class="env-label">Execution Date:</span>
+						                                 <span>%s</span>
+						                             </div>
+						                         </div>
+						                     </div>
 
-	                        <script>
-	                            // Module-wise test data
-	                            const moduleData = %s;
+						                     <div class="container">
+						                         <!-- Statistics Overview -->
+						                         <div class="stats-grid">
+						                             <div class="stat-card">
+						                                 <div class="stat-number passed">%d</div>
+						                                 <div class="stat-label">Passed Tests</div>
+						                             </div>
+						                             <div class="stat-card">
+						                                 <div class="stat-number failed">%d</div>
+						                                 <div class="stat-label">Failed Tests</div>
+						                             </div>
+						                             <div class="stat-card">
+						                                 <div class="stat-number skipped">%d</div>
+						                                 <div class="stat-label">Skipped Tests</div>
+						                             </div>
+						                             <div class="stat-card">
+						                                 <div class="stat-number total">%d</div>
+						                                 <div class="stat-label">Total Tests</div>
+						                             </div>
+						                         </div>
 
-	                            // Initialize the chart
-	                            function initChart() {
-	                                try {
-	                                    const ctx = document.getElementById('mainChart').getContext('2d');
-	                                    new Chart(ctx, {
-	                                        type: 'pie',
-	                                        data: {
-	                                            labels: ['Passed', 'Failed', 'Skipped'],
-	                                            datasets: [{
-	                                                data: [%d, %d, %d],
-	                                                backgroundColor: ['#28a745', '#dc3545', '#ffc107'],
-	                                                borderWidth: 2,
-	                                                borderColor: '#fff'
-	                                            }]
-	                                        },
-	                                        options: {
-	                                            responsive: true,
-	                                            maintainAspectRatio: false,
-	                                            plugins: {
-	                                                legend: {
-	                                                    position: 'bottom'
-	                                                },
-	                                                tooltip: {
-	                                                    callbacks: {
-	                                                        label: function(context) {
-	                                                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-	                                                            const percentage = ((context.parsed / total) * 100).toFixed(1);
-	                                                            return `${context.label}: ${context.parsed} (${percentage}%%)`;
-	                                                        }
-	                                                    }
-	                                                }
-	                                            }
-	                                        }
-	                                    });
-	                                } catch (e) {
-	                                    console.error("Chart initialization error:", e);
-	                                }
-	                            }
+						                         <!-- Pie Chart Section -->
+						                         <div class="charts-section">
+						                             <h2>📊 Test Analytics Dashboard</h2>
 
-	                            // Populate module table
-	                            function populateModuleTable() {
-	                                try {
-	                                    const tableBody = document.getElementById('moduleTableBody');
-	                                    tableBody.innerHTML = moduleData.map(module => {
-	                                        const successRate = ((module.passed / module.total) * 100).toFixed(1);
-	                                        return `
-	                                            <tr>
-	                                                <td class="module-name">${module.module}</td>
-	                                                <td class="status-count count-total">${module.total}</td>
-	                                                <td class="status-count count-passed">${module.passed}</td>
-	                                                <td class="status-count count-failed">${module.failed}</td>
-	                                                <td class="status-count count-skipped">${module.skipped}</td>
-	                                                <td>
-	                                                    <div class="status-count count-passed">${successRate}%%</div>
-	                                                    <div class="progress-bar">
-	                                                        <div class="progress-fill" style="width: ${successRate}%%"></div>
-	                                                    </div>
-	                                                </td>
-	                                            </tr>
-	                                        `;
-	                                    }).join('');
-	                                } catch (e) {
-	                                    console.error("Table population error:", e);
-	                                }
-	                            }
+						                             <!-- Analytics Dashboard -->
+						                             <div class="analytics-dashboard">
+						                                 <!-- Table Side (Now Left) -->
+						                                 <div class="table-side">
+						                                     <h3>📋 Module-wise Test Results</h3>
+						                                     <table class="module-table">
+						                                         <thead>
+						                                             <tr>
+						                                                 <th>Module</th>
+						                                                 <th>Total</th>
+						                                                 <th>Passed</th>
+						                                                 <th>Failed</th>
+						                                                 <th>Skipped</th>
+						                                                 <th>Success %%</th>
+						                                             </tr>
+						                                         </thead>
+						                                         <tbody id="moduleTableBody">
+						                                             <!-- Table data will be populated by JavaScript -->
+						                                         </tbody>
+						                                     </table>
+						                                 </div>
 
-	                            // Initialize the page when loaded
-	                            window.addEventListener('DOMContentLoaded', () => {
-	                                initChart();
-	                                populateModuleTable();
+						                                 <!-- Chart Side (Now Right) -->
+						                                 <div class="chart-side">
+						                                     <div class="chart-container">
+						                                         <div class="chart-title">Test Execution Summary</div>
+						                                         <canvas id="mainChart" class="chart-canvas" width="400" height="400"></canvas>
+						                                     </div>
+						                                 </div>
+						                             </div>
+						                         </div>
+						                     </div>
 
-	                                // If we have a comprehensive report, add the download button
-	                                if (%b) {
-	                                    const header = document.querySelector('.header');
-	                                    const downloadBtn = document.createElement('a');
-	                                    downloadBtn.href = '#';
-	                                    downloadBtn.className = 'detailed-report-link';
-	                                    downloadBtn.style.cssText = 'position:absolute;top:20px;right:30px;background:rgba(255,255,255,0.2);color:white;padding:10px 20px;text-decoration:none;border-radius:25px;font-weight:600;border:2px solid rgba(255,255,255,0.3);';
-	                                    downloadBtn.innerHTML = '📄 Detailed Report';
-	                                    downloadBtn.onclick = function(e) {
-	                                        e.preventDefault();
-	                                        const link = document.createElement('a');
-	                                        link.href = 'data:text/html;base64,%s';
-	                                        link.download = 'detailed_report.html';
-	                                        link.click();
-	                                    };
-	                                    header.style.position = 'relative';
-	                                    header.appendChild(downloadBtn);
-	                                }
-	                            });
-	                        </script>
-	                    </body>
-	                    </html>
-	                    """,
-	            System.getProperty("Environment"), System.getProperty("Account"), System.getProperty("Browser"), System.getProperty("UserName"),
-	            System.getProperty("ReleaseVersion"), System.getProperty("user.name"), System.getProperty("user.name"), startTime, pass, fail, noRun, total, moduleDataJson, pass, fail, noRun, isReportAvailable, base64Report);
+						                     <div class="footer">
+						                         <div class="footer-note">
+						                             <i class="fas fa-envelope"></i> For any queries or support, please reach out to the Automation Testing Team at -
+						                             <a href="mailto:qaautomation@resulticks.com" class="email-link">qaautomation@resulticks.com</a>.
+						                         </div>
+						                     </div>
+
+						                     <script>
+						                         // Module-wise test data
+						                         const moduleData = %s;
+
+						                         // Initialize the chart
+						                         function initChart() {
+						                             try {
+						                                 const ctx = document.getElementById('mainChart').getContext('2d');
+						                                 new Chart(ctx, {
+						                                     type: 'pie',
+						                                     data: {
+						                                         labels: ['Passed', 'Failed', 'Skipped'],
+						                                         datasets: [{
+						                                             data: [%d, %d, %d],
+						                                             backgroundColor: ['#28a745', '#dc3545', '#ffc107'],
+						                                             borderWidth: 2,
+						                                             borderColor: '#fff'
+						                                         }]
+						                                     },
+						                                     options: {
+						                                         responsive: true,
+						                                         maintainAspectRatio: false,
+						                                         plugins: {
+						                                             legend: {
+						                                                 position: 'bottom'
+						                                             },
+						                                             tooltip: {
+						                                                 callbacks: {
+						                                                     label: function(context) {
+						                                                         const total = context.dataset.data.reduce((a, b) => a + b, 0);
+						                                                         const percentage = ((context.parsed / total) * 100).toFixed(1);
+						                                                         return `${context.label}: ${context.parsed} (${percentage}%%)`;
+						                                                     }
+						                                                 }
+						                                             }
+						                                         }
+						                                     }
+						                                 });
+						                             } catch (e) {
+						                                 console.error("Chart initialization error:", e);
+						                             }
+						                         }
+
+						                         // Populate module table
+						                         function populateModuleTable() {
+						                             try {
+						                                 const tableBody = document.getElementById('moduleTableBody');
+						                                 tableBody.innerHTML = moduleData.map(module => {
+						                                     const successRate = ((module.passed / module.total) * 100).toFixed(1);
+						                                     return `
+						                                         <tr>
+						                                             <td class="module-name">${module.module}</td>
+						                                             <td class="status-count count-total">${module.total}</td>
+						                                             <td class="status-count count-passed">${module.passed}</td>
+						                                             <td class="status-count count-failed">${module.failed}</td>
+						                                             <td class="status-count count-skipped">${module.skipped}</td>
+						                                             <td>
+						                                                 <div class="status-count count-passed">${successRate}%%</div>
+						                                                 <div class="progress-bar">
+						                                                     <div class="progress-fill" style="width: ${successRate}%%"></div>
+						                                                 </div>
+						                                             </td>
+						                                         </tr>
+						                                     `;
+						                                 }).join('');
+						                             } catch (e) {
+						                                 console.error("Table population error:", e);
+						                             }
+						                         }
+
+						                         // Initialize the page when loaded
+						                         window.addEventListener('DOMContentLoaded', () => {
+						                             initChart();
+						                             populateModuleTable();
+
+						                             // If we have a comprehensive report, add the download button
+						                             if (%b) {
+						                                 const header = document.querySelector('.header');
+						                                 const downloadBtn = document.createElement('a');
+						                                 downloadBtn.href = '#';
+						                                 downloadBtn.className = 'detailed-report-link';
+						                                 downloadBtn.style.cssText = 'position:absolute;top:20px;right:30px;background:rgba(255,255,255,0.2);color:white;padding:10px 20px;text-decoration:none;border-radius:25px;font-weight:600;border:2px solid rgba(255,255,255,0.3);';
+						                                 downloadBtn.innerHTML = '📄 Detailed Report';
+						                                 downloadBtn.onclick = function(e) {
+						                                     e.preventDefault();
+						                                     const link = document.createElement('a');
+						                                     link.href = 'data:text/html;base64,%s';
+						                                     link.download = 'detailed_report.html';
+						                                     link.click();
+						                                 };
+						                                 header.style.position = 'relative';
+						                                 header.appendChild(downloadBtn);
+						                             }
+						                         });
+						                     </script>
+						                 </body>
+						                 </html>
+						                 """,
+				System.getProperty("Environment"), System.getProperty("Account"), System.getProperty("Browser"), System.getProperty("UserName"), System.getProperty("ReleaseVersion"), System.getProperty("user.name"), System.getProperty("user.name"),
+				startTime, pass, fail, noRun, total, moduleDataJson, pass, fail, noRun, isReportAvailable, base64Report);
 	}
 
 	private static String encodeFileToBase64(String filePath)
