@@ -668,13 +668,13 @@ public class NewSummaryReportGenerator
 
 						                         <!-- Pie Chart Section -->
 						                         <div class="charts-section">
-						                             <h2>📊 Test Analytics Dashboard</h2>
+						                             <h2>Test Analytics Dashboard</h2>
 
 						                             <!-- Analytics Dashboard -->
 						                             <div class="analytics-dashboard">
 						                                 <!-- Table Side (Now Left) -->
 						                                 <div class="table-side">
-						                                     <h3>📋 Module-wise Test Results</h3>
+						                                     <h3>Module-wise Test Results</h3>
 						                                     <table class="module-table">
 						                                         <thead>
 						                                             <tr>
