@@ -26,11 +26,6 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener
 {
 
 	// Atomic counters for thread-safe operation
-	private static final AtomicInteger passCount = new AtomicInteger(0);
-	private static final AtomicInteger failCount = new AtomicInteger(0);
-	private static final AtomicInteger noRunCount = new AtomicInteger(0);
-
-	// Lists to hold method names by result
 	private final List<String> passMethods = new LinkedList<>();
 	private final List<String> failMethods = new LinkedList<>();
 	private final List<String> noRunMethods = new LinkedList<>();
@@ -57,7 +52,6 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener
 	{
 		passMethods.add(System.getProperty("method_name"));
 		NewSummaryReportGenerator.recordTestResult(result.getName(), "PASSED");
-		passCount.incrementAndGet();
 	}
 
 	/**
@@ -68,7 +62,6 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener
 	{
 		failMethods.add(System.getProperty("method_name"));
 		NewSummaryReportGenerator.recordTestResult(result.getName(), "Failed");
-		failCount.incrementAndGet();
 	}
 
 	/**
@@ -79,7 +72,6 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener
 	{
 		noRunMethods.add(System.getProperty("method_name"));
 		NewSummaryReportGenerator.recordTestResult(result.getName(), "SKIPPED");
-		noRunCount.incrementAndGet();
 	}
 
 	/**
@@ -93,13 +85,16 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener
 
 		// Clean up the skipped list by removing methods that eventually passed or failed
 		filterCount(passMethods, failMethods, noRunMethods);
-		noRunCount.set(noRunMethods.size()); // Update the count after filtering
 
-		// Load properties before generating report
-		loadPropertiesFromJar();
+//		// Load properties before generating report
+//		loadPropertiesFromJar();
 
 		// Generate summary report
-		NewSummaryReportGenerator.generateReport(passCount.get(), failCount.get(), noRunCount.get(), durationStr,dateTime);
+		int totalPass = DetailedTestReporter.modulePassCount.values().stream().mapToInt(AtomicInteger::get).sum();
+		int totalFail = DetailedTestReporter.moduleFailCount.values().stream().mapToInt(AtomicInteger::get).sum();
+		int totalSkip = DetailedTestReporter.moduleSkipCount.values().stream().mapToInt(AtomicInteger::get).sum();
+
+		NewSummaryReportGenerator.generateReport(totalPass, totalFail, totalSkip, durationStr, dateTime);
 	}
 
 	public void filterCount(List<String> passMethod, List<String> failMethod, List<String> noRunMethod)

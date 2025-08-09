@@ -18,15 +18,29 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.utility.DetailedTestReporter.TestExecution;
 import org.utility.EmailSender;
 
 import com.google.gson.Gson;
+
 
 public class NewSummaryReportGenerator
 {
 
 	private static String html = "";
-	private static final Map<String, ModuleStats> moduleStats = new ConcurrentHashMap<>();
+	public static DetailedTestReporter detailedTestReporter;
+	public static final Map<String, ModuleStats> moduleStats = new ConcurrentHashMap<>();
+	
+	public static void createDetailReport()
+	{
+		detailedTestReporter = new DetailedTestReporter("Detail Test Suite", "test-output");
+	}
+
+	public static DetailedTestReporter getReport()
+	{
+		return detailedTestReporter;
+	}
+
 
 	private static String extractModuleName(String testName)
 	{
@@ -40,29 +54,47 @@ public class NewSummaryReportGenerator
 		String moduleName = extractModuleName(testName);
 
 		moduleStats.compute(moduleName, (k, v) -> {
-			if (v == null)
-			{
-				v = new ModuleStats();
-			}
-			v.addTestResult(testName, status);
-			return v;
+		    if (v == null) {
+		        v = new ModuleStats();
+		    }
+		    switch (status.toUpperCase()) {
+		        case "PASS": v.incrementPass(); break;
+		        case "FAIL": v.incrementFail(); break;
+		        case "SKIP":
+		        case "SKIPPED": v.incrementSkip(); break;
+		    }
+		    return v;
 		});
 	}
 
-	public static String getModuleDataJson()
-	{
-		List<Map<String, Object>> modules = new ArrayList<>();
-		for (Map.Entry<String, ModuleStats> entry : moduleStats.entrySet())
-		{
-			Map<String, Object> module = new HashMap<>();
-			module.put("module", entry.getKey());
-			module.put("total", entry.getValue().getTotal());
-			module.put("passed", entry.getValue().getPassed());
-			module.put("failed", entry.getValue().getFailed());
-			module.put("skipped", entry.getValue().getSkipped());
-			modules.add(module);
-		}
-		return new Gson().toJson(modules);
+	public static String getModuleDataJson() {
+	    Map<String, ModuleStats> statsMap = new HashMap<>();
+
+	    // Go through all completed scenarios
+	    for (TestExecution exec : getReport().getTestExecutions()) {
+	        statsMap.computeIfAbsent(exec.getModule(), m -> new ModuleStats());
+
+	        ModuleStats stats = statsMap.get(exec.getModule());
+	        switch (exec.getStatus()) {
+	            case PASS: stats.incrementPass(); break;
+	            case FAIL: stats.incrementFail(); break;
+	            case SKIPPED: stats.incrementSkip(); break;
+	        }
+	    }
+
+	    // Convert to JSON structure
+	    List<Map<String, Object>> modules = new ArrayList<>();
+	    for (Map.Entry<String, ModuleStats> entry : statsMap.entrySet()) {
+	        Map<String, Object> module = new HashMap<>();
+	        module.put("module", entry.getKey());
+	        module.put("total", entry.getValue().getTotal());
+	        module.put("passed", entry.getValue().getPassed());
+	        module.put("failed", entry.getValue().getFailed());
+	        module.put("skipped", entry.getValue().getSkipped());
+	        modules.add(module);
+	    }
+
+	    return new Gson().toJson(modules);
 	}
 
 	public static void generateReport(int pass, int fail, int noRun, String duration, String startTime)
@@ -239,11 +271,63 @@ public class NewSummaryReportGenerator
 		return "all".equalsIgnoreCase(suiteName) ? "All Modules" : suiteName;
 	}
 
-	public static String getReportHtml(String productName, int pass, int fail, int noRun, int total, String duration, String startTime)
-	{
-		String base64Report = encodeFileToBase64("test-output/Report.html");
-		boolean isReportAvailable = !base64Report.isEmpty();
-		String moduleDataJson = getModuleDataJson();
+	public static String getReportHtml(String productName, int pass, int fail, int noRun, int total, String duration, String startTime) {
+	    String base64Report = encodeFileToBase64("test-output/Report.html");
+	    
+	    if (!base64Report.isEmpty()) {
+	        String detailedReportContent = new String(Base64.getDecoder().decode(base64Report));
+	        detailedReportContent = detailedReportContent.replace("</body>", 
+	                """
+<script>
+    function goBackToSummary() {
+        const summaryHtml = sessionStorage.getItem('summaryPage');
+        if (summaryHtml) {
+            // Clear the document first
+            document.body.innerHTML = '';
+            document.open();
+            document.write(summaryHtml);
+            document.close();
+            // Remove the flag to prevent issues
+            sessionStorage.removeItem('isViewingDetails');
+        } else {
+            // Use replaceState to remove the hash if any
+            history.replaceState(null, null, ' ');
+            window.location.href = window.location.href.split('#')[0];
+        }
+    }
+    
+    // Check if we came from summary page
+    if (sessionStorage.getItem('isViewingDetails') === 'true') {
+        // Add back button if not already present
+        if (!document.querySelector('.back-to-summary-btn')) {
+            const backBtn = document.createElement('div');
+            backBtn.className = 'back-to-summary-btn';
+            backBtn.style.cssText = 'position: fixed; bottom: 20px; right: 20px; z-index: 1000;';
+            backBtn.innerHTML = `
+                <a href="javascript:void(0)" onclick="goBackToSummary(); return false;" 
+                   style="background: #764ba2; 
+                          color: white; 
+                          padding: 10px 15px; 
+                          border-radius: 5px; 
+                          text-decoration: none;
+                          box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+                          display: flex;
+                          align-items: center;
+                          gap: 8px;">
+                    <i class="fas fa-arrow-left"></i> Back to Summary
+                </a>
+            `;
+            document.body.appendChild(backBtn);
+        }
+    }
+</script>
+	                </body>
+	                """);
+	        base64Report = Base64.getEncoder().encodeToString(detailedReportContent.getBytes());
+	    }
+	    
+	    boolean isReportAvailable = !base64Report.isEmpty();
+	    String moduleDataJson = getModuleDataJson();
 
 		return String.format(
 				"""
@@ -343,7 +427,7 @@ public class NewSummaryReportGenerator
 
 						                         .environment-grid {
 						                             max-width: 1400px;
-						                             margin: 0px 0px 0px 20px;
+						                             margin: 20px 0px 0px 20px;
 						                             padding: 20px 10px 10px 10px;
 						                             display: grid;
 						                             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -780,30 +864,51 @@ public class NewSummaryReportGenerator
 						                             }
 						                         }
 
-						                         // Initialize the page when loaded
-						                         window.addEventListener('DOMContentLoaded', () => {
-						                             initChart();
-						                             populateModuleTable();
+						                        window.addEventListener('DOMContentLoaded', () => {
+    initChart();
+    populateModuleTable();
+    
+    // Check if we have a comprehensive report
+    if (%b) {
+        const header = document.querySelector('.header');
+        const viewBtn = document.createElement('a');
+        viewBtn.href = 'javascript:void(0)'; // Changed from '#' to prevent URL hash
+        viewBtn.className = 'detailed-report-link';
+        viewBtn.style.cssText = 'position: absolute;top: 130px;right: 40px;color: #764ba2;padding: 0px;text-decoration: underline;border-radius: 0px;font-weight: 100;font-size: larger;font-style: italic;';
+        viewBtn.innerHTML = 'Detailed Report';
+        
+        viewBtn.onclick = function(e) {
+    e.preventDefault();
+    e.stopPropagation();
 
-						                             // If we have a comprehensive report, add the download button
-						                             if (%b) {
-						                                 const header = document.querySelector('.header');
-						                                 const downloadBtn = document.createElement('a');
-						                                 downloadBtn.href = '#';
-						                                 downloadBtn.className = 'detailed-report-link';
-						                                 downloadBtn.style.cssText = 'position:absolute;top:20px;right:30px;background:rgba(255,255,255,0.2);color:white;padding:10px 20px;text-decoration:none;border-radius:25px;font-weight:600;border:2px solid rgba(255,255,255,0.3);';
-						                                 downloadBtn.innerHTML = '📄 Detailed Report';
-						                                 downloadBtn.onclick = function(e) {
-						                                     e.preventDefault();
-						                                     const link = document.createElement('a');
-						                                     link.href = 'data:text/html;base64,%s';
-						                                     link.download = 'detailed_report.html';
-						                                     link.click();
-						                                 };
-						                                 header.style.position = 'relative';
-						                                 header.appendChild(downloadBtn);
-						                             }
-						                         });
+    // Save current page to sessionStorage
+    sessionStorage.setItem('summaryPage', document.documentElement.outerHTML);
+    sessionStorage.setItem('isViewingDetails', 'true');
+
+    const htmlContent = atob('%s');
+
+    // Open the detailed report in a new window
+    const detailedWindow = window.open('', '_blank');
+    if (detailedWindow) {
+        detailedWindow.document.open();
+        detailedWindow.document.write(htmlContent);
+        detailedWindow.document.close();
+    } else {
+        alert("Popup blocked! Please allow popups for this site to view the detailed report.");
+    }
+
+    return false;
+};
+        
+        header.style.position = 'relative';
+        // Remove existing button if any to prevent duplicates
+        const existingBtn = document.querySelector('.detailed-report-link');
+        if (existingBtn) {
+            existingBtn.remove();
+        }
+        header.appendChild(viewBtn);
+    }
+});
 						                     </script>
 						                 </body>
 						                 </html>
@@ -824,62 +929,40 @@ public class NewSummaryReportGenerator
 		}
 	}
 
-	static class ModuleStats
-	{
-		private final Set<String> allTests = new HashSet<>(); // Tracks all unique tests
-		private final Set<String> passedTests = new HashSet<>();
-		private final Set<String> failedTests = new HashSet<>();
-		private final Set<String> skippedTests = new HashSet<>();
+	static class ModuleStats {
+	    private int passed;
+	    private int failed;
+	    private int skipped;
 
-		public void addTestResult(String testName, String status)
-		{
-			allTests.add(testName); // Track all test names
+	    public void incrementPass() {
+	        passed++;
+	    }
 
-			// First remove from all statuses to ensure no duplicates
-			passedTests.remove(testName);
-			failedTests.remove(testName);
-			skippedTests.remove(testName);
+	    public void incrementFail() {
+	        failed++;
+	    }
 
-			// Then add to the correct status
-			switch (status.toUpperCase())
-			{
-			case "PASSED":
-				passedTests.add(testName);
-				break;
-			case "FAILED":
-				failedTests.add(testName);
-				break;
-			case "SKIPPED":
-				// Only add to skipped if not already failed
-				if (!failedTests.contains(testName))
-				{
-					skippedTests.add(testName);
-				}
-				break;
-			}
-		}
+	    public void incrementSkip() {
+	        skipped++;
+	    }
 
-		// Getters for JSON serialization
-		public int getTotal()
-		{
-			return allTests.size(); // Total unique tests
-		}
+	    public int getPassed() {
+	        return passed;
+	    }
 
-		public int getPassed()
-		{
-			return passedTests.size();
-		}
+	    public int getFailed() {
+	        return failed;
+	    }
 
-		public int getFailed()
-		{
-			return failedTests.size();
-		}
+	    public int getSkipped() {
+	        return skipped;
+	    }
 
-		public int getSkipped()
-		{
-			return skippedTests.size();
-		}
+	    public int getTotal() {
+	        return passed + failed + skipped;
+	    }
 	}
+
 
 	// The filterCount method remains the same for overall filtering
 	public void filterCount(List<String> passMethod, List<String> failMethod, List<String> noRunMethod)
