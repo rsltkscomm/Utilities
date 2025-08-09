@@ -156,12 +156,31 @@ public class DetailedTestReporter
 		}
 	}
 	
-	 public static String encryptScreenshot(WebDriver driver)
-		{
-			TakesScreenshot ts = (TakesScreenshot) driver;
-			String screenshotAs = ts.getScreenshotAs(OutputType.BASE64);
-			return "data:image/png;base64," + screenshotAs;
-		}
+	public static String encryptScreenshot(WebDriver driver) {
+	    try {
+	        // Take screenshot as Base64
+	        TakesScreenshot ts = (TakesScreenshot) driver;
+	        String screenshotAs = ts.getScreenshotAs(OutputType.BASE64);
+
+	        // Create HTML content to display the image immediately
+	        String htmlContent = "<html><body style='margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#f0f0f0;'>"
+	                + "<img src='data:image/png;base64," + screenshotAs + "' style='max-width:100%;max-height:100%;'/>"
+	                + "</body></html>";
+
+	        // Save HTML file
+	        String filePath = System.getProperty("java.io.tmpdir") + "screenshot.html";
+	        try (java.io.FileWriter writer = new java.io.FileWriter(filePath)) {
+	            writer.write(htmlContent);
+	        }
+
+	        // Return file path (or open in browser directly if needed)
+	        return "file:///" + filePath.replace("\\", "/");
+
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	        return null;
+	    }
+	}
 
 	public List<TestExecution> getTestExecutions()
 	{
