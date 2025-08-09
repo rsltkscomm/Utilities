@@ -28,18 +28,7 @@ public class NewSummaryReportGenerator
 {
 
 	private static String html = "";
-	public static DetailedTestReporter detailedTestReporter;
 	public static final Map<String, ModuleStats> moduleStats = new ConcurrentHashMap<>();
-	
-	public static void createDetailReport()
-	{
-		detailedTestReporter = new DetailedTestReporter("Detail Test Suite", "test-output");
-	}
-
-	public static DetailedTestReporter getReport()
-	{
-		return detailedTestReporter;
-	}
 
 
 	private static String extractModuleName(String testName)
@@ -71,7 +60,7 @@ public class NewSummaryReportGenerator
 	    Map<String, ModuleStats> statsMap = new HashMap<>();
 
 	    // Go through all completed scenarios
-	    for (TestExecution exec : getReport().getTestExecutions()) {
+	    for (TestExecution exec : DetailedTestReporter.getReport().getTestExecutions()) {
 	        statsMap.computeIfAbsent(exec.getModule(), m -> new ModuleStats());
 
 	        ModuleStats stats = statsMap.get(exec.getModule());
