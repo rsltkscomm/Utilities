@@ -18,10 +18,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.utility.DetailedTestReporter.TestExecution;
 import org.utility.EmailSender;
 
 import com.google.gson.Gson;
+
+import org.utility.DetailedTestReporter.TestExecution;
 
 
 public class NewSummaryReportGenerator
@@ -341,11 +342,12 @@ public class NewSummaryReportGenerator
 						                         }
 
 						                         .header {
-						                 background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+						                 background: linear-gradient(135deg, white 0%%, #00006e 100%%);
 						                color: white;
 						    padding: 10px 0;
 						    text-align: center;
 						    position: relative;
+						    box-shadow: 6px 10px 20px black;
 						             }
 
 						              .header-content {
@@ -412,15 +414,16 @@ public class NewSummaryReportGenerator
 						                             padding: 10px 0;
 						                             font-size: 0.85em;
 						                             color: #666;
+						                             width: 1150px;
 						                         }
 
 						                         .environment-grid {
 						                             max-width: 1400px;
-						                             margin: 20px 0px 0px 20px;
+						                             margin: 40px 0px 0px 20px;
 						                             padding: 20px 10px 10px 10px;
 						                             display: grid;
 						                             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-						                             gap: 23px;
+						                             gap: 30px;
 						                         }
 
 						                         .env-item {
@@ -675,7 +678,7 @@ public class NewSummaryReportGenerator
 						    </div>
 						    <img
 						      id="resul-logo"
-						      src="https://run19.resul.io/assets/resulticks-logo-blue-bff3c259.svg"
+						      src="	https://run19.resul.io/assets/resulticks-logo-white-391eec89.svg"
 						      alt="Resul Logo"
 						    />
 						  </div>
@@ -863,7 +866,7 @@ public class NewSummaryReportGenerator
         const viewBtn = document.createElement('a');
         viewBtn.href = 'javascript:void(0)'; // Changed from '#' to prevent URL hash
         viewBtn.className = 'detailed-report-link';
-        viewBtn.style.cssText = 'position: absolute;top: 130px;right: 40px;color: #764ba2;padding: 0px;text-decoration: underline;border-radius: 0px;font-weight: 100;font-size: larger;font-style: italic;';
+        viewBtn.style.cssText = 'position: absolute;top: 160px;right: 40px;color: #764ba2;padding: 0px;text-decoration: underline;border-radius: 0px;font-weight: 100;font-size: larger;font-style: italic;';
         viewBtn.innerHTML = 'Detailed Report';
         
         viewBtn.onclick = function(e) {
