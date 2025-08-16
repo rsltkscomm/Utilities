@@ -18,6 +18,7 @@ import org.testng.ISuite;
 import org.testng.ISuiteListener;
 import org.testng.ITestListener;
 import org.testng.ITestResult;
+import org.utility.DetailedTestReporter.ExecutionStatus;
 
 /**
  * Custom TestNG Listener for generating an HTML report. Tracks test execution results and duration.
@@ -80,8 +81,8 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener
 	@Override
 	public void onFinish(ISuite suite)
 	{
-		long endTime = System.currentTimeMillis();
-		String durationStr = formatDuration(endTime - startTime);
+//		long endTime = System.currentTimeMillis();
+//		String durationStr = formatDuration(endTime - startTime);
 
 		// Clean up the skipped list by removing methods that eventually passed or failed
 		filterCount(passMethods, failMethods, noRunMethods);
@@ -90,11 +91,13 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener
 //		loadPropertiesFromJar();
 
 		// Generate summary report
-		int totalPass = DetailedTestReporter.modulePassCount.values().stream().mapToInt(AtomicInteger::get).sum();
-		int totalFail = DetailedTestReporter.moduleFailCount.values().stream().mapToInt(AtomicInteger::get).sum();
-		int totalSkip = DetailedTestReporter.moduleSkipCount.values().stream().mapToInt(AtomicInteger::get).sum();
+		int totalPass = (int) DetailedTestReporter.testExecutions.stream().filter(t -> t.getStatus() == ExecutionStatus.PASS).count();
+		int totalFail = (int) DetailedTestReporter.testExecutions.stream().filter(t -> t.getStatus() == ExecutionStatus.FAIL).count();
+		int totalSkip = (int) DetailedTestReporter.testExecutions.stream().filter(t -> t.getStatus() == ExecutionStatus.SKIPPED).count();
 
-		NewSummaryReportGenerator.generateReport(totalPass, totalFail, totalSkip, durationStr, dateTime);
+		long totalDuration = DetailedTestReporter.testExecutions.stream().mapToLong(t -> t.getEndTime().getTime() - t.getStartTime().getTime()).sum();
+		
+		NewSummaryReportGenerator.generateReport(totalPass, totalFail, totalSkip,String.valueOf(totalDuration), dateTime);
 	}
 
 	public void filterCount(List<String> passMethod, List<String> failMethod, List<String> noRunMethod)

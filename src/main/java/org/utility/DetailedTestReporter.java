@@ -40,7 +40,7 @@ public class DetailedTestReporter
 			PASS, FAIL, SKIPPED
 	}
 
-	private List<TestExecution> testExecutions;
+	static List<TestExecution> testExecutions;
 	private String reportPath;
 	private String projectName;
 	private SimpleDateFormat dateFormat;
@@ -85,7 +85,7 @@ public class DetailedTestReporter
 		return detailedTestReporter;
 	}
 
-	public static void addStep(TestCase testCase, StepStatus status,WebDriver driver) {
+	public static void addStep(TestCase testCase, StepStatus status, WebDriver driver) {
 	    boolean isDuplicate = false;
 	    Optional<TestExecution> executionOpt = getReport().getTestExecutions().stream()
 	            .filter(e -> e.getTestCaseId().equals(testCase.getTestCaseId()))
@@ -99,21 +99,23 @@ public class DetailedTestReporter
 	        execution.setTestCaseId(testCase.getTestCaseId());
 	        execution.setShortDescription(testCase.getDescription());
 	        execution.setStartTime(new Date());
-	        execution.setSteps(new ArrayList<>()); // Explicit initialization
+	        execution.setSteps(new ArrayList<>());
 	        execution.setStatus(ExecutionStatus.PASS);
-	        execution.setTotalExpectedSteps(testCase.getTotalSteps());
+	        // Remove hardcoded total expected steps - calculate dynamically
+	        execution.setTotalExpectedSteps(0); 
 	        getReport().getTestExecutions().add(execution);
 	    } else {
 	        execution = executionOpt.get();
-	        // Ensure steps is never null for existing executions
 	        if (execution.getSteps() == null) {
 	            execution.setSteps(new ArrayList<>());
 	        }
 	    }
 
-	    execution.incrementStepAttempts();
+	    // Increment total expected steps only for new steps
+	    if (!isDuplicate) {
+	        execution.setTotalExpectedSteps(execution.getTotalExpectedSteps() + 1);
+	    }
 
-	    // Now safe to stream as steps is guaranteed non-null
 	    isDuplicate = execution.getSteps().stream()
 	            .anyMatch(step -> step.getAction().equals(testCase.getAction()) 
 	                    && step.getExpectedResult().equals(testCase.getExpectedResult()));
@@ -134,28 +136,32 @@ public class DetailedTestReporter
 	        }
 	    }
 	    
-	    if (execution.getStepAttempts() == execution.getTotalExpectedSteps()) {
+	    // Mark execution as complete if this is the last step being added
+	    if (!isDuplicate && execution.getSteps().size() >= execution.getTotalExpectedSteps()) {
 	        execution.setEndTime(new Date());
 
-			// Update ModuleStats map
-			ModuleStats stats = NewSummaryReportGenerator.moduleStats.computeIfAbsent(testCase.getModuleName(), m -> new ModuleStats());
+	        // Update ModuleStats map
+	        ModuleStats stats = NewSummaryReportGenerator.moduleStats.computeIfAbsent(
+	            testCase.getModuleName(), m -> new ModuleStats());
 
-			switch (execution.getStatus())
-			{
-			case PASS:
-				stats.incrementPass();
-				modulePassCount.computeIfAbsent(testCase.getModuleName(), k -> new AtomicInteger(0)).incrementAndGet();
-				break;
-			case FAIL:
-				stats.incrementFail();
-				moduleFailCount.computeIfAbsent(testCase.getModuleName(), k -> new AtomicInteger(0)).incrementAndGet();
-				break;
-			case SKIPPED:
-				stats.incrementSkip();
-				moduleSkipCount.computeIfAbsent(testCase.getModuleName(), k -> new AtomicInteger(0)).incrementAndGet();
-				break;
-			}
-		}
+	        switch (execution.getStatus()) {
+	            case PASS:
+	                stats.incrementPass();
+	                modulePassCount.computeIfAbsent(testCase.getModuleName(), 
+	                    k -> new AtomicInteger(0)).incrementAndGet();
+	                break;
+	            case FAIL:
+	                stats.incrementFail();
+	                moduleFailCount.computeIfAbsent(testCase.getModuleName(), 
+	                    k -> new AtomicInteger(0)).incrementAndGet();
+	                break;
+	            case SKIPPED:
+	                stats.incrementSkip();
+	                moduleSkipCount.computeIfAbsent(testCase.getModuleName(), 
+	                    k -> new AtomicInteger(0)).incrementAndGet();
+	                break;
+	        }
+	    }
 	}
 	
 	 public static String encryptScreenshot(WebDriver driver)
