@@ -41,9 +41,9 @@ public class DetailedTestReporter
 	}
 
 	static List<TestExecution> testExecutions;
-	private String reportPath;
-	private String projectName;
-	private SimpleDateFormat dateFormat;
+	private static String reportPath;
+	private static String projectName;
+	private static SimpleDateFormat dateFormat;
 	private PerformanceMetrics performanceMetrics;
 
 	public DetailedTestReporter(String projectName, String reportPath) {
@@ -200,7 +200,7 @@ public class DetailedTestReporter
 		}
 	}
 
-	public void generateReport()
+	public static void generateReport()
 	{
 		try
 		{
@@ -688,7 +688,7 @@ public class DetailedTestReporter
 		return html.toString();
 	}
 	
-	private String generateHTMLContent() {
+	private static String generateHTMLContent() {
 	    StringBuilder html = new StringBuilder();
 
 	    int totalTests = testExecutions.size();

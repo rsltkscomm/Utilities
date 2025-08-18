@@ -42,6 +42,7 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener
 	{
 		dateTime=currentTime();
 		startTime = System.currentTimeMillis();
+		DetailedTestReporter.createDetailReport();
 		System.out.println("Test suite started: " + suite.getName());
 	}
 
@@ -83,6 +84,8 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener
 	{
 //		long endTime = System.currentTimeMillis();
 //		String durationStr = formatDuration(endTime - startTime);
+		DetailedTestReporter.generateReport();
+		
 
 		// Clean up the skipped list by removing methods that eventually passed or failed
 		filterCount(passMethods, failMethods, noRunMethods);
