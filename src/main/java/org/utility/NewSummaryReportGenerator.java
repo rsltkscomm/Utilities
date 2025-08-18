@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -909,16 +910,19 @@ public class NewSummaryReportGenerator
 				startTime, pass, fail, noRun, total, moduleDataJson, pass, fail, noRun, isReportAvailable, base64Report);
 	}
 
-	private static String encodeFileToBase64(String filePath)
-	{
-		try
-		{
-			byte[] fileContent = Files.readAllBytes(Paths.get(filePath));
-			return Base64.getEncoder().encodeToString(fileContent);
-		} catch (Exception e)
-		{
-			return "";
-		}
+	private static String encodeFileToBase64(String filePath) {
+	    try {
+	        Path path = Paths.get(filePath);
+	        if (!Files.exists(path)) {
+	            System.err.println("Report file not found: " + path.toAbsolutePath());
+	            return "";
+	        }
+	        byte[] fileContent = Files.readAllBytes(path);
+	        return Base64.getEncoder().encodeToString(fileContent);
+	    } catch (Exception e) {
+	        System.err.println("Error encoding report file: " + e.getMessage());
+	        return "";
+	    }
 	}
 
 	static class ModuleStats {

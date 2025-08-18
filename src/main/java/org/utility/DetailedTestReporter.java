@@ -200,7 +200,7 @@ public class DetailedTestReporter
 		}
 	}
 
-	public static void generateReport()
+	public void generateReport()
 	{
 		try
 		{
