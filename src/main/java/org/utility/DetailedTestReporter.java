@@ -200,7 +200,7 @@ public class DetailedTestReporter
 		}
 	}
 
-	public static void generateReport()
+	public void generateReport()
 	{
 		try
 		{
@@ -316,19 +316,19 @@ public class DetailedTestReporter
 
 		// Summary section
 		html.append("        <div class=\"summary\">\n");
-		html.append("            <div class=\"summary-card total\" onclick=\"filterTests('all')\" style=\"cursor: pointer;\">\n");
+		html.append("            <div class=\"summary-card total\" box-shadow:6px 10px 20px black; onclick=\"filterTests('all')\" style=\"cursor: pointer;\">\n");
 		html.append("                <h3>").append(totalTests).append("</h3>\n");
 		html.append("                <p>Total Tests</p>\n");
 		html.append("            </div>\n");
-		html.append("            <div class=\"summary-card passed\" onclick=\"filterTests('PASS')\" style=\"cursor: pointer;\">\n");
+		html.append("            <div class=\"summary-card passed\"  box-shadow:6px 10px 20px black; onclick=\"filterTests('PASS')\" style=\"cursor: pointer;\">\n");
 		html.append("                <h3>").append(passedTests).append("</h3>\n");
 		html.append("                <p>Passed</p>\n");
 		html.append("            </div>\n");
-		html.append("            <div class=\"summary-card failed\" onclick=\"filterTests('FAIL')\" style=\"cursor: pointer;\">\n");
+		html.append("            <div class=\"summary-card failed\"  box-shadow:6px 10px 20px black; onclick=\"filterTests('FAIL')\" style=\"cursor: pointer;\">\n");
 		html.append("                <h3>").append(failedTests).append("</h3>\n");
 		html.append("                <p>Failed</p>\n");
 		html.append("            </div>\n");
-		html.append("            <div class=\"summary-card skipped\" onclick=\"filterTests('SKIPPED')\" style=\"cursor: pointer;\">\n");
+		html.append("            <div class=\"summary-card skipped\"  box-shadow:6px 10px 20px black; onclick=\"filterTests('SKIPPED')\" style=\"cursor: pointer;\">\n");
 		html.append("                <h3>").append(skippedTests).append("</h3>\n");
 		html.append("                <p>Skipped</p>\n");
 		html.append("            </div>\n");
@@ -688,7 +688,7 @@ public class DetailedTestReporter
 		return html.toString();
 	}
 	
-	private static String generateHTMLContent() {
+	static String generateHTMLContent() {
 	    StringBuilder html = new StringBuilder();
 
 	    int totalTests = testExecutions.size();
@@ -716,12 +716,12 @@ public class DetailedTestReporter
 	        .append(".report-header p { margin: 5px 0 0; font-size: 14px; opacity: 0.9; }\n")
 	        /* Summary cards */
 	        .append(".summary { display: flex; gap: 20px; margin-bottom: 25px;margin-top: 50px; flex-wrap: wrap; justify-content: center; }\n")
-	        .append(".summary-card { flex: 1 1 150px; color: white; border-radius: 10px; text-align: center; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; }\n")
-	        .append(".summary-card:hover { transform: translateY(-4px); box-shadow:6px 10px 20px black }\n")
-	        .append(".total { background: white;color:#007bff;font-size: 1.2em;font-weight: bold;box-shadow:6px 10px 20px black }\n")
-	        .append(".passed { background: white;color: #28a745;font-size: 1.2em;font-weight: bold;box-shadow:6px 10px 20px black }\n")
-	        .append(".failed { background: white;color: #dc3545;font-size: 1.2em;font-weight: bold;box-shadow:6px 10px 20px black }\n")
-	        .append(".skipped { background: white;color: #ffc107;font-size: 1.2em;font-weight: bold;box-shadow:6px 10px 20px black }\n")
+	        .append(".summary-cards { flex: 1 1 150px; color: white; border-radius: 10px; text-align: center; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; }\n")
+	        .append(".summary-cards:hover { transform: translateY(-4px); box-shadow:6px 10px 20px black }\n")
+	        .append(".total { background: white;color:#007bff;font-size: 1.2em;font-weight: bold;padding:20px;box-shadow:6px 10px 20px black;}\n")
+	        .append(".passed { background: white;color: #28a745;font-size: 1.2em;font-weight: bold;padding:20px;box-shadow:6px 10px 20px black;}\n")
+	        .append(".failed { background: white;color: #dc3545;font-size: 1.2em;font-weight: bold;padding:20px;box-shadow:6px 10px 20px black;}\n")
+	        .append(".skipped { background: white;color: #ffc107;font-size: 1.2em;font-weight: bold;padding:20px;box-shadow:6px 10px 20px black;}\n")
 	        /* Filter controls */
 	        .append(".filter-controls { display: flex; gap: 15px;margin-top: 50px; margin-bottom: 15px; flex-wrap: wrap; }\n")
 	        .append(".filter-group { display: flex; align-items: center; gap: 8px; }\n")
@@ -795,10 +795,10 @@ public class DetailedTestReporter
 
 	        // Summary cards
 	        .append("<div class=\"summary\">\n")
-	        .append("<div class=\"summary-card total\" onclick=\"filterTests('all')\"><h3>").append(totalTests).append("</h3><p>Total</p></div>\n")
-	        .append("<div class=\"summary-card passed\" onclick=\"filterTests('PASS')\"><h3>").append(passedTests).append("</h3><p>Passed</p></div>\n")
-	        .append("<div class=\"summary-card failed\" onclick=\"filterTests('FAIL')\"><h3>").append(failedTests).append("</h3><p>Failed</p></div>\n")
-	        .append("<div class=\"summary-card skipped\" onclick=\"filterTests('SKIPPED')\"><h3>").append(skippedTests).append("</h3><p>Skipped</p></div>\n")
+	        .append("<div class=\"summary-cards total\" onclick=\"filterTests('all')\"><h3>").append(totalTests).append("</h3><p>Total</p></div>\n")
+	        .append("<div class=\"summary-cards passed\" onclick=\"filterTests('PASS')\"><h3>").append(passedTests).append("</h3><p>Passed</p></div>\n")
+	        .append("<div class=\"summary-cards failed\" onclick=\"filterTests('FAIL')\"><h3>").append(failedTests).append("</h3><p>Failed</p></div>\n")
+	        .append("<div class=\"summary-cards skipped\" onclick=\"filterTests('SKIPPED')\"><h3>").append(skippedTests).append("</h3><p>Skipped</p></div>\n")
 	        .append("</div>\n")
 
 	        // Filter controls

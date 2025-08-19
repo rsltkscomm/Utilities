@@ -84,7 +84,7 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener
 	{
 //		long endTime = System.currentTimeMillis();
 //		String durationStr = formatDuration(endTime - startTime);
-		DetailedTestReporter.generateReport();
+		DetailedTestReporter.getReport().generateReport();
 		
 
 		// Clean up the skipped list by removing methods that eventually passed or failed
