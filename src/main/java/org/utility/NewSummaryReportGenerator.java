@@ -466,7 +466,6 @@ public class NewSummaryReportGenerator
 						        <a href="javascript:void(0)" class="back-btn" onclick="showSummary()">← Back to Summary</a>
 						        %s
 						    </div>
-
 						    <script>
 						        function showDetailedReport() {
 						            document.getElementById("summary-section").style.display = "none";
