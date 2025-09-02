@@ -3,6 +3,7 @@ package seleniumUtils;
 import org.openqa.selenium.*;
 import org.openqa.selenium.support.ui.*;
 
+import assertUtils.AssertUtil;
 import pages.PageFactory;
 
 import java.time.Duration;
@@ -14,7 +15,7 @@ import java.util.function.Function;
  * Utility class for handling all types of Selenium waits: - Implicit Wait - Explicit Wait (WebDriverWait + ExpectedConditions) - Fluent Wait - Custom
  * Page Load Waits
  */
-public class WaitUtil extends LocatorUtil
+public class WaitUtil extends AssertUtil
 {
 
 	protected WebDriver driver;

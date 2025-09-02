@@ -62,5 +62,15 @@ public class LocatorUtil
 			throw new IllegalArgumentException("Unsupported locator type: " + locatorType + " in locator string: " + key);
 		}
 	}
+	
+	public static String replacePlaceHolder(String locator, String placeHolder)
+	{
+		return locator.replace("PLACE_HOLDER", placeHolder);
+	}
+ 
+	public static String replacePlaceHolder(String locator, int placeHolder)
+	{
+		return locator.replace("PLACE_HOLDER", Integer.toString(placeHolder));
+	}
 
 }
