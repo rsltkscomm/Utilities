@@ -1,6 +1,8 @@
 package seleniumUtils;
 
 import java.util.List;
+import java.util.stream.Collectors;
+
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import pages.PageFactory;
@@ -135,7 +137,6 @@ public class ElementUtil extends ClickUtil
 		} catch (Exception e)
 		{
 			turnOnImplicityWait();
-			ExtentManager.failTest("Element " + LocatorUtil.logName.get() + " is NOT present : " + e.getMessage());
 			return false;
 		}
 	}
@@ -166,5 +167,13 @@ public class ElementUtil extends ClickUtil
 			ExtentManager.failTest("Failed to find elements " + LocatorUtil.logName.get() + " : " + e.getMessage());
 			return null;
 		}
+	}
+	
+	public String getAllDropdownValues(String locator) {
+	    List<WebElement> dropdownValues = findElements(locator);
+
+	    return dropdownValues.stream()
+	            .map(WebElement::getText)
+	            .collect(Collectors.joining(","));
 	}
 }
