@@ -1,12 +1,21 @@
 package seleniumUtils;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.interactions.Actions;
+
+import com.aventstack.extentreports.Status;
+
+import base.DriverManager;
 import pages.PageFactory;
 import reporting.ExtentManager;
+import reporting.TestLogManager;
 
 public class ElementUtil extends ClickUtil
 {
@@ -44,6 +53,20 @@ public class ElementUtil extends ClickUtil
 		{
 			ExtentManager.failTest("Failed to get attribute " + attribute + " from " + LocatorUtil.logName.get() + " : " + e.getMessage());
 			return null;
+		}
+	}
+	
+	public boolean sendValue(String pr, String dt)
+	{
+		try
+		{
+			WebElement obj = driver.findElement(autolocator(pr));
+			obj.sendKeys(dt);
+			return true;
+		} catch (Exception e)
+		{
+			ExtentManager.failTest("Failed to enter value " + dt + " in " + LocatorUtil.logName.get() + " : " + e.getMessage());
+			return false;
 		}
 	}
 
@@ -175,5 +198,47 @@ public class ElementUtil extends ClickUtil
 	    return dropdownValues.stream()
 	            .map(WebElement::getText)
 	            .collect(Collectors.joining(","));
+	}
+	
+	public void tabAction()
+	{
+		Actions action = new Actions(DriverManager.getDriver());
+		action.sendKeys(Keys.TAB).build().perform();
+	}
+	
+	@SuppressWarnings("unchecked")
+	public void clearField(Object pr) {
+	    List<WebElement> elements = new ArrayList<>();
+
+	    if (pr instanceof String) {
+	        elements = driver.findElements(autolocator((String) pr));
+	    } else if (pr instanceof WebElement) {
+	        elements = Collections.singletonList((WebElement) pr);
+	    } else if (pr instanceof List<?>) {
+	        elements = (List<WebElement>) pr;
+	    }
+	    if (elements == null || elements.isEmpty()) {
+	        ExtentManager.getTest().log(Status.FAIL, "Unable to locate WebElement(s)");
+	        return;
+	    }
+
+	    for (WebElement ele : elements) {
+	        try {
+	            if (ele != null && ele.isDisplayed()) {
+	                ele.click();
+	                ele.sendKeys(Keys.chord(Keys.CONTROL, "a"), Keys.DELETE);
+
+	                String placeholder = ele.getAttribute("placeholder");
+	                if (placeholder != null && !placeholder.isEmpty()) {
+	                    ExtentManager.getTest().log(Status.INFO, placeholder + " field text has been cleared");
+	                } else {
+	                    ExtentManager.getTest().log(Status.INFO, "Field text has been cleared");
+	                }
+	            }
+	        } catch (Exception e) {
+	            TestLogManager.error("Unable to clear text from element", e);
+	            ExtentManager.getTest().log(Status.FAIL, "Failed to clear field text");
+	        }
+	    }
 	}
 }

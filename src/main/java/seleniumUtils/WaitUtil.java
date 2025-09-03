@@ -15,7 +15,7 @@ import java.util.function.Function;
  * Utility class for handling all types of Selenium waits: - Implicit Wait - Explicit Wait (WebDriverWait + ExpectedConditions) - Fluent Wait - Custom
  * Page Load Waits
  */
-public class WaitUtil extends AssertUtil
+public class WaitUtil extends LocatorUtil
 {
 
 	protected WebDriver driver;
@@ -148,6 +148,12 @@ public class WaitUtil extends AssertUtil
 	public void turnOffImplicityWait()
 	{
 		driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(0));
+	}
+	
+	public void wait(int seconds)
+	{
+		WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(seconds));
+		wait.until(d -> true);
 	}
 
 }
