@@ -131,7 +131,7 @@ public class BaseTest
 		TestLogManager.info("==== Test Suite Finished ====");
 	}
 
-	public PageFactory getPageFactory()
+	public static PageFactory getPageFactory()
 	{
 		return new PageFactory(DriverManager.getDriver());
 	}

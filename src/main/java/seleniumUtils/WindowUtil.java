@@ -135,4 +135,12 @@ public class WindowUtil extends FrameUtil {
             return false;
         }
     }
+    
+    public void switchWindow() {
+		for (String winHandle : driver.getWindowHandles()) {
+			driver.switchTo().window(winHandle);
+		}
+	}
+ 
+ 
 }

@@ -5,13 +5,14 @@ import java.util.List;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
+import assertUtils.AssertUtil;
 import pages.PageFactory;
 import reporting.ExtentManager;
 
 /**
  * Utility class for handling dropdown selections with logging.
  */
-public class DropdownUtil extends ElementUtil
+public class DropdownUtil extends AssertUtil
 {
 
 	WebDriver driver;
