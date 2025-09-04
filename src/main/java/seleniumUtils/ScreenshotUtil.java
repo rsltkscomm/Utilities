@@ -103,6 +103,23 @@ public class ScreenshotUtil extends WaitUtil {
             ExtentManager.getTest().log(Status.WARNING, "Highlight failed: " + e.getMessage());
         }
     }
+    
+    public void javaScriptHighLightwithScrnShot(Object obj)
+	{
+		JavascriptExecutor jsExecutor = (JavascriptExecutor) driver;
+		WebElement element = null;
+		if (obj instanceof String)
+		{
+			element = driver.findElement(autolocator(obj.toString()));
+		} else if (obj instanceof WebElement)
+		{
+			element = (WebElement) obj;
+		}
+		String styleAttribute = element.getAttribute("style");
+		jsExecutor.executeScript("arguments[0].setAttribute('style', 'border:2px solid red;')", element);
+		takeScreenshot();
+		jsExecutor.executeScript("arguments[0].setAttribute('style','" + styleAttribute + "')", element);
+	}
 
     /**
      * Remove element highlight.

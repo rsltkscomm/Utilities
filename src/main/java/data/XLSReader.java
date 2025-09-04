@@ -76,6 +76,7 @@ public class XLSReader
 				if (row.getCell(i).getStringCellValue().trim().equals(colname.trim()))
 				{
 					col_num = i;
+					break;
 				}
 			}
 			if (col_num == -1)
