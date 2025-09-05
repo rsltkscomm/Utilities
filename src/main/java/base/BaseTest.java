@@ -40,13 +40,14 @@ public class BaseTest
 	}
 
 	@BeforeMethod(alwaysRun = true)
-	@Parameters({ "applicationName", "sheetname", "browser" })
-	public void beforeMethod(String applicationName, String sheetname, String browser, Method method)
+	@Parameters({ "applicationName", "sheetname" })
+	public void beforeMethod(String applicationName, String sheetname, Method method)
 	{
 
 		// 1. Initialize logger
 		TestLogManager.testStart(method.getName());
 
+		String browser = System.getProperty("Browser");
 		// 2. Store metadata in ThreadLocal
 		appName.set(applicationName);
 		sheet_name.set(sheetname);
