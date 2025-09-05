@@ -388,4 +388,27 @@ public class DateUtils {
         }
     }
     
+    public String[] getRoundedTimes() {
+        Calendar cal = Calendar.getInstance();
+        int minute = cal.get(Calendar.MINUTE);
+        int hour24 = cal.get(Calendar.HOUR_OF_DAY);
+        int hour12 = cal.get(Calendar.HOUR);
+        hour12 = (hour12 == 0) ? 12 : hour12; 
+        String amPm = cal.get(Calendar.AM_PM) == Calendar.AM ? "AM" : "PM";
+     
+        String roundedTime12;
+        String roundedTime24;
+     
+        if (minute >= 30) {
+            hour12 = (hour12 % 12) + 1;
+            hour24 = (hour24 + 1) % 24;
+            roundedTime12 = hour12 + ":00 " + amPm;
+            roundedTime24 = String.format("%02d:00", hour24);
+        } else {
+            roundedTime12 = hour12 + ":30 " + amPm;
+            roundedTime24 = String.format("%02d:30", hour24);
+        }
+        return new String[] { roundedTime12, roundedTime24 };
+    }
+     
 } 
