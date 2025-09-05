@@ -26,11 +26,11 @@ public class ElementUtil extends ClickUtil
 		this.driver = driver;
 	}
 
-	public String getStrText(String locator)
+	public String getStrText(Object locator)
 	{
 		try
 		{
-			WebElement element = waitForVisible(locator, 15);
+			WebElement element = waitForVisible(getElement(locator), 60);
 			String text = (element != null) ? element.getText().trim() : null;
 			ExtentManager.infoTest("Get text from " + LocatorUtil.logName.get() + " : <b>'" + text + "'</b>");
 			return text;
@@ -40,12 +40,26 @@ public class ElementUtil extends ClickUtil
 			return null;
 		}
 	}
-
-	public String getAttribute(String locator, String attribute)
+	
+	public String getText(Object locator)
 	{
 		try
 		{
-			WebElement element = waitForPresence(locator, 15);
+			WebElement element = waitForVisible(getElement(locator), 60);
+			String text = (element != null) ? element.getText().trim() : null;
+			ExtentManager.infoTest("Get text from " + LocatorUtil.logName.get() + " : <b>'" + text + "'</b>");
+			return text;
+		} catch (Exception e)
+		{
+			return null;
+		}
+	}
+
+	public String getAttribute(Object locator, String attribute)
+	{
+		try
+		{
+			WebElement element = waitForVisible(getElement(locator), 60);
 			String value = (element != null) ? element.getAttribute(attribute) : null;
 			ExtentManager.infoTest("Get attribute " + attribute + " from " + LocatorUtil.logName.get() + " -> " + value);
 			return value;
@@ -56,12 +70,12 @@ public class ElementUtil extends ClickUtil
 		}
 	}
 	
-	public boolean sendValue(String pr, String dt)
+	public boolean sendValue(Object locator, String dt)
 	{
 		try
 		{
-			WebElement obj = driver.findElement(autolocator(pr));
-			obj.sendKeys(dt);
+			WebElement element = waitForVisible(getElement(locator), 60);
+			element.sendKeys(dt);
 			return true;
 		} catch (Exception e)
 		{
@@ -74,7 +88,7 @@ public class ElementUtil extends ClickUtil
 	{
 		try
 		{
-			WebElement element = waitForVisible(locator, 15);
+			WebElement element = waitForVisible(getElement(locator), 60);
 			String css = (element != null) ? element.getCssValue(property) : null;
 			ExtentManager.infoTest("Get CSS property " + property + " from " + LocatorUtil.logName.get() + " -> " + css);
 			return css;
@@ -89,7 +103,7 @@ public class ElementUtil extends ClickUtil
 	{
 		try
 		{
-			WebElement element = waitForVisible(locator, 10);
+			WebElement element = waitForVisible(getElement(locator), 60);
 			boolean displayed = element != null && element.isDisplayed();
 			ExtentManager.infoTest("Element " + LocatorUtil.logName.get() + " isDisplayed -> " + displayed);
 			return displayed;
@@ -104,7 +118,7 @@ public class ElementUtil extends ClickUtil
 	{
 		try
 		{
-			WebElement element = waitForPresence(locator, 10);
+			WebElement element = waitForVisible(getElement(locator), 60);
 			boolean enabled = element != null && element.isEnabled();
 			ExtentManager.infoTest("Element " + LocatorUtil.logName.get() + " isEnabled -> " + enabled);
 			return enabled;
@@ -119,7 +133,7 @@ public class ElementUtil extends ClickUtil
 	{
 		try
 		{
-			WebElement element = waitForPresence(locator, 10);
+			WebElement element = waitForVisible(getElement(locator), 60);
 			boolean selected = element != null && element.isSelected();
 			ExtentManager.infoTest("Element " + LocatorUtil.logName.get() + " isSelected -> " + selected);
 			return selected;
@@ -130,14 +144,14 @@ public class ElementUtil extends ClickUtil
 		}
 	}
 
-	public boolean enterValue(String pr, String dt)
+	public boolean enterValue(Object locator, String dt)
 	{
 		try
 		{
-			WebElement obj = driver.findElement(autolocator(pr));
-			obj.clear();
-			obj.sendKeys(dt);
-			String attribute = obj.getAttribute("value");
+			WebElement element = waitForVisible(getElement(locator), 60);
+			element.clear();
+			element.sendKeys(dt);
+			String attribute = element.getAttribute("value");
 			boolean entered = attribute.equals(dt);
 			ExtentManager.infoTest("Enter value <b>'" + dt + "'</b> in " + LocatorUtil.logName.get());
 			return entered;
@@ -164,11 +178,11 @@ public class ElementUtil extends ClickUtil
 		}
 	}
 
-	public WebElement findElement(String pr)
+	public WebElement findElement(Object locator)
 	{
 		try
 		{
-			WebElement element = driver.findElement(autolocator(pr));
+			WebElement element = waitForVisible(getElement(locator), 60);
 			ExtentManager.infoTest("Found element " + LocatorUtil.logName.get() + "");
 			return element;
 		} catch (Exception e)
@@ -241,4 +255,12 @@ public class ElementUtil extends ClickUtil
 	        }
 	    }
 	}
+	
+	 private WebElement getElement(Object pr) {
+	        return (pr instanceof String)
+	                ? driver.findElement(autolocator(pr.toString()))
+	                : (WebElement) pr;
+	    }
+	 
+	 
 }

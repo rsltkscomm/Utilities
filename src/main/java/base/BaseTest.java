@@ -8,6 +8,7 @@ import data.XLSReader;
 import pages.PageFactory;
 import reporting.ExtentManager;
 import reporting.TestLogManager;
+import seleniumUtils.ScreenshotUtil;
 
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -88,6 +89,7 @@ public class BaseTest
 	public void tearDown(ITestResult result)
 	{
 		// Reporting
+		ScreenshotUtil.takeScreenshot();
 		switch (result.getStatus())
 		{
 		case ITestResult.SUCCESS -> {
@@ -98,7 +100,6 @@ public class BaseTest
 			TestLogManager.error("Test failed: " + result.getName(), result.getThrowable());
 			ExtentManager.failLabel(result.getName());
 			ExtentManager.failLabel(result.getThrowable().toString());
-
 		}
 		case ITestResult.SKIP -> {
 			TestLogManager.warning("Test skipped: " + result.getName());
@@ -106,13 +107,11 @@ public class BaseTest
 			ExtentManager.skipLabel(result.getThrowable().toString());
 		}
 		}
-
 		// Cleanup driver
 		if (DriverManager.getDriver() != null)
 		{
 			DriverManager.quitDriver();
 		}
-
 		// Cleanup datatable
 		if (datatable.get() != null)
 		{

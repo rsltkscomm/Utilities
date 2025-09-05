@@ -2,9 +2,13 @@ package seleniumUtils;
 
 import org.openqa.selenium.*;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
 import pages.PageFactory;
 import reporting.ExtentManager;
+
+import java.time.Duration;
 
 /**
  * Utility class for handling different click actions safely with logging.
@@ -14,14 +18,15 @@ public class ClickUtil extends ScrollUtil {
     private WebDriver driver;
 
     public ClickUtil(WebDriver driver, PageFactory pageFactory) {
-    	super(driver, pageFactory);
+        super(driver, pageFactory);
         this.driver = driver;
     }
 
     /* -------------------- NORMAL CLICK -------------------- */
-    public boolean clickElement(String locator) {
+    public boolean clickElement(Object pr) {
         try {
-            WebElement element = driver.findElement(LocatorUtil.autolocator(locator));
+        	waitForClickable(getElement(pr), 120);
+            WebElement element = getElement(pr);
             element.click();
             ExtentManager.infoTest("Click : " + LocatorUtil.logName.get());
             return true;
@@ -33,9 +38,9 @@ public class ClickUtil extends ScrollUtil {
     }
 
     /* -------------------- SAFE CLICK -------------------- */
-    public boolean safeClick(String locator) {
+    public boolean safeClick(Object pr) {
         try {
-            WebElement element = waitForClickable(locator, 30);
+            WebElement element = waitForClickable(pr, 30);
             if (element != null) {
                 element.click();
                 ExtentManager.infoTest("Safe Click : " + LocatorUtil.logName.get());
@@ -51,9 +56,9 @@ public class ClickUtil extends ScrollUtil {
     }
 
     /* -------------------- JS CLICK -------------------- */
-    public boolean jsClick(String locator) {
+    public boolean jsClick(Object pr) {
         try {
-            WebElement element = driver.findElement(LocatorUtil.autolocator(locator));
+            WebElement element = getElement(pr);
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", element);
             ExtentManager.passTest("JS Click : " + LocatorUtil.logName.get());
             return true;
@@ -78,9 +83,9 @@ public class ClickUtil extends ScrollUtil {
     }
 
     /* -------------------- DOUBLE CLICK -------------------- */
-    public boolean doubleClick(String locator) {
+    public boolean doubleClick(Object pr) {
         try {
-            WebElement element = driver.findElement(LocatorUtil.autolocator(locator));
+            WebElement element = getElement(pr);
             new Actions(driver).doubleClick(element).perform();
             ExtentManager.infoTest("Double Click : " + LocatorUtil.logName.get());
             return true;
@@ -92,9 +97,9 @@ public class ClickUtil extends ScrollUtil {
     }
 
     /* -------------------- RIGHT CLICK / CONTEXT CLICK -------------------- */
-    public boolean rightClick(String locator) {
+    public boolean rightClick(Object pr) {
         try {
-            WebElement element = driver.findElement(LocatorUtil.autolocator(locator));
+            WebElement element = getElement(pr);
             new Actions(driver).contextClick(element).perform();
             ExtentManager.infoTest("Right Click : " + LocatorUtil.logName.get());
             return true;
@@ -106,11 +111,10 @@ public class ClickUtil extends ScrollUtil {
     }
 
     /* -------------------- HOVER AND CLICK -------------------- */
-    public boolean hoverAndClick(String locator) {
+    public boolean hoverAndClick(Object pr) {
         try {
-            WebElement element = driver.findElement(LocatorUtil.autolocator(locator));
-            Actions actions = new Actions(driver);
-            actions.moveToElement(element).click().perform();
+            WebElement element = getElement(pr);
+            new Actions(driver).moveToElement(element).click().perform();
             ExtentManager.infoTest("Hovered and Clicked : " + LocatorUtil.logName.get());
             return true;
         } catch (Exception e) {
@@ -120,8 +124,10 @@ public class ClickUtil extends ScrollUtil {
         }
     }
 
-    /* -------------------- UTILITY: Resolve element -------------------- */
-    private WebElement getElement(String locator) {
-        return driver.findElement(LocatorUtil.autolocator(locator));
+    /* -------------------- UTILITY: Resolve element(s) -------------------- */
+    private WebElement getElement(Object pr) {
+        return (pr instanceof String)
+                ? driver.findElement(autolocator(pr.toString()))
+                : (WebElement) pr;
     }
 }

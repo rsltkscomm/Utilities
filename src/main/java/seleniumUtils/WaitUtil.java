@@ -3,29 +3,28 @@ package seleniumUtils;
 import org.openqa.selenium.*;
 import org.openqa.selenium.support.ui.*;
 
-import assertUtils.AssertUtil;
 import pages.PageFactory;
 
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.function.Function;
 
 /**
- * Utility class for handling all types of Selenium waits: - Implicit Wait - Explicit Wait (WebDriverWait + ExpectedConditions) - Fluent Wait - Custom
- * Page Load Waits
+ * Utility class for handling all types of Selenium waits.
+ * Supports both String locators and WebElement objects.
  */
-public class WaitUtil extends LocatorUtil
-{
+public class WaitUtil extends LocatorUtil {
 
-	protected WebDriver driver;
+    protected WebDriver driver;
 
-	public WaitUtil(WebDriver driver, PageFactory pageFactory) {
-		super(driver, pageFactory);
-		this.driver = driver;
-	}
+    public WaitUtil(WebDriver driver, PageFactory pageFactory) {
+        super(driver, pageFactory);
+        this.driver = driver;
+    }
 
-	// ---------------------------------------------------------
+    // ---------------------------------------------------------
     // 🔹 IMPLICIT WAIT
     // ---------------------------------------------------------
     public void setImplicitWait(int sec) {
@@ -37,29 +36,44 @@ public class WaitUtil extends LocatorUtil
     // 🔹 EXPLICIT WAITS
     // ---------------------------------------------------------
 
-    public WebElement waitForClickable(String locator, int sec) {
+    public WebElement waitForClickable(Object pr, int sec) {
         return new WebDriverWait(driver, Duration.ofSeconds(sec))
-                .until(ExpectedConditions.elementToBeClickable(LocatorUtil.autolocator(locator)));
+                .until(ExpectedConditions.elementToBeClickable(getElement(pr)));
     }
 
-    public WebElement waitForVisible(String locator, int sec) {
+    public WebElement waitForVisible(Object pr, int sec) {
         return new WebDriverWait(driver, Duration.ofSeconds(sec))
-                .until(ExpectedConditions.visibilityOfElementLocated(LocatorUtil.autolocator(locator)));
+                .until(ExpectedConditions.visibilityOf(getElement(pr)));
     }
 
-    public WebElement waitForPresence(String locator, int sec) {
-        return new WebDriverWait(driver, Duration.ofSeconds(sec))
-                .until(ExpectedConditions.presenceOfElementLocated(LocatorUtil.autolocator(locator)));
+    public WebElement waitForPresence(Object pr, int sec) {
+        if (pr instanceof String) {
+            return new WebDriverWait(driver, Duration.ofSeconds(sec))
+                    .until(ExpectedConditions.presenceOfElementLocated(autolocator(pr.toString())));
+        } else {
+            return new WebDriverWait(driver, Duration.ofSeconds(sec))
+                    .until(ExpectedConditions.visibilityOf((WebElement) pr));
+        }
     }
 
-    public boolean waitForInvisibility(String locator, int sec) {
-        return new WebDriverWait(driver, Duration.ofSeconds(sec))
-                .until(ExpectedConditions.invisibilityOfElementLocated(LocatorUtil.autolocator(locator)));
+    public boolean waitForInvisibility(Object pr, int sec) {
+        if (pr instanceof String) {
+            return new WebDriverWait(driver, Duration.ofSeconds(sec))
+                    .until(ExpectedConditions.invisibilityOfElementLocated(autolocator(pr.toString())));
+        } else {
+            return new WebDriverWait(driver, Duration.ofSeconds(sec))
+                    .until(ExpectedConditions.invisibilityOf((WebElement) pr));
+        }
     }
 
-    public boolean waitForText(String locator, String text, int sec) {
-        return new WebDriverWait(driver, Duration.ofSeconds(sec))
-                .until(ExpectedConditions.textToBePresentInElementLocated(LocatorUtil.autolocator(locator), text));
+    public boolean waitForText(Object pr, String text, int sec) {
+        if (pr instanceof String) {
+            return new WebDriverWait(driver, Duration.ofSeconds(sec))
+                    .until(ExpectedConditions.textToBePresentInElementLocated(autolocator(pr.toString()), text));
+        } else {
+            return new WebDriverWait(driver, Duration.ofSeconds(sec))
+                    .until(ExpectedConditions.textToBePresentInElement((WebElement) pr, text));
+        }
     }
 
     public boolean waitForTitle(String title, int sec) {
@@ -92,16 +106,21 @@ public class WaitUtil extends LocatorUtil
                 .until(ExpectedConditions.stalenessOf(element));
     }
 
-    public boolean waitForFrame(String locator, int sec) {
-        new WebDriverWait(driver, Duration.ofSeconds(sec))
-                .until(ExpectedConditions.frameToBeAvailableAndSwitchToIt(LocatorUtil.autolocator(locator)));
+    public boolean waitForFrame(Object pr, int sec) {
+        if (pr instanceof String) {
+            new WebDriverWait(driver, Duration.ofSeconds(sec))
+                    .until(ExpectedConditions.frameToBeAvailableAndSwitchToIt(autolocator(pr.toString())));
+        } else {
+            new WebDriverWait(driver, Duration.ofSeconds(sec))
+                    .until(ExpectedConditions.frameToBeAvailableAndSwitchToIt((WebElement) pr));
+        }
         return true;
     }
 
     // ---------------------------------------------------------
     // 🔹 FLUENT WAIT
     // ---------------------------------------------------------
-    public WebElement fluentWait(String locator, int timeoutSec, int pollingSec) {
+    public WebElement fluentWait(Object pr, int timeoutSec, int pollingSec) {
         Wait<WebDriver> wait = new FluentWait<>(driver)
                 .withTimeout(Duration.ofSeconds(timeoutSec))
                 .pollingEvery(Duration.ofSeconds(pollingSec))
@@ -111,11 +130,9 @@ public class WaitUtil extends LocatorUtil
                         ElementClickInterceptedException.class
                 ));
 
-        return wait.until(new Function<WebDriver, WebElement>() {
-            public WebElement apply(WebDriver driver) {
-                WebElement element = driver.findElement(LocatorUtil.autolocator(locator));
-                return element.isDisplayed() ? element : null;
-            }
+        return wait.until(d -> {
+            WebElement element = getElement(pr);
+            return (element != null && element.isDisplayed()) ? element : null;
         });
     }
 
@@ -139,21 +156,25 @@ public class WaitUtil extends LocatorUtil
                 .until(webDriver -> ((JavascriptExecutor) webDriver)
                         .executeScript("return document.readyState").toString().equals("complete"));
     }
-    
-    public void turnOnImplicityWait()
-	{
-		driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(30));
-	}
 
-	public void turnOffImplicityWait()
-	{
-		driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(0));
-	}
-	
-	public void wait(int seconds)
-	{
-		WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(seconds));
-		wait.until(d -> true);
-	}
+    public void turnOnImplicityWait() {
+        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(30));
+    }
 
+    public void turnOffImplicityWait() {
+        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(0));
+    }
+
+    public void wait(int seconds) {
+        new WebDriverWait(driver, Duration.ofSeconds(seconds)).until(d -> true);
+    }
+
+    // ---------------------------------------------------------
+    // 🔹 PRIVATE HELPERS
+    // ---------------------------------------------------------
+    private WebElement getElement(Object pr) {
+        return (pr instanceof String)
+                ? driver.findElement(autolocator(pr.toString()))
+                : (WebElement) pr;
+    }
 }
