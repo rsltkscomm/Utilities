@@ -79,6 +79,34 @@ public class ScrollUtil extends BrowserUtil {
             return false;
         }
     }
+    
+	public void waitForScroll()
+	{
+		try
+		{
+			JavascriptExecutor js = (JavascriptExecutor) driver;
+			long lastHeight = (long) js.executeScript("return document.body.scrollHeight");
+
+			int retries = 0;
+			while (retries < 10)
+			{ // max retries
+				js.executeScript("window.scrollTo(0, document.body.scrollHeight);");
+				Thread.sleep(1000); // wait for page load / scroll
+
+				long newHeight = (long) js.executeScript("return document.body.scrollHeight");
+				if (newHeight == lastHeight)
+				{
+					break; // ✅ no more scrolling possible
+				}
+				lastHeight = newHeight;
+				retries++;
+			}
+			ExtentManager.infoTest("✅ Page scrolled to the bottom successfully.");
+		} catch (Exception e)
+		{
+			ExtentManager.failTest("❌ waitForScroll failed: " + e.getMessage());
+		}
+	}
 
     /* -------------------- UTILITY: Resolve WebElement -------------------- */
     private WebElement getElement(Object pr) {

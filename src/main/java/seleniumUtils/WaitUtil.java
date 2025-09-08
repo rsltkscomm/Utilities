@@ -165,9 +165,13 @@ public class WaitUtil extends LocatorUtil {
         driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(0));
     }
 
-    public void wait(int seconds) {
-        new WebDriverWait(driver, Duration.ofSeconds(seconds)).until(d -> true);
-    }
+	public void wait(int seconds) {
+	    try {
+	        Thread.sleep(seconds * 1000);
+	    } catch (InterruptedException e) {
+	        Thread.currentThread().interrupt();
+	    }
+	}
 
     // ---------------------------------------------------------
     // 🔹 PRIVATE HELPERS
