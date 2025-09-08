@@ -65,7 +65,7 @@ public class PropertyManager {
      * Set default properties.
      */
     private static void setDefaultProperties() {
-        properties.setProperty("klovpropertyFile", FrameworkConstants.KLOV_PROPERTIES_FILEPATH);
+        properties.setProperty("klovpropertyFile", FrameworkConstants.KLOV_PROPERTIES_PATH);
         System.getProperties().putAll(properties);
     }
 

@@ -70,7 +70,7 @@ public class BaseTest
 				System.getProperty("FeaturewiseChecklist"));
 
 		String dataFile = appPropertyMap.getOrDefault(appName.get(), "");
-		String testDataFile = FrameworkConstants.DRIVE_TESTDATA_FILEPATH + "TestData\\" + System.getProperty("UserName") + "_" + System.getProperty("Environment").toLowerCase() + "\\Team\\" + dataFile;
+		String testDataFile = FrameworkConstants.TEAM_DATA_FILE + dataFile;
 
 		// 5. Set datatable (thread-safe)
 		datatable.set(new XLSReader(PageBase.getNormalizedPath(testDataFile)));
