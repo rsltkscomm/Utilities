@@ -51,11 +51,11 @@ public class TestDataUtil
     
     public static String getUploadFilesPath(String fileName)
 	{
-		return FrameworkConstants.UPLOADFILES + fileName;
+		return FrameworkConstants.UPLOAD_FILES + fileName;
 	}
 
 	public static String getDataFilesPath(String fileName)
 	{
-		return FrameworkConstants.DATAFILE + fileName;
+		return FrameworkConstants.TEAM_DATA_FILE + fileName;
 	}
 }

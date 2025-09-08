@@ -94,7 +94,7 @@ public class DynamicSuiteGenerator {
 
     private static List<XmlTest> processExcel(XmlSuite suite, boolean allSheets) {
         List<XmlTest> tests = new ArrayList<>();
-        String filePath = FrameworkConstants.SCRIPTDETAILS_FILEPATH;
+        String filePath = FrameworkConstants.SCRIPT_DETAILS_FILE;
         File excelFile = new File(filePath);
 
         if (!excelFile.exists() || excelFile.length() == 0) {
@@ -206,7 +206,7 @@ public class DynamicSuiteGenerator {
     }
 
     public static String getXml() {
-        suiteFileName.set(new XLSReader(FrameworkConstants.SUITE_NAME_FILEPATH));
+        suiteFileName.set(new XLSReader(FrameworkConstants.SUITE_NAME_FILE));
         String sheetName = System.getProperty("ProductName");
         String suiteName = System.getProperty("SuiteName");
 
@@ -227,7 +227,7 @@ public class DynamicSuiteGenerator {
         String role = System.getProperty("Role");
         String version = System.getProperty("ReleaseVersion");
 
-        credentialSheet.set(new XLSReader(FrameworkConstants.CREDENTIAL_FILEPATH));
+        credentialSheet.set(new XLSReader(FrameworkConstants.CREDENTIAL_FILE_PATH));
         boolean matcher = false;
 
         for (int i = 1; i <= credentialSheet.get().getRowCount(sheetName); i++) {

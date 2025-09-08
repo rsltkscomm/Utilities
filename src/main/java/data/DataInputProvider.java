@@ -17,9 +17,7 @@ import reporting.TestLogManager;
  */
 public class DataInputProvider {
 
-    private static final String COMMON_TESTDATA_FILE_PATH = FrameworkConstants.DRIVE_REPORT_FILEPATH
-            + "TestData\\" + System.getProperty("UserName") + "_" + System.getProperty("Environment").toLowerCase()
-            + "\\Team\\Common_testdata.xlsx";
+    private static final String COMMON_TESTDATA_FILE_PATH = FrameworkConstants.TEAM_DATA_FILE + "Common_testdata.xlsx";
 
     private static final int FIELD_NAME_COL = 1;
     private static final int DATA_VALUE_COL = 2;

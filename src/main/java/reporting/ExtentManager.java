@@ -83,7 +83,7 @@ public class ExtentManager
 	{
 		try
 		{
-			String klovPropertiesPath = FrameworkConstants.KLOV_PROPERTIES_FILEPATH;
+			String klovPropertiesPath = FrameworkConstants.KLOV_PROPERTIES_PATH;
 			FileInputStream inputStream = new FileInputStream(new File(klovPropertiesPath));
 			Properties properties = new Properties();
 			properties.load(inputStream);
