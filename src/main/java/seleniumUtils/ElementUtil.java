@@ -1,10 +1,12 @@
 package seleniumUtils;
 
+import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -114,7 +116,7 @@ public class ElementUtil extends ClickUtil
 		}
 	}
 
-	public boolean isEnabled(String locator)
+	public boolean isEnabled(Object locator)
 	{
 		try
 		{
@@ -129,7 +131,7 @@ public class ElementUtil extends ClickUtil
 		}
 	}
 
-	public boolean isSelected(String locator)
+	public boolean isSelected(Object locator)
 	{
 		try
 		{
@@ -158,6 +160,29 @@ public class ElementUtil extends ClickUtil
 		} catch (Exception e)
 		{
 			ExtentManager.failTest("Failed to enter value " + dt + " in " + LocatorUtil.logName.get() + " : " + e.getMessage());
+			return false;
+		}
+	}
+	
+	public boolean javaScriptEnterValue(String locator, String content)
+	{
+		try
+		{
+			WebElement contentArea = findElement(locator);
+			if (contentArea != null && contentArea.isDisplayed())
+			{
+				contentArea.click();
+				((JavascriptExecutor) driver).executeScript("arguments[0].focus(); " + "document.execCommand('selectAll', false, null); " + "document.execCommand('insertText', false, arguments[1]);", contentArea, content);
+				ExtentManager.passTest("Content inserted successfully.");
+				return true;
+			} else
+			{
+				ExtentManager.warningTest("Content area not found or not visible.");
+				return false;
+			}
+		} catch (Exception e)
+		{
+			ExtentManager.failTest("Exception while inserting the content");
 			return false;
 		}
 	}
@@ -192,11 +217,11 @@ public class ElementUtil extends ClickUtil
 		}
 	}
 
-	public List<WebElement> findElements(String pr)
+	public List<WebElement> findElements(Object pr)
 	{
 		try
 		{
-			List<WebElement> elements = driver.findElements(autolocator(pr));
+			List<WebElement> elements = getElements(pr);
 			ExtentManager.infoTest("Found " + elements.size() + " elements for " + LocatorUtil.logName.get() + "");
 			return elements;
 		} catch (Exception e)
@@ -206,8 +231,8 @@ public class ElementUtil extends ClickUtil
 		}
 	}
 	
-	public String getAllDropdownValues(String locator) {
-	    List<WebElement> dropdownValues = findElements(locator);
+	public String getAllDropdownValues(Object locator) {
+	    List<WebElement> dropdownValues = getElements(locator);
 
 	    return dropdownValues.stream()
 	            .map(WebElement::getText)
@@ -256,11 +281,40 @@ public class ElementUtil extends ClickUtil
 	    }
 	}
 	
-	 private WebElement getElement(Object pr) {
-	        return (pr instanceof String)
-	                ? driver.findElement(autolocator(pr.toString()))
-	                : (WebElement) pr;
-	    }
-	 
-	 
+	public boolean jsSelectAllText(String locator)
+	{
+		try
+		{
+			WebElement contentArea = findElement(locator);
+			if (contentArea != null && contentArea.isDisplayed())
+			{
+				contentArea.click();
+				((JavascriptExecutor) driver).executeScript(
+						"var element = arguments[0];" + "var selection = window.getSelection();" + "var range = document.createRange();" + "range.selectNodeContents(element);" + "selection.removeAllRanges();" + "selection.addRange(range);",
+						contentArea);
+				ExtentManager.infoTest("All text selected inside content area.");
+				return true;
+			} else
+			{
+				ExtentManager.warningTest("Content area not found or not visible.");
+				return false;
+			}
+		} catch (Exception e)
+		{
+			ExtentManager.failTest("Error selecting all text in content area");
+			return false;
+		}
+	}
+	
+	public static String rgbToHexColor(String cssValue)
+	{
+		String[] RGBcolor = cssValue.replace("rgb(", "").replace(" ", "").replace(")", "").split(",");
+		int redColorValue = Integer.parseInt(RGBcolor[0]);
+		int greenColorValue = Integer.parseInt(RGBcolor[1]);
+		int blueColorValue = Integer.parseInt(RGBcolor[2]);
+		Color color = new Color(redColorValue, greenColorValue, blueColorValue);
+		String hexcolour = "#" + Integer.toHexString(color.getRGB()).substring(2);
+		return hexcolour;
+	}
+	
 }

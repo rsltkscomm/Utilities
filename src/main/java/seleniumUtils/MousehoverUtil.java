@@ -1,8 +1,5 @@
 package seleniumUtils;
 
-import java.util.Arrays;
-import java.util.List;
-
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -149,16 +146,4 @@ public class MousehoverUtil extends KeyboardUtil {
         }
     }
 
-    /* -------------------- UTILITY: Resolve element -------------------- */
-    private WebElement getElement(Object pr) {
-        return (pr instanceof String)
-                ? driver.findElement(autolocator(pr.toString()))
-                : (WebElement) pr;
-    }
-    
-    private List<WebElement> getElements(Object pr) {
-        return (pr instanceof String)
-                ? driver.findElements(autolocator(pr.toString()))
-                : Arrays.asList((WebElement) pr);
-    }
 }

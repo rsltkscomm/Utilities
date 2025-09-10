@@ -1,7 +1,5 @@
 package seleniumUtils;
 
-import java.util.Set;
-
 import org.openqa.selenium.WebDriver;
 
 import pages.PageFactory;

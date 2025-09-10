@@ -34,7 +34,7 @@ public class ScreenshotUtil extends WaitUtil {
      * @param element        element to highlight (can be null)
      * @return path of saved screenshot
      */
-    public static synchronized String takeScreenshot(String screenshotName, WebElement element) {
+    public synchronized String takeScreenshot(String screenshotName, Object element) {
         String screenshotPath = null;
         try {
             // Highlight element if provided
@@ -95,10 +95,10 @@ public class ScreenshotUtil extends WaitUtil {
     /**
      * Highlight element by adding red border using JavaScript.
      */
-    private static void highlightElement(WebElement element) {
+    public void highlightElement(Object element) {
         try {
-            JavascriptExecutor js = (JavascriptExecutor) DriverManager.getDriver();
-            js.executeScript("arguments[0].setAttribute('style', arguments[0].getAttribute('style') + '; border: 3px solid red; background: yellow;');", element);
+            JavascriptExecutor js = (JavascriptExecutor) driver;
+            js.executeScript("arguments[0].setAttribute('style', arguments[0].getAttribute('style') + '; border: 3px solid red; background: yellow;');",getElement(element));
         } catch (Exception e) {
             ExtentManager.getTest().log(Status.WARNING, "Highlight failed: " + e.getMessage());
         }
@@ -107,27 +107,19 @@ public class ScreenshotUtil extends WaitUtil {
     public void javaScriptHighLightwithScrnShot(Object obj)
 	{
 		JavascriptExecutor jsExecutor = (JavascriptExecutor) driver;
-		WebElement element = null;
-		if (obj instanceof String)
-		{
-			element = driver.findElement(autolocator(obj.toString()));
-		} else if (obj instanceof WebElement)
-		{
-			element = (WebElement) obj;
-		}
-		String styleAttribute = element.getAttribute("style");
-		jsExecutor.executeScript("arguments[0].setAttribute('style', 'border:2px solid red;')", element);
+		String styleAttribute = getElement(obj).getAttribute("style");
+		jsExecutor.executeScript("arguments[0].setAttribute('style', 'border:2px solid red;')", getElement(obj));
 		takeScreenshot();
-		jsExecutor.executeScript("arguments[0].setAttribute('style','" + styleAttribute + "')", element);
+		jsExecutor.executeScript("arguments[0].setAttribute('style','" + styleAttribute + "')", getElement(obj));
 	}
 
     /**
      * Remove element highlight.
      */
-    private static void removeHighlight(WebElement element) {
+    public void removeHighlight(Object element) {
         try {
             JavascriptExecutor js = (JavascriptExecutor) DriverManager.getDriver();
-            js.executeScript("arguments[0].setAttribute('style', arguments[0].getAttribute('style').replace(/; border: 3px solid red; background: yellow;/g, ''));", element);
+            js.executeScript("arguments[0].setAttribute('style', arguments[0].getAttribute('style').replace(/; border: 3px solid red; background: yellow;/g, ''));",getElement(element));
         } catch (Exception e) {
         }
     }
@@ -135,9 +127,9 @@ public class ScreenshotUtil extends WaitUtil {
     /**
      * Capture Base64 screenshot (optional for CI/CD) with highlight.
      */
-    public static synchronized String takeScreenshotBase64(WebElement element) {
+    public synchronized String takeScreenshotBase64(Object element) {
         try {
-            if (element != null) highlightElement(element);
+            if (element != null) highlightElement(getElement(element));
             String base64 = ((TakesScreenshot) DriverManager.getDriver()).getScreenshotAs(OutputType.BASE64);
             if (element != null) removeHighlight(element);
             return base64;
@@ -148,7 +140,7 @@ public class ScreenshotUtil extends WaitUtil {
     }
 
     // Overloaded method for old usage (no element)
-    public static synchronized String takeScreenshot(String screenshotName) {
+    public synchronized String takeScreenshot(String screenshotName) {
         return takeScreenshot(screenshotName, null);
     }
 }

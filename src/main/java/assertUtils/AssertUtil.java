@@ -1,8 +1,11 @@
 package assertUtils;
 
+import java.util.List;
+
 import org.apache.commons.lang3.StringUtils;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.interactions.Actions;
 
 import base.DriverManager;
 import pages.PageFactory;
@@ -36,44 +39,7 @@ public class AssertUtil extends ElementUtil
 		return ele == null ? false : true;
 	}
 
-	public boolean getUiBackgroundColour(String type, String pr)
-	{
-		boolean flag = false;
-
-		try
-		{
-			// Get the CSS value (e.g., "rgba(255, 255, 255, 1)")
-			String cssValue = DriverManager.getDriver().findElement(autolocator(pr)).getCssValue(type);
-
-			if (cssValue == null || !cssValue.contains("("))
-			{
-				throw new IllegalArgumentException("Invalid CSS color value: " + cssValue);
-			}
-
-			// Extract the RGB values
-			String[] rgbValues = StringUtils.substringBetween(cssValue, "(", ")").replaceAll("\\s+", "").split(",");
-
-			int red = Integer.parseInt(rgbValues[0]);
-			int green = Integer.parseInt(rgbValues[1]);
-			int blue = Integer.parseInt(rgbValues[2]);
-
-			// Convert to hex (#RRGGBB)
-			String hexColour = String.format("#%02x%02x%02x", red, green, blue);
-
-			System.out.println("Extracted color: " + cssValue + " -> " + hexColour);
-
-			flag = true; // success
-
-		} catch (Exception e)
-		{
-			System.err.println("Error extracting UI background colour: " + e.getMessage());
-			e.printStackTrace();
-			flag = false; // fail gracefully
-		}
-		return flag;
-	}
-
-	public boolean writeLoggerCombination(boolean expression, String passLog, String failLog)
+	public boolean writeLogger(boolean expression, String passLog, String failLog)
 	{
 		StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
 		StackTraceElement caller = stackTrace[2];
@@ -120,20 +86,10 @@ public class AssertUtil extends ElementUtil
 			int redColorValue = Integer.parseInt(RGBcolor[0]);
 			int greenColorValue = Integer.parseInt(RGBcolor[1]);
 			int blueColorValue = Integer.parseInt(RGBcolor[2]);
- 
-			// Convert to hex
 			String actualHex = String.format("#%02x%02x%02x", redColorValue, greenColorValue, blueColorValue);
- 
-			// Compare ignoring case
 			boolean isMatch = actualHex.equalsIgnoreCase(expectedHex);
- 
-			if (isMatch)
-			{
-				ExtentManager.infoTest("Background colour matches expected: " + actualHex);
-			} else
-			{
-				ExtentManager.warningTest("Background colour mismatch. Expected: " + expectedHex + ", Found: " + actualHex);
-			}
+			
+			writeLog(isMatch, "Background colour matches expected: " + actualHex, "Background colour mismatch. Expected: " + expectedHex + ", Found: " + actualHex);
 			return isMatch;
 		} catch (Exception e)
 		{
@@ -141,6 +97,39 @@ public class AssertUtil extends ElementUtil
 			return false;
 		}
 	}
+	
+	public boolean uiPageEqualsWithMultipleInputValue(String locator, String testDatas) {
+	    List<WebElement> elements = findElements(locator);
+	    String[] expectedValues = testDatas.split(",");
+	    
+	    if (elements.isEmpty()) {
+	        ExtentManager.getTest().fail("No elements found for locator: " + locator);
+	        takeScreenshot();
+	        return false;
+	    }
+
+	    if (elements.size() != expectedValues.length) {
+	        ExtentManager.getTest().fail("UI values count (" + elements.size() + 
+	                                     ") does not match expected count (" + expectedValues.length + ")");
+	        return false;
+	    }
+
+	    boolean allMatch = true;
+	    for (int i = 0; i < elements.size(); i++) {
+	        String actual = elements.get(i).getText().trim();
+	        String expected = expectedValues[i].trim();
+
+	        if (expected.equals(actual)) {
+	            ExtentManager.getTest().info("UI text <b>'" + actual + "'</b> matches expected.");
+	        } else {
+	            new Actions(DriverManager.getDriver()).scrollToElement(elements.get(i)).perform();
+	            ExtentManager.getTest().fail("UI text <b>'" + actual + "'</b> does not match expected <b>'" + expected + "'</b>");
+	            allMatch = false;
+	        }
+	    }
+	    return allMatch;
+	}
+
  
  
 }
