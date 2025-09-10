@@ -1,5 +1,6 @@
 package seleniumUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.openqa.selenium.WebDriver;
@@ -75,5 +76,22 @@ public class DropdownUtil extends AssertUtil
 			ExtentManager.failTest("Reason: " + e.getMessage());
 			return false;
 		}
+	}
+	
+	public List<String> getDropdownListValuesasList(String dropdownLocator, String dropdownlistLocator)
+	{
+		List<String> list = new ArrayList<String>();
+		scrollToElement(dropdownLocator);
+		clickElement(dropdownLocator);
+		List<WebElement> dropdownlists = findElements(dropdownlistLocator);
+		if (dropdownlists.size() > 1)
+		{
+			for (WebElement webElement : dropdownlists)
+			{
+				list.add(webElement.getText());
+			}
+		}
+ 
+		return list;
 	}
 }

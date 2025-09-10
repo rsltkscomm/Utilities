@@ -11,9 +11,9 @@ import org.openqa.selenium.remote.RemoteWebDriver;
 
 import pages.PageFactory;
 import reporting.ExtentManager;
-import seleniumUtils.AlertUtil;
+import seleniumUtils.DateUtils;
 
-public class PageBase extends AlertUtil {
+public class PageBase extends DateUtils {
 
     WebDriver driver;
     PageFactory pageFactory;

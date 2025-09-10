@@ -49,7 +49,7 @@ public class DriverManager
 				ChromeOptions chromeHeadlessOptions = createChromeOptions(true);
 				driver = GridManager.initializeRemoteDriverIfGrid(chromeHeadlessOptions) ? new RemoteWebDriver(new URL(GridManager.getRemoteWebDriverURL()), chromeHeadlessOptions) : new ChromeDriver(chromeHeadlessOptions);
 				break;
-
+				
 			default:
 				ChromeOptions chromeOptions = createChromeOptions(false);
 				driver = GridManager.initializeRemoteDriverIfGrid(chromeOptions) ? new RemoteWebDriver(new URL(GridManager.getRemoteWebDriverURL()), chromeOptions) : new ChromeDriver(chromeOptions);

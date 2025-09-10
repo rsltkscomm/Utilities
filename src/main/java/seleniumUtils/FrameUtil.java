@@ -81,4 +81,19 @@ public class FrameUtil extends SelectUtil {
             return false;
         }
     }
+    
+    public boolean switchToFramebyWebElement(String xpath)
+	{
+		try
+		{
+			WebElement ele = driver.findElement(autolocator(xpath));
+			driver.switchTo().frame(ele);
+			ExtentManager.passTest("Switched to frame successfully.");
+			return true;
+		} catch (Exception e)
+		{
+			ExtentManager.failTest("Failed to switch to frame");
+			return false;
+		}
+	}
 }

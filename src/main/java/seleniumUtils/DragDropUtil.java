@@ -125,10 +125,4 @@ public class DragDropUtil extends MousehoverUtil {
         }
     }
 
-    /* -------------------- UTILITY: Resolve element -------------------- */
-    private WebElement getElement(Object pr) {
-        return (pr instanceof String)
-                ? driver.findElement(autolocator(pr.toString()))
-                : (WebElement) pr;
-    }
 }

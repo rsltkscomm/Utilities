@@ -1,7 +1,11 @@
 package seleniumUtils;
 
+import java.util.Arrays;
+import java.util.List;
+
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 
 import pages.PageFactory;
 
@@ -13,9 +17,11 @@ import pages.PageFactory;
 public class LocatorUtil
 {
 	WebDriver driver;
+
 	public LocatorUtil(WebDriver driver, PageFactory pageFactory) {
 		this.driver = driver;
 	}
+
 	public static ThreadLocal<String> logName = new ThreadLocal<String>();
 
 	public static By autolocator(String key)
@@ -62,15 +68,25 @@ public class LocatorUtil
 			throw new IllegalArgumentException("Unsupported locator type: " + locatorType + " in locator string: " + key);
 		}
 	}
-	
+
 	public static String replacePlaceHolder(String locator, String placeHolder)
 	{
 		return locator.replace("PLACE_HOLDER", placeHolder);
 	}
- 
+
 	public static String replacePlaceHolder(String locator, int placeHolder)
 	{
 		return locator.replace("PLACE_HOLDER", Integer.toString(placeHolder));
+	}
+
+	public WebElement getElement(Object pr)
+	{
+		return (pr instanceof String) ? driver.findElement(autolocator(pr.toString())) : (WebElement) pr;
+	}
+
+	public List<WebElement> getElements(Object pr)
+	{
+		return (pr instanceof String) ? driver.findElements(autolocator(pr.toString())) : Arrays.asList((WebElement) pr);
 	}
 
 }

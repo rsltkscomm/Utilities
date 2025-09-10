@@ -76,15 +76,4 @@ public class KeyboardUtil extends WindowUtil {
         }
     }
 
-    /* -------------------- UTILITY: Get WebElement -------------------- */
-    private WebElement getElement(Object pr) {
-        try {
-            return (pr instanceof String)
-                    ? driver.findElement(autolocator(pr.toString()))
-                    : (WebElement) pr;
-        } catch (Exception e) {
-            ExtentManager.failTest("Failed to locate element for keyboard action: " + pr + ". Reason: " + e.getMessage());
-            return null;
-        }
-    }
 }
