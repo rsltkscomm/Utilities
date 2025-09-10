@@ -170,5 +170,5 @@ public class ClickUtil extends ScrollUtil
 			return false;
 		}
 	}
-
+	
 }

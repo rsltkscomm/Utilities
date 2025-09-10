@@ -191,6 +191,15 @@ public class DataInputProvider {
             }
         }
     }
+    
+    public static String getCellValue(Row row, int colIndex)
+	{
+		if (row == null || row.getCell(colIndex) == null)
+			return "";
+		Cell cell = row.getCell(colIndex);
+		cell.setCellType(CellType.STRING);
+		return cell.getStringCellValue().trim();
+	}
 
     // ------------------------- Helpers -------------------------
 

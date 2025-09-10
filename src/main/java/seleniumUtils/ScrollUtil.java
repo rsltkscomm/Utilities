@@ -144,5 +144,10 @@ public class ScrollUtil extends BrowserUtil {
 			ExtentManager.failTest("❌ waitForScroll failed: " + e.getMessage());
 		}
 	}
+	
+	public void scrollStep(JavascriptExecutor jse, int pixels)
+	{
+		jse.executeScript("window.scrollBy(0," + pixels + ")");
+	}
 
 }

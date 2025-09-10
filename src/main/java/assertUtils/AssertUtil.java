@@ -1,5 +1,6 @@
 package assertUtils;
 
+import java.util.Base64;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
@@ -128,6 +129,12 @@ public class AssertUtil extends ElementUtil
 	        }
 	    }
 	    return allMatch;
+	}
+	
+	public static String decodeBase64ToText(String base64Text)
+	{
+		byte[] decodedBytes = Base64.getDecoder().decode(base64Text);
+		return new String(decodedBytes);
 	}
 
  
