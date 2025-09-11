@@ -9,7 +9,6 @@ import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
-import base.BaseTest;
 import reporting.TestLogManager;
 
 public class XLSReader
