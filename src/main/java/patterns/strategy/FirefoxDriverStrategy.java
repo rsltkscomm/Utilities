@@ -6,24 +6,27 @@ import org.openqa.selenium.firefox.FirefoxDriver;
 import org.openqa.selenium.firefox.FirefoxOptions;
 import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.remote.RemoteWebDriver;
-import org.openqa.selenium.PageLoadStrategy;
-import org.openqa.selenium.remote.CapabilityType;
 
 import java.net.URI;
+import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Strategy implementation for Firefox WebDriver creation.
  */
 public class FirefoxDriverStrategy implements DriverStrategy {
     
+    private final boolean headless;
     private final boolean remote;
     private final String remoteUrl;
     
     public FirefoxDriverStrategy() {
-        this(false, null);
+        this(false, false, null);
     }
     
-    public FirefoxDriverStrategy(boolean remote, String remoteUrl) {
+    public FirefoxDriverStrategy(boolean headless, boolean remote, String remoteUrl) {
+        this.headless = headless;
         this.remote = remote;
         this.remoteUrl = remoteUrl;
     }
@@ -56,12 +59,53 @@ public class FirefoxDriverStrategy implements DriverStrategy {
         WebDriverManager.firefoxdriver().setup();
         FirefoxOptions options = new FirefoxOptions();
         
-        options.addArguments("--disable-notifications");
-        options.addArguments("--width=1920", "--height=1080");
-        options.setPageLoadStrategy(PageLoadStrategy.NORMAL);
-        options.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
+        // Set common options
+        setCommonOptions(options);
+        
+        // Set headless mode if required
+        if (headless) {
+            options.addArguments("--headless");
+        }
         
         return options;
+    }
+    
+    private void setCommonOptions(FirefoxOptions options) {
+        Map<String, Object> prefs = new HashMap<>();
+        String downloadPath = Paths.get(System.getProperty("user.dir"), "src", "main", "resources", "data", "downloadedFile")
+                .toAbsolutePath().toString();
+        
+        prefs.put("browser.download.folderList", 2);
+        prefs.put("browser.download.dir", downloadPath);
+        prefs.put("browser.download.useDownloadDir", true);
+        prefs.put("browser.helperApps.neverAsk.saveToDisk", "application/octet-stream");
+        prefs.put("pdfjs.disabled", true);
+        
+        options.addPreference("dom.webnotifications.enabled", false);
+        options.addPreference("dom.push.enabled", false);
+        options.addPreference("geo.enabled", false);
+        options.addPreference("media.navigator.enabled", false);
+        options.addPreference("media.peerconnection.enabled", false);
+        options.addPreference("media.eme.enabled", false);
+        options.addPreference("media.gmp-widevinecdm.enabled", false);
+        options.addPreference("media.gmp-widevinecdm.visible", false);
+        options.addPreference("media.gmp-manager.updateEnabled", false);
+        options.addPreference("media.gmp-provider-widevinecdm.updateEnabled", false);
+        options.addPreference("media.gmp-provider-widevinecdm.visible", false);
+        options.addPreference("media.gmp-widevinecdm.visible", false);
+        options.addPreference("media.gmp-widevinecdm.enabled", false);
+        options.addPreference("media.eme.enabled", false);
+        options.addPreference("media.peerconnection.enabled", false);
+        options.addPreference("media.navigator.enabled", false);
+        options.addPreference("geo.enabled", false);
+        options.addPreference("dom.push.enabled", false);
+        options.addPreference("dom.webnotifications.enabled", false);
+        
+        options.addPreference("browser.download.folderList", 2);
+        options.addPreference("browser.download.dir", downloadPath);
+        options.addPreference("browser.download.useDownloadDir", true);
+        options.addPreference("browser.helperApps.neverAsk.saveToDisk", "application/octet-stream");
+        options.addPreference("pdfjs.disabled", true);
     }
     
     @Override
@@ -71,6 +115,7 @@ public class FirefoxDriverStrategy implements DriverStrategy {
     
     @Override
     public boolean supports(String browserType) {
-        return "firefox".equalsIgnoreCase(browserType);
+        return "firefox".equalsIgnoreCase(browserType) || 
+               "firefoxheadless".equalsIgnoreCase(browserType);
     }
 }

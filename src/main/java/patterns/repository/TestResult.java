@@ -5,7 +5,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Data class representing the result of a test execution.
+ * Represents the result of a test execution.
+ * This class holds all the information about a test run.
  */
 public class TestResult {
     
@@ -20,8 +21,6 @@ public class TestResult {
     private final String errorMessage;
     private final String stackTrace;
     private final Map<String, String> additionalInfo;
-    private final String screenshotPath;
-    private final String videoPath;
     
     private TestResult(Builder builder) {
         this.testName = builder.testName;
@@ -31,46 +30,122 @@ public class TestResult {
         this.errorMessage = builder.errorMessage;
         this.stackTrace = builder.stackTrace;
         this.additionalInfo = new HashMap<>(builder.additionalInfo);
-        this.screenshotPath = builder.screenshotPath;
-        this.videoPath = builder.videoPath;
     }
     
-    // Getters
-    public String getTestName() { return testName; }
-    public Status getStatus() { return status; }
-    public LocalDateTime getStartTime() { return startTime; }
-    public LocalDateTime getEndTime() { return endTime; }
-    public String getErrorMessage() { return errorMessage; }
-    public String getStackTrace() { return stackTrace; }
-    public Map<String, String> getAdditionalInfo() { return new HashMap<>(additionalInfo); }
-    public String getScreenshotPath() { return screenshotPath; }
-    public String getVideoPath() { return videoPath; }
-    
-    public long getDurationInMillis() {
-        if (startTime != null && endTime != null) {
-            return java.time.Duration.between(startTime, endTime).toMillis();
-        }
-        return 0;
+    /**
+     * Gets the test name.
+     * @return The test name
+     */
+    public String getTestName() {
+        return testName;
     }
     
-    public boolean isPassed() {
-        return status == Status.PASS;
+    /**
+     * Gets the test status.
+     * @return The test status
+     */
+    public Status getStatus() {
+        return status;
     }
     
-    public boolean isFailed() {
-        return status == Status.FAIL || status == Status.ERROR;
+    /**
+     * Gets the start time.
+     * @return The start time
+     */
+    public LocalDateTime getStartTime() {
+        return startTime;
     }
     
-    public boolean isSkipped() {
-        return status == Status.SKIP;
+    /**
+     * Gets the end time.
+     * @return The end time
+     */
+    public LocalDateTime getEndTime() {
+        return endTime;
     }
     
+    /**
+     * Gets the error message.
+     * @return The error message or null if no error
+     */
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+    
+    /**
+     * Gets the stack trace.
+     * @return The stack trace or null if no error
+     */
+    public String getStackTrace() {
+        return stackTrace;
+    }
+    
+    /**
+     * Gets additional information.
+     * @return Map of additional information
+     */
+    public Map<String, String> getAdditionalInfo() {
+        return new HashMap<>(additionalInfo);
+    }
+    
+    /**
+     * Gets additional information by key.
+     * @param key The information key
+     * @return The information value or null if not found
+     */
     public String getAdditionalInfo(String key) {
         return additionalInfo.get(key);
     }
     
-    public String getAdditionalInfo(String key, String defaultValue) {
-        return additionalInfo.getOrDefault(key, defaultValue);
+    /**
+     * Gets the duration in milliseconds.
+     * @return The duration in milliseconds
+     */
+    public long getDurationInMillis() {
+        if (startTime == null || endTime == null) {
+            return 0;
+        }
+        return java.time.Duration.between(startTime, endTime).toMillis();
+    }
+    
+    /**
+     * Checks if the test passed.
+     * @return true if passed, false otherwise
+     */
+    public boolean isPassed() {
+        return status == Status.PASS;
+    }
+    
+    /**
+     * Checks if the test failed.
+     * @return true if failed, false otherwise
+     */
+    public boolean isFailed() {
+        return status == Status.FAIL;
+    }
+    
+    /**
+     * Checks if the test was skipped.
+     * @return true if skipped, false otherwise
+     */
+    public boolean isSkipped() {
+        return status == Status.SKIP;
+    }
+    
+    /**
+     * Checks if the test had an error.
+     * @return true if error, false otherwise
+     */
+    public boolean isError() {
+        return status == Status.ERROR;
+    }
+    
+    /**
+     * Checks if the test has an error message.
+     * @return true if has error message, false otherwise
+     */
+    public boolean hasError() {
+        return errorMessage != null && !errorMessage.trim().isEmpty();
     }
     
     /**
@@ -84,8 +159,6 @@ public class TestResult {
         private String errorMessage;
         private String stackTrace;
         private Map<String, String> additionalInfo = new HashMap<>();
-        private String screenshotPath;
-        private String videoPath;
         
         public Builder testName(String testName) {
             this.testName = testName;
@@ -127,16 +200,6 @@ public class TestResult {
             return this;
         }
         
-        public Builder screenshotPath(String screenshotPath) {
-            this.screenshotPath = screenshotPath;
-            return this;
-        }
-        
-        public Builder videoPath(String videoPath) {
-            this.videoPath = videoPath;
-            return this;
-        }
-        
         public TestResult build() {
             if (testName == null || testName.trim().isEmpty()) {
                 throw new IllegalArgumentException("Test name cannot be null or empty");
@@ -144,6 +207,13 @@ public class TestResult {
             if (status == null) {
                 throw new IllegalArgumentException("Status cannot be null");
             }
+            if (startTime == null) {
+                this.startTime = LocalDateTime.now();
+            }
+            if (endTime == null) {
+                this.endTime = LocalDateTime.now();
+            }
+            
             return new TestResult(this);
         }
     }
@@ -156,6 +226,7 @@ public class TestResult {
                 ", startTime=" + startTime +
                 ", endTime=" + endTime +
                 ", duration=" + getDurationInMillis() + "ms" +
+                ", hasError=" + hasError() +
                 '}';
     }
 }

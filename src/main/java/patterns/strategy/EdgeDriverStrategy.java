@@ -17,14 +17,16 @@ import java.util.Map;
  */
 public class EdgeDriverStrategy implements DriverStrategy {
     
+    private final boolean headless;
     private final boolean remote;
     private final String remoteUrl;
     
     public EdgeDriverStrategy() {
-        this(false, null);
+        this(false, false, null);
     }
     
-    public EdgeDriverStrategy(boolean remote, String remoteUrl) {
+    public EdgeDriverStrategy(boolean headless, boolean remote, String remoteUrl) {
+        this.headless = headless;
         this.remote = remote;
         this.remoteUrl = remoteUrl;
     }
@@ -57,7 +59,13 @@ public class EdgeDriverStrategy implements DriverStrategy {
         WebDriverManager.edgedriver().setup();
         EdgeOptions options = new EdgeOptions();
         
+        // Set common options
         setCommonOptions(options);
+        
+        // Set headless mode if required
+        if (headless) {
+            options.addArguments("--headless=new");
+        }
         
         return options;
     }
@@ -73,7 +81,7 @@ public class EdgeDriverStrategy implements DriverStrategy {
         prefs.put("credentials_enable_service", false);
         prefs.put("profile.password_manager_enabled", false);
         
-        options.addArguments("--disable-notifications", "--no-sandbox", "--inprivate");
+        options.addArguments("--disable-notifications", "--no-sandbox", "--disable-gpu", "--incognito");
         options.setExperimentalOption("prefs", prefs);
         options.setCapability("acceptInsecureCerts", true);
     }
@@ -85,6 +93,7 @@ public class EdgeDriverStrategy implements DriverStrategy {
     
     @Override
     public boolean supports(String browserType) {
-        return "edge".equalsIgnoreCase(browserType);
+        return "edge".equalsIgnoreCase(browserType) || 
+               "edgeheadless".equalsIgnoreCase(browserType);
     }
 }

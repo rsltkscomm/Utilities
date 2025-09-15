@@ -1,14 +1,13 @@
 package patterns.command;
 
 import org.openqa.selenium.WebDriver;
-import patterns.repository.TestResult;
-
-import java.time.LocalDateTime;
+import reporting.TestLogManager;
 
 /**
- * Command implementation for browser navigation actions.
+ * Command for navigation operations.
+ * This implements the Command pattern for browser navigation.
  */
-public class NavigationCommand implements UICommand {
+public class NavigationCommand implements Command {
     
     public enum NavigationType {
         GET, BACK, FORWARD, REFRESH
@@ -18,13 +17,7 @@ public class NavigationCommand implements UICommand {
     private final NavigationType navigationType;
     private final String url;
     private final String description;
-    
-    private TestResult result;
-    private long executionTime;
-    private long executionDuration;
-    private boolean executed = false;
-    private boolean undoable = false;
-    private String previousUrl = "";
+    private String previousUrl;
     
     public NavigationCommand(WebDriver driver, NavigationType navigationType, String url, String description) {
         this.driver = driver;
@@ -33,123 +26,128 @@ public class NavigationCommand implements UICommand {
         this.description = description;
     }
     
-    public NavigationCommand(WebDriver driver, NavigationType navigationType, String description) {
-        this(driver, navigationType, null, description);
-    }
-    
     @Override
     public boolean execute() {
-        executionTime = System.currentTimeMillis();
-        LocalDateTime startTime = LocalDateTime.now();
+        if (driver == null) {
+            TestLogManager.error("WebDriver is null, cannot execute navigation command");
+            return false;
+        }
         
         try {
-            // Store current URL for potential undo
+            // Store current URL for undo operation
             previousUrl = driver.getCurrentUrl();
             
-            // Perform navigation based on type
             switch (navigationType) {
                 case GET:
                     if (url == null || url.trim().isEmpty()) {
-                        throw new IllegalArgumentException("URL is required for GET navigation");
+                        TestLogManager.error("URL is null or empty for GET navigation");
+                        return false;
                     }
                     driver.get(url);
+                    TestLogManager.info("Navigated to: " + url);
                     break;
+                    
                 case BACK:
                     driver.navigate().back();
+                    TestLogManager.info("Navigated back");
                     break;
+                    
                 case FORWARD:
                     driver.navigate().forward();
+                    TestLogManager.info("Navigated forward");
                     break;
+                    
                 case REFRESH:
                     driver.navigate().refresh();
+                    TestLogManager.info("Page refreshed");
                     break;
+                    
                 default:
-                    throw new UnsupportedOperationException("Unsupported navigation type: " + navigationType);
+                    TestLogManager.error("Unknown navigation type: " + navigationType);
+                    return false;
             }
-            
-            executionDuration = System.currentTimeMillis() - executionTime;
-            executed = true;
-            
-            result = new TestResult.Builder()
-                    .testName("NavigationCommand: " + description)
-                    .status(TestResult.Status.PASS)
-                    .startTime(startTime)
-                    .endTime(LocalDateTime.now())
-                    .additionalInfo("navigationType", navigationType.toString())
-                    .additionalInfo("url", url != null ? url : "N/A")
-                    .additionalInfo("previousUrl", previousUrl)
-                    .additionalInfo("currentUrl", driver.getCurrentUrl())
-                    .build();
             
             return true;
             
         } catch (Exception e) {
-            executionDuration = System.currentTimeMillis() - executionTime;
-            executed = true;
-            
-            result = new TestResult.Builder()
-                    .testName("NavigationCommand: " + description)
-                    .status(TestResult.Status.FAIL)
-                    .startTime(startTime)
-                    .endTime(LocalDateTime.now())
-                    .errorMessage("Navigation failed: " + e.getMessage())
-                    .stackTrace(getStackTrace(e))
-                    .additionalInfo("navigationType", navigationType.toString())
-                    .additionalInfo("url", url != null ? url : "N/A")
-                    .additionalInfo("previousUrl", previousUrl)
-                    .build();
-            
+            TestLogManager.error("Navigation command failed: " + description, e);
             return false;
         }
     }
     
     @Override
     public boolean undo() {
-        if (!executed || !undoable || previousUrl == null || previousUrl.trim().isEmpty()) {
+        if (driver == null) {
+            TestLogManager.error("WebDriver is null, cannot undo navigation command");
             return false;
         }
         
         try {
-            // Navigate back to previous URL
-            driver.get(previousUrl);
+            switch (navigationType) {
+                case GET:
+                    if (previousUrl != null && !previousUrl.trim().isEmpty()) {
+                        driver.get(previousUrl);
+                        TestLogManager.info("Undone navigation, returned to: " + previousUrl);
+                    } else {
+                        TestLogManager.warning("No previous URL available for undo");
+                        return false;
+                    }
+                    break;
+                    
+                case BACK:
+                    driver.navigate().forward();
+                    TestLogManager.info("Undone back navigation");
+                    break;
+                    
+                case FORWARD:
+                    driver.navigate().back();
+                    TestLogManager.info("Undone forward navigation");
+                    break;
+                    
+                case REFRESH:
+                    // Refresh undo is not meaningful, just log it
+                    TestLogManager.info("Refresh undo - no action taken");
+                    break;
+                    
+                default:
+                    TestLogManager.error("Cannot undo unknown navigation type: " + navigationType);
+                    return false;
+            }
+            
             return true;
             
         } catch (Exception e) {
+            TestLogManager.error("Failed to undo navigation command: " + description, e);
             return false;
         }
     }
     
     @Override
     public String getDescription() {
-        return "Navigate " + navigationType.toString().toLowerCase() + 
-               (url != null ? " to " + url : "") + ": " + description;
+        return description != null ? description : "Navigation command: " + navigationType;
     }
     
-    @Override
-    public TestResult getResult() {
-        return result;
+    /**
+     * Gets the navigation type.
+     * @return Navigation type
+     */
+    public NavigationType getNavigationType() {
+        return navigationType;
     }
     
-    @Override
-    public boolean isUndoable() {
-        return undoable && navigationType == NavigationType.GET;
+    /**
+     * Gets the URL (for GET navigation).
+     * @return URL or null if not applicable
+     */
+    public String getUrl() {
+        return url;
     }
     
-    @Override
-    public long getExecutionTime() {
-        return executionTime;
-    }
-    
-    @Override
-    public long getExecutionDuration() {
-        return executionDuration;
-    }
-    
-    private String getStackTrace(Exception e) {
-        StringBuilder sb = new StringBuilder();
-        for (StackTraceElement element : e.getStackTrace()) {
-            sb.append(element.toString()).append("\n");
-        }
-        return sb.toString();
+    /**
+     * Gets the previous URL.
+     * @return Previous URL or null if not available
+     */
+    public String getPreviousUrl() {
+        return previousUrl;
     }
 }

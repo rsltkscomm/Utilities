@@ -340,7 +340,7 @@ public class CompleteUtilityProjectExample extends ModernBaseTest {
             
             APITestSuite.APITestSuiteResult comprehensiveResult = 
                 apiTestSuite.performComprehensiveAPITesting(apiConfig);
-            TestLogManager.info("Comprehensive API testing completed successfully");
+            TestLogManager.info("Comprehensive API testing completed successfully with " + comprehensiveResult.getEndpointResults().size() + " endpoints tested");
             
             TestLogManager.success("API Testing Suite demonstrated successfully");
             

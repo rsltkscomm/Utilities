@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
-<suite name="SimplifiedUtilityProjectSuite" verbose="1">
-    <test name="SimplifiedUtilityProjectTest">
+<suite name="TestAutomationSuite" verbose="1">
+    <test name="CompleteFrameworkTest">
+        <classes>
+            <class name="examples.CompleteUtilityProjectExample"/>
+        </classes>
+    </test>
+    <test name="SimplifiedFrameworkTest">
         <classes>
             <class name="examples.SimplifiedUtilityProjectExample"/>
         </classes>

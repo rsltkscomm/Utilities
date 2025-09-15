@@ -3,81 +3,148 @@ package patterns.command;
 import reporting.TestLogManager;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Invoker class that manages command execution, history, and undo functionality.
- * This implements the Command pattern's invoker role.
+ * Command invoker that executes commands and manages command history.
+ * This implements the Command pattern for UI actions.
  */
 public class CommandInvoker {
     
-    private final List<UICommand> commandHistory;
-    private final List<UICommand> undoableCommands;
-    private final AtomicInteger executionCount;
-    private final boolean enableHistory;
-    private final int maxHistorySize;
+    private final List<Command> commandHistory;
+    private final boolean retryEnabled;
+    private final int maxRetries;
     
     public CommandInvoker() {
-        this(true, 100);
+        this(false, 0);
     }
     
-    public CommandInvoker(boolean enableHistory, int maxHistorySize) {
+    public CommandInvoker(boolean retryEnabled, int maxRetries) {
         this.commandHistory = new ArrayList<>();
-        this.undoableCommands = new ArrayList<>();
-        this.executionCount = new AtomicInteger(0);
-        this.enableHistory = enableHistory;
-        this.maxHistorySize = maxHistorySize;
+        this.retryEnabled = retryEnabled;
+        this.maxRetries = maxRetries;
+        
+        TestLogManager.info("CommandInvoker initialized with retry: " + retryEnabled + ", maxRetries: " + maxRetries);
     }
     
     /**
-     * Executes a command and adds it to history if enabled.
+     * Executes a command.
      * @param command The command to execute
-     * @return true if execution was successful, false otherwise
+     * @return true if successful, false otherwise
      */
-    public boolean executeCommand(UICommand command) {
+    public boolean executeCommand(Command command) {
         if (command == null) {
             TestLogManager.error("Cannot execute null command");
             return false;
         }
         
-        TestLogManager.info("Executing command: " + command.getDescription());
+        TestLogManager.info("Executing command: " + command.getClass().getSimpleName());
         
-        boolean result = command.execute();
-        executionCount.incrementAndGet();
+        int attempts = 0;
+        int maxAttempts = retryEnabled ? maxRetries + 1 : 1;
         
-        if (enableHistory) {
-            addToHistory(command);
-        }
-        
-        if (result) {
-            TestLogManager.success("Command executed successfully: " + command.getDescription());
-        } else {
-            TestLogManager.error("Command execution failed: " + command.getDescription());
-            if (command.getResult() != null && command.getResult().getErrorMessage() != null) {
-                TestLogManager.error("Error: " + command.getResult().getErrorMessage());
+        while (attempts < maxAttempts) {
+            try {
+                boolean success = command.execute();
+                
+                if (success) {
+                    commandHistory.add(command);
+                    TestLogManager.success("Command executed successfully: " + command.getClass().getSimpleName());
+                    return true;
+                } else {
+                    attempts++;
+                    if (attempts < maxAttempts) {
+                        TestLogManager.warning("Command failed, retrying... (attempt " + attempts + "/" + maxAttempts + ")");
+                    }
+                }
+                
+            } catch (Exception e) {
+                attempts++;
+                TestLogManager.error("Command execution failed (attempt " + attempts + "/" + maxAttempts + ")", e);
+                
+                if (attempts >= maxAttempts) {
+                    TestLogManager.error("Command failed after " + maxAttempts + " attempts: " + command.getClass().getSimpleName());
+                    return false;
+                }
             }
         }
         
-        return result;
+        return false;
     }
     
     /**
      * Executes multiple commands in sequence.
      * @param commands List of commands to execute
-     * @return true if all commands executed successfully, false otherwise
+     * @return true if all commands successful, false otherwise
      */
-    public boolean executeCommands(List<UICommand> commands) {
+    public boolean executeCommands(List<Command> commands) {
         if (commands == null || commands.isEmpty()) {
+            TestLogManager.warning("No commands to execute");
             return true;
         }
         
-        boolean allSuccessful = true;
-        for (UICommand command : commands) {
+        TestLogManager.info("Executing " + commands.size() + " commands");
+        
+        for (Command command : commands) {
             if (!executeCommand(command)) {
+                TestLogManager.error("Command execution failed, stopping batch execution");
+                return false;
+            }
+        }
+        
+        TestLogManager.success("All commands executed successfully");
+        return true;
+    }
+    
+    /**
+     * Undoes the last command.
+     * @return true if successful, false otherwise
+     */
+    public boolean undoLastCommand() {
+        if (commandHistory.isEmpty()) {
+            TestLogManager.warning("No commands to undo");
+            return false;
+        }
+        
+        Command lastCommand = commandHistory.remove(commandHistory.size() - 1);
+        
+        try {
+            boolean success = lastCommand.undo();
+            if (success) {
+                TestLogManager.info("Command undone successfully: " + lastCommand.getClass().getSimpleName());
+            } else {
+                TestLogManager.warning("Failed to undo command: " + lastCommand.getClass().getSimpleName());
+            }
+            return success;
+            
+        } catch (Exception e) {
+            TestLogManager.error("Error undoing command: " + lastCommand.getClass().getSimpleName(), e);
+            return false;
+        }
+    }
+    
+    /**
+     * Undoes multiple commands.
+     * @param count Number of commands to undo
+     * @return true if all undone successfully, false otherwise
+     */
+    public boolean undoCommands(int count) {
+        if (count <= 0) {
+            TestLogManager.warning("Invalid undo count: " + count);
+            return false;
+        }
+        
+        if (commandHistory.size() < count) {
+            TestLogManager.warning("Not enough commands to undo. Available: " + commandHistory.size() + ", Requested: " + count);
+            count = commandHistory.size();
+        }
+        
+        TestLogManager.info("Undoing " + count + " commands");
+        
+        boolean allSuccessful = true;
+        for (int i = 0; i < count; i++) {
+            if (!undoLastCommand()) {
                 allSuccessful = false;
-                // Continue executing remaining commands
             }
         }
         
@@ -85,107 +152,11 @@ public class CommandInvoker {
     }
     
     /**
-     * Undoes the last undoable command.
-     * @return true if undo was successful, false otherwise
-     */
-    public boolean undoLastCommand() {
-        if (undoableCommands.isEmpty()) {
-            TestLogManager.warning("No undoable commands available");
-            return false;
-        }
-        
-        UICommand lastCommand = undoableCommands.get(undoableCommands.size() - 1);
-        
-        TestLogManager.info("Undoing command: " + lastCommand.getDescription());
-        
-        boolean result = lastCommand.undo();
-        
-        if (result) {
-            undoableCommands.remove(lastCommand);
-            TestLogManager.success("Command undone successfully: " + lastCommand.getDescription());
-        } else {
-            TestLogManager.error("Failed to undo command: " + lastCommand.getDescription());
-        }
-        
-        return result;
-    }
-    
-    /**
-     * Undoes all undoable commands in reverse order.
-     * @return Number of commands successfully undone
-     */
-    public int undoAllCommands() {
-        int undoneCount = 0;
-        
-        // Undo in reverse order
-        for (int i = undoableCommands.size() - 1; i >= 0; i--) {
-            UICommand command = undoableCommands.get(i);
-            if (command.undo()) {
-                undoneCount++;
-                TestLogManager.info("Undone command: " + command.getDescription());
-            } else {
-                TestLogManager.warning("Failed to undo command: " + command.getDescription());
-            }
-        }
-        
-        undoableCommands.clear();
-        TestLogManager.info("Undone " + undoneCount + " commands");
-        
-        return undoneCount;
-    }
-    
-    /**
      * Gets the command history.
-     * @return Unmodifiable list of executed commands
+     * @return List of executed commands
      */
-    public List<UICommand> getCommandHistory() {
-        return Collections.unmodifiableList(commandHistory);
-    }
-    
-    /**
-     * Gets the undoable commands.
-     * @return Unmodifiable list of undoable commands
-     */
-    public List<UICommand> getUndoableCommands() {
-        return Collections.unmodifiableList(undoableCommands);
-    }
-    
-    /**
-     * Gets the total number of executed commands.
-     * @return Execution count
-     */
-    public int getExecutionCount() {
-        return executionCount.get();
-    }
-    
-    /**
-     * Gets execution statistics.
-     * @return CommandExecutionStats object
-     */
-    public CommandExecutionStats getExecutionStats() {
-        int totalCommands = commandHistory.size();
-        int successfulCommands = 0;
-        int failedCommands = 0;
-        long totalExecutionTime = 0;
-        
-        for (UICommand command : commandHistory) {
-            if (command.getResult() != null) {
-                if (command.getResult().isPassed()) {
-                    successfulCommands++;
-                } else {
-                    failedCommands++;
-                }
-                totalExecutionTime += command.getExecutionDuration();
-            }
-        }
-        
-        return new CommandExecutionStats(
-                totalCommands,
-                successfulCommands,
-                failedCommands,
-                undoableCommands.size(),
-                totalExecutionTime
-        );
+    public List<Command> getCommandHistory() {
+        return new ArrayList<>(commandHistory);
     }
     
     /**
@@ -193,92 +164,30 @@ public class CommandInvoker {
      */
     public void clearHistory() {
         commandHistory.clear();
-        undoableCommands.clear();
-        executionCount.set(0);
         TestLogManager.info("Command history cleared");
     }
     
     /**
-     * Gets the last executed command.
-     * @return Last command or null if no commands executed
+     * Gets the number of commands in history.
+     * @return Number of commands
      */
-    public UICommand getLastCommand() {
-        return commandHistory.isEmpty() ? null : commandHistory.get(commandHistory.size() - 1);
+    public int getHistorySize() {
+        return commandHistory.size();
     }
     
     /**
-     * Gets the last failed command.
-     * @return Last failed command or null if no failed commands
+     * Checks if retry is enabled.
+     * @return true if retry enabled, false otherwise
      */
-    public UICommand getLastFailedCommand() {
-        for (int i = commandHistory.size() - 1; i >= 0; i--) {
-            UICommand command = commandHistory.get(i);
-            if (command.getResult() != null && command.getResult().isFailed()) {
-                return command;
-            }
-        }
-        return null;
-    }
-    
-    private void addToHistory(UICommand command) {
-        commandHistory.add(command);
-        
-        // Add to undoable commands if applicable
-        if (command.isUndoable()) {
-            undoableCommands.add(command);
-        }
-        
-        // Maintain history size limit
-        if (commandHistory.size() > maxHistorySize) {
-            UICommand removedCommand = commandHistory.remove(0);
-            undoableCommands.remove(removedCommand);
-        }
+    public boolean isRetryEnabled() {
+        return retryEnabled;
     }
     
     /**
-     * Data class for command execution statistics.
+     * Gets the maximum number of retries.
+     * @return Maximum retries
      */
-    public static class CommandExecutionStats {
-        private final int totalCommands;
-        private final int successfulCommands;
-        private final int failedCommands;
-        private final int undoableCommands;
-        private final long totalExecutionTime;
-        
-        public CommandExecutionStats(int totalCommands, int successfulCommands, int failedCommands,
-                                   int undoableCommands, long totalExecutionTime) {
-            this.totalCommands = totalCommands;
-            this.successfulCommands = successfulCommands;
-            this.failedCommands = failedCommands;
-            this.undoableCommands = undoableCommands;
-            this.totalExecutionTime = totalExecutionTime;
-        }
-        
-        // Getters
-        public int getTotalCommands() { return totalCommands; }
-        public int getSuccessfulCommands() { return successfulCommands; }
-        public int getFailedCommands() { return failedCommands; }
-        public int getUndoableCommands() { return undoableCommands; }
-        public long getTotalExecutionTime() { return totalExecutionTime; }
-        
-        public double getSuccessRate() {
-            return totalCommands > 0 ? (double) successfulCommands / totalCommands * 100 : 0.0;
-        }
-        
-        public double getAverageExecutionTime() {
-            return totalCommands > 0 ? (double) totalExecutionTime / totalCommands : 0.0;
-        }
-        
-        @Override
-        public String toString() {
-            return "CommandExecutionStats{" +
-                    "totalCommands=" + totalCommands +
-                    ", successfulCommands=" + successfulCommands +
-                    ", failedCommands=" + failedCommands +
-                    ", undoableCommands=" + undoableCommands +
-                    ", successRate=" + String.format("%.2f", getSuccessRate()) + "%" +
-                    ", averageExecutionTime=" + String.format("%.2f", getAverageExecutionTime()) + "ms" +
-                    '}';
-        }
+    public int getMaxRetries() {
+        return maxRetries;
     }
 }

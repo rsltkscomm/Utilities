@@ -2,344 +2,304 @@ package patterns.facade;
 
 import patterns.repository.TestResult;
 import patterns.repository.TestResultRepository;
-import reporting.ExtentManager;
+import patterns.repository.TestExecutionStats;
 import reporting.TestLogManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 
 /**
- * Facade class that provides a simplified interface for reporting operations.
- * This hides the complexity of coordinating multiple reporting systems.
+ * Facade for reporting operations.
+ * This provides a simplified interface for complex reporting operations.
  */
 public class ReportingFacade {
     
-    private final TestResultRepository resultRepository;
-    private final boolean enableExtentReports;
-    private final boolean enableCustomReports;
+    private final TestResultRepository testResultRepository;
+    private boolean reportingInitialized = false;
     
-    public ReportingFacade(TestResultRepository resultRepository) {
-        this(resultRepository, true, true);
-    }
-    
-    public ReportingFacade(TestResultRepository resultRepository, boolean enableExtentReports, boolean enableCustomReports) {
-        this.resultRepository = resultRepository;
-        this.enableExtentReports = enableExtentReports;
-        this.enableCustomReports = enableCustomReports;
+    public ReportingFacade(TestResultRepository testResultRepository) {
+        this.testResultRepository = testResultRepository;
+        TestLogManager.info("ReportingFacade initialized");
     }
     
     /**
-     * Initializes all reporting systems.
+     * Initializes reporting.
      */
     public void initializeReporting() {
-        TestLogManager.info("Initializing reporting systems");
-        
-        if (enableExtentReports) {
-            ExtentManager.initReports();
-            TestLogManager.info("ExtentReports initialized");
+        if (reportingInitialized) {
+            TestLogManager.warning("Reporting already initialized");
+            return;
         }
         
-        if (enableCustomReports) {
-            // Initialize custom reporting systems here
-            TestLogManager.info("Custom reports initialized");
-        }
-        
-        TestLogManager.success("All reporting systems initialized successfully");
+        TestLogManager.info("Initializing reporting system");
+        reportingInitialized = true;
+        TestLogManager.success("Reporting system initialized");
     }
     
     /**
-     * Reports a test result to all configured reporting systems.
+     * Reports a test result.
      * @param testResult The test result to report
      */
     public void reportTestResult(TestResult testResult) {
-        TestLogManager.info("Reporting test result: " + testResult.getTestName());
-        
-        // Save to repository
-        resultRepository.saveTestResult(testResult);
-        
-        // Report to ExtentReports
-        if (enableExtentReports) {
-            reportToExtentReports(testResult);
+        try {
+            testResultRepository.saveTestResult(testResult);
+            TestLogManager.info("Test result reported: " + testResult.getTestName() + " - " + testResult.getStatus());
+        } catch (Exception e) {
+            TestLogManager.error("Failed to report test result: " + testResult.getTestName(), e);
         }
-        
-        // Report to custom systems
-        if (enableCustomReports) {
-            reportToCustomSystems(testResult);
-        }
-        
-        TestLogManager.success("Test result reported successfully");
     }
     
     /**
-     * Reports multiple test results.
-     * @param testResults List of test results to report
+     * Generates a summary report.
+     * @return Summary report as a string
      */
-    public void reportTestResults(List<TestResult> testResults) {
-        TestLogManager.info("Reporting " + testResults.size() + " test results");
-        
-        for (TestResult testResult : testResults) {
-            reportTestResult(testResult);
+    public String generateSummaryReport() {
+        try {
+            TestExecutionStats stats = testResultRepository.getExecutionStats();
+            
+            StringBuilder summary = new StringBuilder();
+            summary.append("=== Test Execution Summary ===\n");
+            summary.append("Total Tests: ").append(stats.getTotalTests()).append("\n");
+            summary.append("Passed: ").append(stats.getPassedTests()).append("\n");
+            summary.append("Failed: ").append(stats.getFailedTests()).append("\n");
+            summary.append("Skipped: ").append(stats.getSkippedTests()).append("\n");
+            summary.append("Errors: ").append(stats.getErrorTests()).append("\n");
+            summary.append("Success Rate: ").append(String.format("%.2f", stats.getSuccessRate())).append("%\n");
+            summary.append("Total Execution Time: ").append(stats.getTotalExecutionTime()).append("ms\n");
+            summary.append("Average Execution Time: ").append(String.format("%.2f", stats.getAverageExecutionTime())).append("ms\n");
+            
+            String summaryStr = summary.toString();
+            TestLogManager.info("Summary report generated");
+            return summaryStr;
+            
+        } catch (Exception e) {
+            TestLogManager.error("Failed to generate summary report", e);
+            return "Failed to generate summary report: " + e.getMessage();
         }
-        
-        TestLogManager.success("All test results reported successfully");
     }
     
     /**
-     * Generates a summary report for the current test session.
-     * @return ReportSummary object containing summary information
+     * Generates a detailed report.
+     * @return Detailed report as a string
      */
-    public ReportSummary generateSummaryReport() {
-        TestLogManager.info("Generating summary report");
-        
-        var stats = resultRepository.getExecutionStats();
-        
-        ReportSummary summary = new ReportSummary(
-                stats.getTotalTests(),
-                stats.getPassedTests(),
-                stats.getFailedTests(),
-                stats.getSkippedTests(),
-                stats.getPassRate(),
-                stats.getTotalExecutionTime(),
-                LocalDateTime.now()
-        );
-        
-        TestLogManager.info("Summary report generated: " + summary);
-        return summary;
-    }
-    
-    /**
-     * Generates a detailed report for a specific test.
-     * @param testName The name of the test
-     * @return DetailedReport object or null if test not found
-     */
-    public DetailedReport generateDetailedReport(String testName) {
-        TestLogManager.info("Generating detailed report for: " + testName);
-        
-        var testResultOpt = resultRepository.getTestResult(testName);
-        if (testResultOpt.isEmpty()) {
-            TestLogManager.warning("Test result not found for: " + testName);
-            return null;
+    public String generateDetailedReport() {
+        try {
+            List<TestResult> allResults = testResultRepository.getAllTestResults();
+            
+            StringBuilder report = new StringBuilder();
+            report.append("=== Detailed Test Report ===\n");
+            report.append("Generated at: ").append(LocalDateTime.now()).append("\n\n");
+            
+            for (TestResult result : allResults) {
+                report.append("Test: ").append(result.getTestName()).append("\n");
+                report.append("Status: ").append(result.getStatus()).append("\n");
+                report.append("Start Time: ").append(result.getStartTime()).append("\n");
+                report.append("End Time: ").append(result.getEndTime()).append("\n");
+                report.append("Duration: ").append(result.getDurationInMillis()).append("ms\n");
+                
+                if (result.hasError()) {
+                    report.append("Error: ").append(result.getErrorMessage()).append("\n");
+                }
+                
+                report.append("Additional Info: ").append(result.getAdditionalInfo()).append("\n");
+                report.append("---\n");
+            }
+            
+            String reportStr = report.toString();
+            TestLogManager.info("Detailed report generated");
+            return reportStr;
+            
+        } catch (Exception e) {
+            TestLogManager.error("Failed to generate detailed report", e);
+            return "Failed to generate detailed report: " + e.getMessage();
         }
-        
-        TestResult testResult = testResultOpt.get();
-        
-        DetailedReport report = new DetailedReport(
-                testResult.getTestName(),
-                testResult.getStatus(),
-                testResult.getStartTime(),
-                testResult.getEndTime(),
-                testResult.getDurationInMillis(),
-                testResult.getErrorMessage(),
-                testResult.getAdditionalInfo()
-        );
-        
-        TestLogManager.info("Detailed report generated for: " + testName);
-        return report;
     }
     
     /**
-     * Generates a trend report for a specific date range.
+     * Generates a report for a specific date range.
      * @param startDate Start date
      * @param endDate End date
-     * @return TrendReport object
+     * @return Report for the date range
      */
-    public TrendReport generateTrendReport(LocalDateTime startDate, LocalDateTime endDate) {
-        TestLogManager.info("Generating trend report from " + startDate + " to " + endDate);
-        
-        var stats = resultRepository.getExecutionStats(startDate, endDate);
-        var testResults = resultRepository.getTestResultsByDateRange(startDate, endDate);
-        
-        TrendReport report = new TrendReport(
-                startDate,
-                endDate,
-                stats,
-                testResults
-        );
-        
-        TestLogManager.info("Trend report generated");
-        return report;
+    public String generateDateRangeReport(LocalDateTime startDate, LocalDateTime endDate) {
+        try {
+            List<TestResult> results = testResultRepository.getTestResultsByDateRange(startDate, endDate);
+            TestExecutionStats stats = testResultRepository.getExecutionStats(startDate, endDate);
+            
+            StringBuilder report = new StringBuilder();
+            report.append("=== Date Range Report ===\n");
+            report.append("Period: ").append(startDate).append(" to ").append(endDate).append("\n");
+            report.append("Total Tests: ").append(stats.getTotalTests()).append("\n");
+            report.append("Passed: ").append(stats.getPassedTests()).append("\n");
+            report.append("Failed: ").append(stats.getFailedTests()).append("\n");
+            report.append("Success Rate: ").append(String.format("%.2f", stats.getSuccessRate())).append("%\n");
+            
+            String reportStr = report.toString();
+            TestLogManager.info("Date range report generated");
+            return reportStr;
+            
+        } catch (Exception e) {
+            TestLogManager.error("Failed to generate date range report", e);
+            return "Failed to generate date range report: " + e.getMessage();
+        }
     }
     
     /**
-     * Finalizes all reporting systems and generates final reports.
+     * Generates a failure report.
+     * @return Failure report as a string
+     */
+    public String generateFailureReport() {
+        try {
+            List<TestResult> failedResults = testResultRepository.getTestResultsByStatus(TestResult.Status.FAIL);
+            List<TestResult> errorResults = testResultRepository.getTestResultsByStatus(TestResult.Status.ERROR);
+            
+            StringBuilder report = new StringBuilder();
+            report.append("=== Failure Report ===\n");
+            report.append("Failed Tests: ").append(failedResults.size()).append("\n");
+            report.append("Error Tests: ").append(errorResults.size()).append("\n\n");
+            
+            // Add failed tests
+            for (TestResult result : failedResults) {
+                report.append("FAILED: ").append(result.getTestName()).append("\n");
+                if (result.hasError()) {
+                    report.append("Error: ").append(result.getErrorMessage()).append("\n");
+                }
+                report.append("---\n");
+            }
+            
+            // Add error tests
+            for (TestResult result : errorResults) {
+                report.append("ERROR: ").append(result.getTestName()).append("\n");
+                if (result.hasError()) {
+                    report.append("Error: ").append(result.getErrorMessage()).append("\n");
+                }
+                report.append("---\n");
+            }
+            
+            String reportStr = report.toString();
+            TestLogManager.info("Failure report generated");
+            return reportStr;
+            
+        } catch (Exception e) {
+            TestLogManager.error("Failed to generate failure report", e);
+            return "Failed to generate failure report: " + e.getMessage();
+        }
+    }
+    
+    /**
+     * Exports test results to a specific format.
+     * @param format Export format (JSON, CSV, XML)
+     * @return Export result
+     */
+    public Map<String, Object> exportResults(String format) {
+        Map<String, Object> exportResult = new HashMap<>();
+        
+        try {
+            List<TestResult> allResults = testResultRepository.getAllTestResults();
+            
+            switch (format.toUpperCase()) {
+                case "JSON":
+                    exportResult.put("format", "JSON");
+                    exportResult.put("data", convertToJson(allResults));
+                    break;
+                case "CSV":
+                    exportResult.put("format", "CSV");
+                    exportResult.put("data", convertToCsv(allResults));
+                    break;
+                case "XML":
+                    exportResult.put("format", "XML");
+                    exportResult.put("data", convertToXml(allResults));
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unsupported export format: " + format);
+            }
+            
+            exportResult.put("success", true);
+            exportResult.put("count", allResults.size());
+            TestLogManager.info("Results exported to " + format + " format");
+            
+        } catch (Exception e) {
+            exportResult.put("success", false);
+            exportResult.put("error", e.getMessage());
+            TestLogManager.error("Failed to export results to " + format, e);
+        }
+        
+        return exportResult;
+    }
+    
+    /**
+     * Finalizes reporting.
      */
     public void finalizeReporting() {
-        TestLogManager.info("Finalizing reporting systems");
+        TestLogManager.info("Finalizing reporting system");
         
-        if (enableExtentReports) {
-            ExtentManager.flushReports();
-            TestLogManager.info("ExtentReports finalized");
-        }
-        
-        if (enableCustomReports) {
-            // Finalize custom reporting systems
-            TestLogManager.info("Custom reports finalized");
-        }
-        
-        TestLogManager.success("All reporting systems finalized successfully");
-    }
-    
-    private void reportToExtentReports(TestResult testResult) {
         try {
-            switch (testResult.getStatus()) {
-                case PASS:
-                    ExtentManager.passTest("Test passed: " + testResult.getTestName());
-                    break;
-                case FAIL:
-                case ERROR:
-                    ExtentManager.failTest("Test failed: " + testResult.getTestName());
-                    if (testResult.getErrorMessage() != null) {
-                        ExtentManager.failTest("Error: " + testResult.getErrorMessage());
-                    }
-                    break;
-                case SKIP:
-                    ExtentManager.skipTest("Test skipped: " + testResult.getTestName());
-                    break;
-            }
+            // Generate final summary
+            String summary = generateSummaryReport();
+            TestLogManager.info("Final summary:\n" + summary);
             
-            // Add additional information
-            Map<String, String> additionalInfo = testResult.getAdditionalInfo();
-            if (additionalInfo != null && !additionalInfo.isEmpty()) {
-                ExtentManager.customReport(additionalInfo);
-            }
+            reportingInitialized = false;
+            TestLogManager.success("Reporting system finalized");
             
         } catch (Exception e) {
-            TestLogManager.error("Error reporting to ExtentReports", e);
+            TestLogManager.error("Error during reporting finalization", e);
         }
     }
     
-    private void reportToCustomSystems(TestResult testResult) {
-        try {
-            // Implement custom reporting logic here
-            // This could include database logging, email notifications, etc.
+    private String convertToJson(List<TestResult> results) {
+        // Simple JSON conversion for demonstration
+        StringBuilder json = new StringBuilder();
+        json.append("{\n  \"testResults\": [\n");
+        
+        for (int i = 0; i < results.size(); i++) {
+            TestResult result = results.get(i);
+            json.append("    {\n");
+            json.append("      \"testName\": \"").append(result.getTestName()).append("\",\n");
+            json.append("      \"status\": \"").append(result.getStatus()).append("\",\n");
+            json.append("      \"duration\": ").append(result.getDurationInMillis()).append("\n");
+            json.append("    }");
             
-            TestLogManager.info("Reported to custom systems: " + testResult.getTestName());
-            
-        } catch (Exception e) {
-            TestLogManager.error("Error reporting to custom systems", e);
+            if (i < results.size() - 1) {
+                json.append(",");
+            }
+            json.append("\n");
         }
+        
+        json.append("  ]\n}");
+        return json.toString();
     }
     
-    /**
-     * Data class for report summary.
-     */
-    public static class ReportSummary {
-        private final int totalTests;
-        private final int passedTests;
-        private final int failedTests;
-        private final int skippedTests;
-        private final double passRate;
-        private final long totalExecutionTime;
-        private final LocalDateTime generatedAt;
+    private String convertToCsv(List<TestResult> results) {
+        StringBuilder csv = new StringBuilder();
+        csv.append("TestName,Status,Duration,StartTime,EndTime\n");
         
-        public ReportSummary(int totalTests, int passedTests, int failedTests, int skippedTests,
-                           double passRate, long totalExecutionTime, LocalDateTime generatedAt) {
-            this.totalTests = totalTests;
-            this.passedTests = passedTests;
-            this.failedTests = failedTests;
-            this.skippedTests = skippedTests;
-            this.passRate = passRate;
-            this.totalExecutionTime = totalExecutionTime;
-            this.generatedAt = generatedAt;
+        for (TestResult result : results) {
+            csv.append(result.getTestName()).append(",");
+            csv.append(result.getStatus()).append(",");
+            csv.append(result.getDurationInMillis()).append(",");
+            csv.append(result.getStartTime()).append(",");
+            csv.append(result.getEndTime()).append("\n");
         }
         
-        // Getters
-        public int getTotalTests() { return totalTests; }
-        public int getPassedTests() { return passedTests; }
-        public int getFailedTests() { return failedTests; }
-        public int getSkippedTests() { return skippedTests; }
-        public double getPassRate() { return passRate; }
-        public long getTotalExecutionTime() { return totalExecutionTime; }
-        public LocalDateTime getGeneratedAt() { return generatedAt; }
-        
-        @Override
-        public String toString() {
-            return "ReportSummary{" +
-                    "totalTests=" + totalTests +
-                    ", passedTests=" + passedTests +
-                    ", failedTests=" + failedTests +
-                    ", skippedTests=" + skippedTests +
-                    ", passRate=" + String.format("%.2f", passRate) + "%" +
-                    ", totalExecutionTime=" + totalExecutionTime + "ms" +
-                    '}';
-        }
+        return csv.toString();
     }
     
-    /**
-     * Data class for detailed report.
-     */
-    public static class DetailedReport {
-        private final String testName;
-        private final TestResult.Status status;
-        private final LocalDateTime startTime;
-        private final LocalDateTime endTime;
-        private final long duration;
-        private final String errorMessage;
-        private final Map<String, String> additionalInfo;
+    private String convertToXml(List<TestResult> results) {
+        StringBuilder xml = new StringBuilder();
+        xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+        xml.append("<testResults>\n");
         
-        public DetailedReport(String testName, TestResult.Status status, LocalDateTime startTime,
-                            LocalDateTime endTime, long duration, String errorMessage,
-                            Map<String, String> additionalInfo) {
-            this.testName = testName;
-            this.status = status;
-            this.startTime = startTime;
-            this.endTime = endTime;
-            this.duration = duration;
-            this.errorMessage = errorMessage;
-            this.additionalInfo = additionalInfo;
+        for (TestResult result : results) {
+            xml.append("  <testResult>\n");
+            xml.append("    <testName>").append(result.getTestName()).append("</testName>\n");
+            xml.append("    <status>").append(result.getStatus()).append("</status>\n");
+            xml.append("    <duration>").append(result.getDurationInMillis()).append("</duration>\n");
+            xml.append("  </testResult>\n");
         }
         
-        // Getters
-        public String getTestName() { return testName; }
-        public TestResult.Status getStatus() { return status; }
-        public LocalDateTime getStartTime() { return startTime; }
-        public LocalDateTime getEndTime() { return endTime; }
-        public long getDuration() { return duration; }
-        public String getErrorMessage() { return errorMessage; }
-        public Map<String, String> getAdditionalInfo() { return additionalInfo; }
-        
-        @Override
-        public String toString() {
-            return "DetailedReport{" +
-                    "testName='" + testName + '\'' +
-                    ", status=" + status +
-                    ", duration=" + duration + "ms" +
-                    '}';
-        }
-    }
-    
-    /**
-     * Data class for trend report.
-     */
-    public static class TrendReport {
-        private final LocalDateTime startDate;
-        private final LocalDateTime endDate;
-        private final patterns.repository.TestExecutionStats stats;
-        private final List<TestResult> testResults;
-        
-        public TrendReport(LocalDateTime startDate, LocalDateTime endDate,
-                         patterns.repository.TestExecutionStats stats, List<TestResult> testResults) {
-            this.startDate = startDate;
-            this.endDate = endDate;
-            this.stats = stats;
-            this.testResults = testResults;
-        }
-        
-        // Getters
-        public LocalDateTime getStartDate() { return startDate; }
-        public LocalDateTime getEndDate() { return endDate; }
-        public patterns.repository.TestExecutionStats getStats() { return stats; }
-        public List<TestResult> getTestResults() { return testResults; }
-        
-        @Override
-        public String toString() {
-            return "TrendReport{" +
-                    "startDate=" + startDate +
-                    ", endDate=" + endDate +
-                    ", stats=" + stats +
-                    ", testResultsCount=" + testResults.size() +
-                    '}';
-        }
+        xml.append("</testResults>");
+        return xml.toString();
     }
 }

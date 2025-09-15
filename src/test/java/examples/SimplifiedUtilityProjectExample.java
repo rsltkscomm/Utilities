@@ -10,7 +10,6 @@ import utils.CrossPlatformUtils;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.LocalDateTime;
 import java.util.*;
 
 import org.testng.annotations.Test;
@@ -149,7 +148,7 @@ public class SimplifiedUtilityProjectExample extends ModernBaseTest {
             // 1. Test Data Management
             TestLogManager.info("1. Test Data Management");
             TestData data = getTestData("coreTest");
-            TestLogManager.info("Retrieved core test data");
+            TestLogManager.info("Retrieved core test data: " + data.getData("testName"));
             
             // 2. Configuration Management
             TestLogManager.info("2. Configuration Management");
@@ -159,7 +158,7 @@ public class SimplifiedUtilityProjectExample extends ModernBaseTest {
                 .environment("core")
                 .timeoutSeconds(45)
                 .build();
-            TestLogManager.info("Core configuration created");
+            TestLogManager.info("Core configuration created for browser: " + coreConfig.getBrowser());
             
             // 3. Logging and Reporting
             TestLogManager.info("3. Logging and Reporting");

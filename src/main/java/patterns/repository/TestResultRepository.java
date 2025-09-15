@@ -5,90 +5,91 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Repository interface for test result operations.
+ * Repository interface for managing test results.
+ * This provides a contract for different implementations of test result storage.
  */
 public interface TestResultRepository {
     
     /**
      * Saves a test result.
      * @param testResult The test result to save
-     * @return true if saved successfully, false otherwise
+     * @return true if successful, false otherwise
      */
     boolean saveTestResult(TestResult testResult);
     
     /**
-     * Retrieves a test result by test name.
+     * Gets a test result by test name.
      * @param testName The name of the test
-     * @return Optional containing TestResult if found, empty otherwise
+     * @return Optional containing TestResult if found
      */
     Optional<TestResult> getTestResult(String testName);
     
     /**
-     * Retrieves all test results.
-     * @return List of all TestResult instances
+     * Gets all test results.
+     * @return List of all TestResult objects
      */
     List<TestResult> getAllTestResults();
     
     /**
-     * Retrieves test results by status.
+     * Gets test results by status.
      * @param status The status to filter by
-     * @return List of TestResult instances with the specified status
+     * @return List of TestResult objects with the specified status
      */
     List<TestResult> getTestResultsByStatus(TestResult.Status status);
     
     /**
-     * Retrieves test results within a date range.
-     * @param startDate Start date (inclusive)
-     * @param endDate End date (inclusive)
-     * @return List of TestResult instances within the date range
+     * Gets test results within a date range.
+     * @param startDate The start date
+     * @param endDate The end date
+     * @return List of TestResult objects within the date range
      */
     List<TestResult> getTestResultsByDateRange(LocalDateTime startDate, LocalDateTime endDate);
     
     /**
-     * Retrieves the latest test result for a given test name.
+     * Gets the latest test result for a specific test.
      * @param testName The name of the test
-     * @return Optional containing the latest TestResult if found, empty otherwise
+     * @return Optional containing the latest TestResult if found
      */
     Optional<TestResult> getLatestTestResult(String testName);
     
     /**
      * Updates an existing test result.
      * @param testResult The test result to update
-     * @return true if updated successfully, false otherwise
+     * @return true if successful, false otherwise
      */
     boolean updateTestResult(TestResult testResult);
     
     /**
-     * Deletes a test result.
-     * @param testName The name of the test result to delete
-     * @return true if deleted successfully, false otherwise
+     * Deletes a test result by test name.
+     * @param testName The name of the test
+     * @return true if successful, false otherwise
      */
     boolean deleteTestResult(String testName);
     
     /**
-     * Gets test execution statistics.
-     * @return TestExecutionStats object containing statistics
+     * Gets execution statistics.
+     * @return TestExecutionStats object containing execution statistics
      */
     TestExecutionStats getExecutionStats();
     
     /**
-     * Gets test execution statistics for a specific date range.
-     * @param startDate Start date (inclusive)
-     * @param endDate End date (inclusive)
-     * @return TestExecutionStats object containing statistics for the date range
+     * Gets execution statistics within a date range.
+     * @param startDate The start date
+     * @param endDate The end date
+     * @return TestExecutionStats object containing execution statistics
      */
     TestExecutionStats getExecutionStats(LocalDateTime startDate, LocalDateTime endDate);
     
     /**
      * Clears all test results.
-     * @return true if cleared successfully, false otherwise
+     * @return true if successful, false otherwise
      */
     boolean clear();
     
     /**
-     * Clears test results older than the specified date.
+     * Clears old test results before a cutoff date.
      * @param cutoffDate The cutoff date
-     * @return Number of test results deleted
+     * @return Number of results removed
      */
     int clearOldResults(LocalDateTime cutoffDate);
 }
