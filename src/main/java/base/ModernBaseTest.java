@@ -12,6 +12,8 @@ import reporting.TestLogManager;
 
 import org.testng.annotations.*;
 
+import pages.PageFactory;
+
 import java.lang.reflect.Method;
 import java.util.List;
 
@@ -227,4 +229,9 @@ public class ModernBaseTest {
         throwable.printStackTrace(pw);
         return sw.toString();
     }
+    
+    public static PageFactory getPageFactory()
+	{
+		return new PageFactory(DriverManager.getDriver());
+	}
 }

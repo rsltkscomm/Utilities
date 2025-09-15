@@ -1,11 +1,18 @@
 package seleniumUtils;
 
+import java.time.Duration;
+
+import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
 import pages.PageFactory;
 import reporting.ExtentManager;
+import reporting.TestLogManager;
 
 /**
  * Utility class for handling scroll actions (Selenium + JavaScript) with logging.
@@ -30,6 +37,36 @@ public class ScrollUtil extends BrowserUtil {
             return false;
         }
     }
+    
+    /**
+   	 * 
+   	 * Scroll to the particular element
+   	 *
+   	 * @param pr - By calling autolocator method and object repository.
+   	 */
+   	public void javaScriptScrollIntoView(String pr)
+   	{
+   		try
+   		{
+   			By locator = autolocator(pr);
+
+   			// Wait for visibility before scrolling
+   			WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(30));
+   			WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
+
+   			// Scroll element into view
+   			((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center'});", element);
+
+   			// Optional: highlight or log
+   			highlightElement(element);
+   			ExtentManager.infoTest("Scrolled into view: " + logName.get());
+   			wait(1);
+   		} catch (NoSuchElementException e)
+   		{
+   			ExtentManager.infoTest("Scroll to element failed");
+   			TestLogManager.error("Exception occurred", e);
+   		}
+   	}
 
     /* -------------------- SCROLL BY PIXELS -------------------- */
     public boolean scrollBy(int x, int y) {
@@ -106,5 +143,10 @@ public class ScrollUtil extends BrowserUtil {
 		{
 			ExtentManager.failTest("❌ waitForScroll failed: " + e.getMessage());
 		}
+	}
+	
+	public void scrollStep(JavascriptExecutor jse, int pixels)
+	{
+		jse.executeScript("window.scrollBy(0," + pixels + ")");
 	}
 }

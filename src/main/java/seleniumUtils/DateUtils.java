@@ -10,15 +10,23 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+
+import org.openqa.selenium.WebDriver;
+
+import pages.PageFactory;
 import reporting.TestLogManager;
 
 /**
  * Utility class for date and time operations
  * Extracted from PageBase.java to improve code organization
  */
-public class DateUtils {
+public class DateUtils extends LocatorUtil {
     
-    private static final List<String> DATE_PATTERNS = Arrays.asList(
+    public DateUtils(WebDriver driver, PageFactory pageFactory) {
+		super(driver, pageFactory);
+	}
+
+	private static final List<String> DATE_PATTERNS = Arrays.asList(
         "E, dd MMM, yyyy hh:mm a", 
         "E, dd MMM, yyyy", 
         "dd MMM yyyy", 
@@ -409,4 +417,11 @@ public class DateUtils {
         }
         return new String[] { roundedTime12, roundedTime24 };
     }
+    
+    public String currentDateAndTime(String format)
+	{
+		SimpleDateFormat formatter = new SimpleDateFormat(format);
+		String storedDateTime = formatter.format(new Date());
+		return storedDateTime;
+	}
 } 

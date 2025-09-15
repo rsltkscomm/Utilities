@@ -95,7 +95,7 @@ public class ScreenshotUtil extends WaitUtil {
     /**
      * Highlight element by adding red border using JavaScript.
      */
-    private static void highlightElement(WebElement element) {
+    protected static void highlightElement(WebElement element) {
         try {
             JavascriptExecutor js = (JavascriptExecutor) DriverManager.getDriver();
             js.executeScript("arguments[0].setAttribute('style', arguments[0].getAttribute('style') + '; border: 3px solid red; background: yellow;');", element);
