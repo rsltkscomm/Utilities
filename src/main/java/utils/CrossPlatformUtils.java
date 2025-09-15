@@ -15,7 +15,7 @@ import java.util.Map;
 public class CrossPlatformUtils {
     
     public enum OperatingSystem {
-        WINDOWS, MAC, LINUX, UNKNOWN
+        WINDOWS, MAC, MACOS, LINUX, UNKNOWN
     }
     
     private static final String OS_NAME = System.getProperty("os.name").toLowerCase();
@@ -30,7 +30,7 @@ public class CrossPlatformUtils {
         if (OS_NAME.contains("win")) {
             return OperatingSystem.WINDOWS;
         } else if (OS_NAME.contains("mac")) {
-            return OperatingSystem.MAC;
+            return OperatingSystem.MACOS;
         } else if (OS_NAME.contains("nix") || OS_NAME.contains("nux") || OS_NAME.contains("aix")) {
             return OperatingSystem.LINUX;
         } else {
@@ -76,7 +76,7 @@ public class CrossPlatformUtils {
                 envVars.put("LOCALAPPDATA", System.getenv("LOCALAPPDATA"));
                 envVars.put("TEMP", System.getenv("TEMP"));
                 break;
-            case MAC:
+            case MACOS:
                 envVars.put("HOME", System.getenv("HOME"));
                 envVars.put("TMPDIR", System.getenv("TMPDIR"));
                 break;
@@ -110,7 +110,7 @@ public class CrossPlatformUtils {
         switch (os) {
             case WINDOWS:
                 return getWindowsBrowserPath(browser);
-            case MAC:
+            case MACOS:
                 return getMacBrowserPath(browser);
             case LINUX:
                 return getLinuxBrowserPath(browser);
@@ -193,6 +193,52 @@ public class CrossPlatformUtils {
      */
     public static String getPathSeparator() {
         return File.pathSeparator;
+    }
+    
+    /**
+     * Gets the line separator for the current OS.
+     * @return Line separator
+     */
+    public static String getLineSeparator() {
+        return System.lineSeparator();
+    }
+    
+    /**
+     * Gets the temp directory for the current OS.
+     * @return Path to temp directory
+     */
+    public static Path getTempDirectory() {
+        return Paths.get(System.getProperty("java.io.tmpdir"));
+    }
+    
+    /**
+     * Creates a path from multiple path components.
+     * @param parts Path components
+     * @return Combined path
+     */
+    public static Path createPath(String... parts) {
+        return Paths.get(parts[0], parts);
+    }
+    
+    /**
+     * Checks if a command is available in the system PATH.
+     * @param command Command to check
+     * @return true if available, false otherwise
+     */
+    public static boolean isCommandAvailable(String command) {
+        try {
+            ProcessBuilder pb = new ProcessBuilder();
+            if (getCurrentOS() == OperatingSystem.WINDOWS) {
+                pb.command("cmd", "/c", "where", command);
+            } else {
+                pb.command("which", command);
+            }
+            Process process = pb.start();
+            int exitCode = process.waitFor();
+            return exitCode == 0;
+        } catch (Exception e) {
+            return false;
+        }
     }
     
     private static Path getWindowsBrowserPath(String browser) {

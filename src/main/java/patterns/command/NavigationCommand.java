@@ -18,6 +18,7 @@ public class NavigationCommand implements Command {
     private final String url;
     private final String description;
     private String previousUrl;
+    private CommandResult result;
     
     public NavigationCommand(WebDriver driver, NavigationType navigationType, String url, String description) {
         this.driver = driver;
@@ -67,10 +68,12 @@ public class NavigationCommand implements Command {
                     return false;
             }
             
+            result = new CommandResult(true, "Navigation successful");
             return true;
             
         } catch (Exception e) {
             TestLogManager.error("Navigation command failed: " + description, e);
+            result = new CommandResult(false, "Navigation failed: " + e.getMessage());
             return false;
         }
     }
@@ -149,5 +152,57 @@ public class NavigationCommand implements Command {
      */
     public String getPreviousUrl() {
         return previousUrl;
+    }
+    
+    /**
+     * Gets the command result.
+     * @return CommandResult object
+     */
+    public CommandResult getResult() {
+        return result;
+    }
+    
+    /**
+     * Command result class to hold execution results.
+     */
+    public static class CommandResult {
+        private final boolean success;
+        private final String message;
+        private final long timestamp;
+        
+        public CommandResult(boolean success, String message) {
+            this.success = success;
+            this.message = message;
+            this.timestamp = System.currentTimeMillis();
+        }
+        
+        public boolean isSuccess() {
+            return success;
+        }
+        
+        public boolean isFailed() {
+            return !success;
+        }
+        
+        public String getMessage() {
+            return message;
+        }
+        
+        public String getErrorMessage() {
+            return success ? null : message;
+        }
+        
+        public long getTimestamp() {
+            return timestamp;
+        }
+        
+        @Override
+        public String toString() {
+            return "CommandResult{" +
+                    "success=" + success +
+                    ", message='" + message + '\'' +
+                    ", timestamp=" + timestamp +
+                    '}';
+        }
     }
 }

@@ -25,6 +25,9 @@ public class DriverFactory {
         registerStrategy(new CrossPlatformDriverStrategy("chrome"));
         registerStrategy(new CrossPlatformDriverStrategy("firefox"));
         registerStrategy(new CrossPlatformDriverStrategy("edge"));
+
+        // Register LambdaTest remote strategy
+        registerStrategy(new LambdaTestDriverStrategy());
     }
     
     /**

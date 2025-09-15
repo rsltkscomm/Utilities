@@ -4,119 +4,132 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.openqa.selenium.support.ui.ExpectedConditions;
-import patterns.repository.TestResult;
+import reporting.TestLogManager;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
 
 /**
- * Command implementation for clicking on web elements.
+ * Command for clicking operations.
+ * This implements the Command pattern for element clicking.
  */
-public class ClickCommand implements UICommand {
+public class ClickCommand implements Command {
     
     private final WebDriver driver;
     private final WebElement element;
-    private final String elementDescription;
-    private final int timeoutSeconds;
+    private final String description;
+    private CommandResult result;
     
-    private TestResult result;
-    private long executionTime;
-    private long executionDuration;
-    // Removed unused field
-    private boolean undoable = false;
-    
-    public ClickCommand(WebDriver driver, WebElement element, String elementDescription) {
-        this(driver, element, elementDescription, 30);
-    }
-    
-    public ClickCommand(WebDriver driver, WebElement element, String elementDescription, int timeoutSeconds) {
+    public ClickCommand(WebDriver driver, WebElement element, String description) {
         this.driver = driver;
         this.element = element;
-        this.elementDescription = elementDescription;
-        this.timeoutSeconds = timeoutSeconds;
+        this.description = description;
     }
     
     @Override
     public boolean execute() {
-        executionTime = System.currentTimeMillis();
-        LocalDateTime startTime = LocalDateTime.now();
+        if (driver == null) {
+            TestLogManager.error("WebDriver is null, cannot execute click command");
+            result = new CommandResult(false, "WebDriver is null");
+            return false;
+        }
+        
+        if (element == null) {
+            TestLogManager.error("WebElement is null, cannot execute click command");
+            result = new CommandResult(false, "WebElement is null");
+            return false;
+        }
         
         try {
             // Wait for element to be clickable
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(timeoutSeconds));
-            WebElement clickableElement = wait.until(ExpectedConditions.elementToBeClickable(element));
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+            wait.until(ExpectedConditions.elementToBeClickable(element));
             
-            // Perform the click
-            clickableElement.click();
+            // Scroll element into view
+            ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", element);
             
-            executionDuration = System.currentTimeMillis() - executionTime;
-            undoable = false; // Clicks are generally not undoable
+            // Click the element
+            element.click();
             
-            result = new TestResult.Builder()
-                    .testName("ClickCommand: " + elementDescription)
-                    .status(TestResult.Status.PASS)
-                    .startTime(startTime)
-                    .endTime(LocalDateTime.now())
-                    .additionalInfo("element", elementDescription)
-                    .additionalInfo("timeout", String.valueOf(timeoutSeconds))
-                    .build();
-            
+            TestLogManager.info("Element clicked successfully: " + description);
+            result = new CommandResult(true, "Element clicked successfully");
             return true;
             
         } catch (Exception e) {
-            executionDuration = System.currentTimeMillis() - executionTime;
-            
-            result = new TestResult.Builder()
-                    .testName("ClickCommand: " + elementDescription)
-                    .status(TestResult.Status.FAIL)
-                    .startTime(startTime)
-                    .endTime(LocalDateTime.now())
-                    .errorMessage("Failed to click element: " + e.getMessage())
-                    .stackTrace(getStackTrace(e))
-                    .additionalInfo("element", elementDescription)
-                    .additionalInfo("timeout", String.valueOf(timeoutSeconds))
-                    .build();
-            
+            TestLogManager.error("Click command failed: " + description, e);
+            result = new CommandResult(false, "Click failed: " + e.getMessage());
             return false;
         }
     }
     
     @Override
     public boolean undo() {
-        // Clicks are generally not undoable
+        // Click operations are generally not undoable
+        TestLogManager.info("Click command undo not supported: " + description);
         return false;
     }
     
     @Override
     public String getDescription() {
-        return "Click on element: " + elementDescription;
+        return description != null ? description : "Click command";
     }
     
-    @Override
-    public TestResult getResult() {
+    /**
+     * Gets the command result.
+     * @return CommandResult object
+     */
+    public CommandResult getResult() {
         return result;
     }
     
-    @Override
-    public boolean isUndoable() {
-        return undoable;
+    /**
+     * Gets the target element.
+     * @return WebElement that was clicked
+     */
+    public WebElement getElement() {
+        return element;
     }
     
-    @Override
-    public long getExecutionTime() {
-        return executionTime;
-    }
-    
-    @Override
-    public long getExecutionDuration() {
-        return executionDuration;
-    }
-    
-    private String getStackTrace(Exception e) {
-        StringBuilder sb = new StringBuilder();
-        for (StackTraceElement element : e.getStackTrace()) {
-            sb.append(element.toString()).append("\n");
+    /**
+     * Command result class to hold execution results.
+     */
+    public static class CommandResult {
+        private final boolean success;
+        private final String message;
+        private final long timestamp;
+        
+        public CommandResult(boolean success, String message) {
+            this.success = success;
+            this.message = message;
+            this.timestamp = System.currentTimeMillis();
         }
-        return sb.toString();
+        
+        public boolean isSuccess() {
+            return success;
+        }
+        
+        public boolean isFailed() {
+            return !success;
+        }
+        
+        public String getMessage() {
+            return message;
+        }
+        
+        public String getErrorMessage() {
+            return success ? null : message;
+        }
+        
+        public long getTimestamp() {
+            return timestamp;
+        }
+        
+        @Override
+        public String toString() {
+            return "CommandResult{" +
+                    "success=" + success +
+                    ", message='" + message + '\'' +
+                    ", timestamp=" + timestamp +
+                    '}';
+        }
     }
 }
