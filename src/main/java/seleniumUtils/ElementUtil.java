@@ -1,12 +1,10 @@
 package seleniumUtils;
 
-import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -116,7 +114,7 @@ public class ElementUtil extends ClickUtil
 		}
 	}
 
-	public boolean isEnabled(Object locator)
+	public boolean isEnabled(String locator)
 	{
 		try
 		{
@@ -131,7 +129,7 @@ public class ElementUtil extends ClickUtil
 		}
 	}
 
-	public boolean isSelected(Object locator)
+	public boolean isSelected(String locator)
 	{
 		try
 		{
@@ -160,29 +158,6 @@ public class ElementUtil extends ClickUtil
 		} catch (Exception e)
 		{
 			ExtentManager.failTest("Failed to enter value " + dt + " in " + LocatorUtil.logName.get() + " : " + e.getMessage());
-			return false;
-		}
-	}
-	
-	public boolean javaScriptEnterValue(String locator, String content)
-	{
-		try
-		{
-			WebElement contentArea = findElement(locator);
-			if (contentArea != null && contentArea.isDisplayed())
-			{
-				contentArea.click();
-				((JavascriptExecutor) driver).executeScript("arguments[0].focus(); " + "document.execCommand('selectAll', false, null); " + "document.execCommand('insertText', false, arguments[1]);", contentArea, content);
-				ExtentManager.passTest("Content inserted successfully.");
-				return true;
-			} else
-			{
-				ExtentManager.warningTest("Content area not found or not visible.");
-				return false;
-			}
-		} catch (Exception e)
-		{
-			ExtentManager.failTest("Exception while inserting the content");
 			return false;
 		}
 	}
@@ -217,11 +192,11 @@ public class ElementUtil extends ClickUtil
 		}
 	}
 
-	public List<WebElement> findElements(Object pr)
+	public List<WebElement> findElements(String pr)
 	{
 		try
 		{
-			List<WebElement> elements = getElements(pr);
+			List<WebElement> elements = driver.findElements(autolocator(pr));
 			ExtentManager.infoTest("Found " + elements.size() + " elements for " + LocatorUtil.logName.get() + "");
 			return elements;
 		} catch (Exception e)
@@ -231,8 +206,8 @@ public class ElementUtil extends ClickUtil
 		}
 	}
 	
-	public String getAllDropdownValues(Object locator) {
-	    List<WebElement> dropdownValues = getElements(locator);
+	public String getAllDropdownValues(String locator) {
+	    List<WebElement> dropdownValues = findElements(locator);
 
 	    return dropdownValues.stream()
 	            .map(WebElement::getText)
@@ -279,42 +254,6 @@ public class ElementUtil extends ClickUtil
 	            ExtentManager.getTest().log(Status.FAIL, "Failed to clear field text");
 	        }
 	    }
-	}
-	
-	public boolean jsSelectAllText(String locator)
-	{
-		try
-		{
-			WebElement contentArea = findElement(locator);
-			if (contentArea != null && contentArea.isDisplayed())
-			{
-				contentArea.click();
-				((JavascriptExecutor) driver).executeScript(
-						"var element = arguments[0];" + "var selection = window.getSelection();" + "var range = document.createRange();" + "range.selectNodeContents(element);" + "selection.removeAllRanges();" + "selection.addRange(range);",
-						contentArea);
-				ExtentManager.infoTest("All text selected inside content area.");
-				return true;
-			} else
-			{
-				ExtentManager.warningTest("Content area not found or not visible.");
-				return false;
-			}
-		} catch (Exception e)
-		{
-			ExtentManager.failTest("Error selecting all text in content area");
-			return false;
-		}
-	}
-	
-	public static String rgbToHexColor(String cssValue)
-	{
-		String[] RGBcolor = cssValue.replace("rgb(", "").replace(" ", "").replace(")", "").split(",");
-		int redColorValue = Integer.parseInt(RGBcolor[0]);
-		int greenColorValue = Integer.parseInt(RGBcolor[1]);
-		int blueColorValue = Integer.parseInt(RGBcolor[2]);
-		Color color = new Color(redColorValue, greenColorValue, blueColorValue);
-		String hexcolour = "#" + Integer.toHexString(color.getRGB()).substring(2);
-		return hexcolour;
 	}
 	
 }

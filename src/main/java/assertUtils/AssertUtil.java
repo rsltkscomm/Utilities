@@ -136,7 +136,5 @@ public class AssertUtil extends ElementUtil
 		byte[] decodedBytes = Base64.getDecoder().decode(base64Text);
 		return new String(decodedBytes);
 	}
-
- 
  
 }

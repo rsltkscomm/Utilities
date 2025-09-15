@@ -1,6 +1,5 @@
 package data;
 
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -52,11 +51,11 @@ public class TestDataUtil
     
     public static String getUploadFilesPath(String fileName)
 	{
-    	return Paths.get(FrameworkConstants.UPLOAD_FILES , fileName).toString();
+		return FrameworkConstants.UPLOAD_FILES + fileName;
 	}
 
 	public static String getDataFilesPath(String fileName)
 	{
-    	return Paths.get(FrameworkConstants.TEAM_DATA_FILE , fileName).toString();
+		return FrameworkConstants.TEAM_DATA_FILE + fileName;
 	}
 }

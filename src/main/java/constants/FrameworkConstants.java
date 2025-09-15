@@ -20,7 +20,6 @@ public class FrameworkConstants
 	public static final String TEAM_DATA_FILE = Paths.get(TEST_DATA_PATH, "TestData", USER_NAME + "_" + ENVIRONMENT, "Team").toString();
 	public static final String DYNAMIC_PATH = Paths.get(System.getProperty("user.dir"), "src", "main", "resources", "dynamicFile").toString();
 	public static final String DYNAMIC_CSV_PREFIX = Paths.get(DYNAMIC_PATH, "Automation_dynamicdata").toString();
-
 	private FrameworkConstants() {
 	}
 

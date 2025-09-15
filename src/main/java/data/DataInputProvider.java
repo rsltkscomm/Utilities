@@ -3,7 +3,6 @@ package data;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -18,7 +17,7 @@ import reporting.TestLogManager;
  */
 public class DataInputProvider {
 
-    private static final String COMMON_TESTDATA_FILE_PATH = Paths.get(FrameworkConstants.TEAM_DATA_FILE, "Common_testdata.xlsx").toString();
+    private static final String COMMON_TESTDATA_FILE_PATH = FrameworkConstants.TEAM_DATA_FILE + "Common_testdata.xlsx";
 
     private static final int FIELD_NAME_COL = 1;
     private static final int DATA_VALUE_COL = 2;
@@ -193,15 +192,6 @@ public class DataInputProvider {
         }
     }
     
-    public static String getCellValue(Row row, int colIndex)
-	{
-		if (row == null || row.getCell(colIndex) == null)
-			return "";
-		Cell cell = row.getCell(colIndex);
-		cell.setCellType(CellType.STRING);
-		return cell.getStringCellValue().trim();
-	}
-
     // ------------------------- Helpers -------------------------
 
     private static String getDataFilePath(String dataFileName) {
