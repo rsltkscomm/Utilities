@@ -15,7 +15,7 @@ import java.util.function.Function;
  * Utility class for handling all types of Selenium waits.
  * Supports both String locators and WebElement objects.
  */
-public class WaitUtil extends LocatorUtil {
+public class WaitUtil extends DateUtils {
 
     protected WebDriver driver;
 
