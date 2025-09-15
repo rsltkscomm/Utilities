@@ -7,7 +7,9 @@ import pages.PageFactory;
 
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.function.Function;
 
 /**
  * Utility class for handling all types of Selenium waits.
@@ -53,11 +55,6 @@ public class WaitUtil extends LocatorUtil {
                     .until(ExpectedConditions.visibilityOf((WebElement) pr));
         }
     }
-    
-    public  boolean explicitWaitTextToBePresent(String pr, String dt)
-	{
-		return new WebDriverWait(driver, Duration.ofSeconds(30)).until(ExpectedConditions.textToBePresentInElementValue(getElement(pr), dt));
-	}
 
     public boolean waitForInvisibility(Object pr, int sec) {
         if (pr instanceof String) {
@@ -104,9 +101,9 @@ public class WaitUtil extends LocatorUtil {
                 .until(ExpectedConditions.alertIsPresent());
     }
 
-    public boolean waitForStaleness(Object element, int sec) {
+    public boolean waitForStaleness(WebElement element, int sec) {
         return new WebDriverWait(driver, Duration.ofSeconds(sec))
-                .until(ExpectedConditions.stalenessOf(getElement(element)));
+                .until(ExpectedConditions.stalenessOf(element));
     }
 
     public boolean waitForFrame(Object pr, int sec) {
@@ -175,5 +172,4 @@ public class WaitUtil extends LocatorUtil {
 	        Thread.currentThread().interrupt();
 	    }
 	}
-
 }

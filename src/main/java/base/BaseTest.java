@@ -11,7 +11,6 @@ import reporting.TestLogManager;
 import seleniumUtils.ScreenshotUtil;
 
 import java.lang.reflect.Method;
-import java.nio.file.Paths;
 import java.util.Map;
 
 import org.openqa.selenium.WebDriver;
@@ -71,7 +70,7 @@ public class BaseTest
 				System.getProperty("FeaturewiseChecklist"));
 
 		String dataFile = appPropertyMap.getOrDefault(appName.get(), "");
-		String testDataFile = Paths.get(FrameworkConstants.TEAM_DATA_FILE, dataFile).toString();
+		String testDataFile = FrameworkConstants.TEAM_DATA_FILE + dataFile;
 
 		// 5. Set datatable (thread-safe)
 		datatable.set(new XLSReader(PageBase.getNormalizedPath(testDataFile)));

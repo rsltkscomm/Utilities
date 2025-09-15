@@ -3,9 +3,6 @@ package seleniumUtils;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.interactions.Actions;
-
-import base.DriverManager;
 import pages.PageFactory;
 import reporting.ExtentManager;
 
@@ -77,11 +74,4 @@ public class KeyboardUtil extends WindowUtil {
             return false;
         }
     }
-    
-    public void enterAction()
-	{
-		Actions actions = new Actions(DriverManager.getDriver()); // assuming getDriver() returns WebDriver
-		actions.sendKeys(Keys.ENTER).perform();
-	}
-
 }

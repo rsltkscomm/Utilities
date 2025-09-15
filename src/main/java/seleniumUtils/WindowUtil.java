@@ -105,24 +105,24 @@ public class WindowUtil extends FrameUtil {
     }
 
     /* -------------------- CLOSE ALL OTHER WINDOWS EXCEPT PARENT -------------------- */
-    public boolean closeAllOtherWindows() {
-        try {
-            String parentHandle = driver.getWindowHandles().iterator().next();
-            for (String handle : driver.getWindowHandles()) {
-                if (!handle.equals(parentHandle)) {
-                    driver.switchTo().window(handle);
-                    driver.close();
-                    ExtentManager.infoTest("Closed window: " + handle);
-                }
-            }
-            driver.switchTo().window(parentHandle);
-            ExtentManager.infoTest("Switched back to parent window: " + parentHandle);
-            return true;
-        } catch (Exception e) {
-            ExtentManager.failTest("Failed to close other windows. Reason: " + e.getMessage());
-            return false;
-        }
-    }
+	    public boolean closeAllOtherWindows() {
+	        try {
+	            String parentHandle = driver.getWindowHandles().iterator().next();
+	            for (String handle : driver.getWindowHandles()) {
+	                if (!handle.equals(parentHandle)) {
+	                    driver.switchTo().window(handle);
+	                    driver.close();
+	                    ExtentManager.infoTest("Closed window: " + handle);
+	                }
+	            }
+	            driver.switchTo().window(parentHandle);
+	            ExtentManager.infoTest("Switched back to parent window: " + parentHandle);
+	            return true;
+	        } catch (Exception e) {
+	            ExtentManager.failTest("Failed to close other windows. Reason: " + e.getMessage());
+	            return false;
+	        }
+	    }
 
     /* -------------------- OPEN NEW TAB -------------------- */
     public boolean openNewTab() {

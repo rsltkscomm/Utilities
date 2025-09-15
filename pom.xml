@@ -23,7 +23,7 @@
 		<testng.version>7.8.0</testng.version>
 		<rest-assured.version>5.3.1</rest-assured.version>
 		<extentreports.version>5.0.9</extentreports.version>
-		<poi.version>4.1.2</poi.version>
+		<poi.version>5.2.5</poi.version>
 		<lombok.version>1.18.28</lombok.version>
 		<allure.testngversion>2.24.0</allure.testngversion>
 		<webdrivermanager.version>5.7.0</webdrivermanager.version>
@@ -34,13 +34,13 @@
 		<jakarta.mail.version>2.0.1</jakarta.mail.version>
 		<jakarta.activation.version>2.0.1</jakarta.activation.version>
 		<slf4j-simple.version>2.0.7</slf4j-simple.version>
-		<mysql-connector-j.version>8.0.33</mysql-connector-j.version>
+		<mysql-connector-j.version>8.4.0</mysql-connector-j.version>
 		<opencsv.version>5.8</opencsv.version>
-		<pdfbox.version>2.0.33</pdfbox.version>
+		<pdfbox.version>3.0.4</pdfbox.version>
 		<core.version>3.5.1</core.version>
 		<javase.version>3.5.1</javase.version>
 		<json-simple.version>1.1.1</json-simple.version>
-		<jackson-databind.version>2.19.0</jackson-databind.version>
+		<jackson-databind.version>2.18.2</jackson-databind.version>
 		<httpclient5.version>5.5</httpclient5.version>
 
 	</properties>
@@ -62,7 +62,7 @@
 		<dependency>
 			<groupId>org.jsoup</groupId>
 			<artifactId>jsoup</artifactId>
-			<version>1.21.1</version>
+			<version>1.18.3</version>
 		</dependency>
 		<!-- https://mvnrepository.com/artifact/com.epam.healenium/healenium-web -->
 		<dependency>
@@ -142,6 +142,20 @@
 			<artifactId>rest-assured</artifactId>
 			<version>${rest-assured.version}</version>
 		</dependency>
+		
+		<!-- JSON Schema Validation -->
+		<dependency>
+			<groupId>com.networknt</groupId>
+			<artifactId>json-schema-validator</artifactId>
+			<version>1.0.87</version>
+		</dependency>
+		
+		<!-- Appium for Mobile Testing -->
+		<dependency>
+			<groupId>io.appium</groupId>
+			<artifactId>java-client</artifactId>
+			<version>10.0.0</version>
+		</dependency>
 		<!-- Reporting -->
 		<dependency>
 			<groupId>com.aventstack</groupId>
@@ -173,29 +187,6 @@
 			<groupId>org.apache.pdfbox</groupId>
 			<artifactId>pdfbox</artifactId>
 			<version>${pdfbox.version}</version>
-		</dependency>
-		<!-- https://mvnrepository.com/artifact/log4j/log4j -->
-		<!--		logger
--->
-		<!-- Log4j 2 Core -->
-		<dependency>
-			<groupId>org.apache.logging.log4j</groupId>
-			<artifactId>log4j-core</artifactId>
-			<version>2.20.0</version>
-		</dependency>
-
-		<!-- Log4j 2 API -->
-		<dependency>
-			<groupId>org.apache.logging.log4j</groupId>
-			<artifactId>log4j-api</artifactId>
-			<version>2.20.0</version>
-		</dependency>
-
-		<!-- SLF4J Bridge (if you need SLF4J compatibility) -->
-		<dependency>
-			<groupId>org.apache.logging.log4j</groupId>
-			<artifactId>log4j-slf4j-impl</artifactId>
-			<version>2.20.0</version>
 		</dependency>
 		<!-- Utilities -->
 		<dependency>
@@ -302,9 +293,13 @@
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>3.1.2</version>
 				<configuration>
+					<suiteXmlFiles>
+						<suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
+					</suiteXmlFiles>
 					<includes>
 						<include>**/*Test.java</include>
 						<include>**/*Tests.java</include>
+						<include>**/*Example.java</include>
 					</includes>
 				</configuration>
 			</plugin>

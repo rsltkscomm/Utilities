@@ -10,24 +10,15 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
-import java.util.TimeZone;
-
-import org.openqa.selenium.WebDriver;
-
-import pages.PageFactory;
 import reporting.TestLogManager;
 
 /**
  * Utility class for date and time operations
  * Extracted from PageBase.java to improve code organization
  */
-public class DateUtils extends AlertUtil {
+public class DateUtils {
     
-    public DateUtils(WebDriver driver, PageFactory pageFactory) {
-		super(driver, pageFactory);
-	}
-
-	private static final List<String> DATE_PATTERNS = Arrays.asList(
+    private static final List<String> DATE_PATTERNS = Arrays.asList(
         "E, dd MMM, yyyy hh:mm a", 
         "E, dd MMM, yyyy", 
         "dd MMM yyyy", 
@@ -207,20 +198,6 @@ public class DateUtils extends AlertUtil {
             throw e;
         }
     }
-    
-    public static String addTimeToValueToShort()
-	{
-		try
-		{
-			SimpleDateFormat sdf = new SimpleDateFormat("M-d-HHmmSS");
-			sdf.setTimeZone(TimeZone.getTimeZone("IST"));
-			return sdf.format(new Date());
-		} catch (Exception e)
-		{
-			e.printStackTrace();
-			return "ErrorGeneratingTime";
-		}
-	}
     
     /**
      * Parse date string with multiple patterns
@@ -432,12 +409,4 @@ public class DateUtils extends AlertUtil {
         }
         return new String[] { roundedTime12, roundedTime24 };
     }
-    
-	public String currentDateAndTime(String format)
-	{
-		SimpleDateFormat formatter = new SimpleDateFormat(format);
-		String storedDateTime = formatter.format(new Date());
-		return storedDateTime;
-	}
-     
 } 
