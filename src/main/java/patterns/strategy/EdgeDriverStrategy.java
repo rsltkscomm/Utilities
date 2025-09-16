@@ -81,9 +81,8 @@ public class EdgeDriverStrategy implements DriverStrategy {
         prefs.put("profile.default_content_settings.popups", 0);
         prefs.put("credentials_enable_service", false);
         prefs.put("profile.password_manager_enabled", false);
-        prefs.put("profile.default_content_setting_values.geolocation", 1);
         
-        options.addArguments("--disable-notifications", "--no-sandbox", "--disable-gpu", "--incognito");
+        options.addArguments("--enable-geolocation","--disable-notifications", "--no-sandbox", "--disable-gpu", "--incognito");
         options.setExperimentalOption("prefs", prefs);
         options.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
     }

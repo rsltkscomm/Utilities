@@ -1,5 +1,6 @@
 package data;
 
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -49,13 +50,12 @@ public class TestDataUtil
 		return exceldata.get(Thread.currentThread().getId());
 	}
     
-    public static String getUploadFilesPath(String fileName)
-	{
-		return FrameworkConstants.UPLOAD_FILES + fileName;
-	}
+    public static String getUploadFilesPath(String fileName) {
+        return Path.of(FrameworkConstants.UPLOAD_FILES).resolve(fileName).toAbsolutePath().toString();
+    }
+    
+    public static String getDataFilesPath(String fileName) {
+        return Path.of(FrameworkConstants.TEAM_DATA_FILE).resolve(fileName).toAbsolutePath().toString();
+    }
 
-	public static String getDataFilesPath(String fileName)
-	{
-		return FrameworkConstants.TEAM_DATA_FILE + fileName;
-	}
 }

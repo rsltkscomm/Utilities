@@ -1,6 +1,5 @@
 package examples;
 
-import base.ModernBaseTest;
 import patterns.builder.TestConfiguration;
 import patterns.command.*;
 import patterns.repository.TestData;
@@ -11,6 +10,8 @@ import utils.CrossPlatformUtils;
 import java.nio.file.Path;
 import java.util.*;
 import org.testng.annotations.Test;
+
+import base.ModernBaseTest;
 
 /**
  * Complete Utility Project Example - Demonstrates all capabilities of the test automation framework.
