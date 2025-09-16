@@ -53,8 +53,6 @@ public class DriverManager
 			// Use the new Strategy pattern for driver creation with custom capabilities
 			driver = DriverFactory.createDriver(browser, capabilities);
 			
-			driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
-			driver.manage().window().maximize();
 			driverThread.set(driver);
 			
 			TestLogManager.info("Driver created successfully with custom capabilities: " + browser);
