@@ -57,7 +57,7 @@ public class ChromeDriverStrategy implements DriverStrategy {
     }
     
     private ChromeOptions createChromeOptions() {
-        WebDriverManager.chromedriver().setup();
+//        WebDriverManager.chromedriver().setup();
         ChromeOptions options = new ChromeOptions();
         
         // Set common options
