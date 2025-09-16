@@ -3,6 +3,7 @@ package patterns.strategy;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.remote.DesiredCapabilities;
 
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;

@@ -1,18 +1,19 @@
 package patterns.strategy;
 
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
-import org.openqa.selenium.remote.DesiredCapabilities;
-import org.openqa.selenium.remote.RemoteWebDriver;
-
-import io.github.bonigarcia.wdm.WebDriverManager;
-
 import java.net.URI;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.remote.CapabilityType;
+import org.openqa.selenium.remote.DesiredCapabilities;
+import org.openqa.selenium.remote.RemoteWebDriver;
+
+import io.github.bonigarcia.wdm.WebDriverManager;
 
 /**
  * Strategy implementation for Chrome WebDriver creation.
@@ -83,10 +84,10 @@ public class ChromeDriverStrategy implements DriverStrategy {
         prefs.put("credentials_enable_service", false);
         prefs.put("profile.password_manager_enabled", false);
         
-        options.addArguments("--disable-notifications", "--no-sandbox", "--disable-gpu", "--incognito");
+        options.addArguments("--enable-geolocation","--disable-notifications", "--no-sandbox", "--disable-gpu", "--incognito");
         options.setExperimentalOption("prefs", prefs);
         options.setExperimentalOption("excludeSwitches", Collections.singletonList("enable-automation"));
-        options.setCapability("acceptInsecureCerts", true);
+        options.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
     }
     
     @Override

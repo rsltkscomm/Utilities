@@ -4,6 +4,7 @@ import io.github.bonigarcia.wdm.WebDriverManager;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.edge.EdgeDriver;
 import org.openqa.selenium.edge.EdgeOptions;
+import org.openqa.selenium.remote.CapabilityType;
 import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.remote.RemoteWebDriver;
 
@@ -83,7 +84,7 @@ public class EdgeDriverStrategy implements DriverStrategy {
         
         options.addArguments("--disable-notifications", "--no-sandbox", "--disable-gpu", "--incognito");
         options.setExperimentalOption("prefs", prefs);
-        options.setCapability("acceptInsecureCerts", true);
+        options.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
     }
     
     @Override
