@@ -6,6 +6,8 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.remote.RemoteWebDriver;
 
+import io.github.bonigarcia.wdm.WebDriverManager;
+
 import java.net.URI;
 import java.nio.file.Paths;
 import java.util.Collections;
@@ -56,7 +58,7 @@ public class ChromeDriverStrategy implements DriverStrategy {
     }
     
     private ChromeOptions createChromeOptions() {
-//        WebDriverManager.chromedriver().setup();
+        WebDriverManager.chromedriver().setup();
         ChromeOptions options = new ChromeOptions();
         
         // Set common options
