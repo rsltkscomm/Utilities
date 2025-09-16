@@ -1,7 +1,9 @@
 package examples;
 
 import advanced.*;
-import base.ModernBaseTest;
+import base.BaseTest;
+import base.DriverManager;
+
 import org.testng.annotations.Test;
 import reporting.TestLogManager;
 import utils.CrossPlatformUtils;
@@ -12,7 +14,7 @@ import java.util.*;
 /**
  * Example test class demonstrating the use of advanced testing capabilities.
  */
-public class AdvancedTestingExample extends ModernBaseTest {
+public class AdvancedTestingExample extends BaseTest {
     
     @Test
     public void testAITestGeneration() {
@@ -41,13 +43,13 @@ public class AdvancedTestingExample extends ModernBaseTest {
     public void testPerformanceMonitoring() {
         TestLogManager.info("Testing Performance Monitoring capabilities");
         
-        PerformanceMonitor monitor = new PerformanceMonitor(getDriver());
+        PerformanceMonitor monitor = new PerformanceMonitor(DriverManager.getDriver());
         
         // Start performance monitoring
         monitor.startPerformanceMonitoring();
         
         // Navigate to a page and measure performance
-        getDriver().get("https://www.nobroker.in/");
+        DriverManager.getDriver().get("https://www.nobroker.in/");
         
         // Get page load metrics
         PerformanceMonitor.PerformanceMetrics metrics = monitor.getPageLoadMetrics();
@@ -57,7 +59,7 @@ public class AdvancedTestingExample extends ModernBaseTest {
         
         // Measure action performance
         PerformanceMonitor.PerformanceMetrics actionMetrics = monitor.measureAction("page_navigation", () -> {
-        	getDriver().get("https://www.nobroker.in/property/rent");
+        	DriverManager.getDriver().get("https://www.nobroker.in/property/rent");
         });
         
         TestLogManager.info("Action execution time: " + actionMetrics.getExecutionTime() + "ms");
@@ -78,10 +80,10 @@ public class AdvancedTestingExample extends ModernBaseTest {
     public void testVisualTesting() {
         TestLogManager.info("Testing Visual Testing capabilities");
         
-        VisualTestingUtil visualTester = new VisualTestingUtil(getDriver());
+        VisualTestingUtil visualTester = new VisualTestingUtil(DriverManager.getDriver());
         
         // Navigate to a page
-        getDriver().get("https://www.nobroker.in/");
+        DriverManager.getDriver().get("https://www.nobroker.in/");
         
         // Capture screenshot
         var screenshotPath = visualTester.captureFullPageScreenshot("homepage");
@@ -249,8 +251,8 @@ public class AdvancedTestingExample extends ModernBaseTest {
         
         // Initialize all advanced testing components
         AITestGenerator aiGenerator = new AITestGenerator();
-        PerformanceMonitor perfMonitor = new PerformanceMonitor(getDriver());
-        VisualTestingUtil visualTester = new VisualTestingUtil(getDriver());
+        PerformanceMonitor perfMonitor = new PerformanceMonitor(DriverManager.getDriver());
+        VisualTestingUtil visualTester = new VisualTestingUtil(DriverManager.getDriver());
         SecurityTestUtil securityTester = new SecurityTestUtil();
         TestDataManager dataManager = new TestDataManager();
         TestMonitor testMonitor = new TestMonitor();
@@ -268,7 +270,7 @@ public class AdvancedTestingExample extends ModernBaseTest {
             Map<String, Object> userData = testData.get(0);
             
             // Navigate to application
-            getDriver().get("https://www.nobroker.in/");
+            DriverManager.getDriver().get("https://www.nobroker.in/");
             
             // Capture visual baseline
             var screenshotPath = visualTester.captureFullPageScreenshot("integrated_test");

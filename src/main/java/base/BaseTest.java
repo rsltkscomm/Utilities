@@ -57,7 +57,6 @@ public class BaseTest
 
 		// 3. Initialize driver
 		DriverManager.createDriver(browser);
-		DriverManager.getDriver().manage().window().maximize();
 
 		// Start reporting
 		String testName = method.getAnnotation(Test.class).testName();
@@ -70,7 +69,7 @@ public class BaseTest
 				System.getProperty("FeaturewiseChecklist"));
 
 		String dataFile = appPropertyMap.getOrDefault(appName.get(), "");
-		String testDataFile = FrameworkConstants.TEAM_DATA_FILE + dataFile;
+		String testDataFile = TestDataUtil.getDataFilesPath(dataFile);
 
 		// 5. Set datatable (thread-safe)
 		datatable.set(new XLSReader(PageBase.getNormalizedPath(testDataFile)));

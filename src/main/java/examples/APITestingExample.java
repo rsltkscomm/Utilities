@@ -1,7 +1,8 @@
 package examples;
 
 import advanced.*;
-import base.ModernBaseTest;
+import base.BaseTest;
+
 import org.testng.annotations.Test;
 import reporting.TestLogManager;
 
@@ -10,7 +11,7 @@ import java.util.*;
 /**
  * Example test class demonstrating the use of Advanced API Testing Suite capabilities.
  */
-public class APITestingExample extends ModernBaseTest {
+public class APITestingExample extends BaseTest {
     
     @Test
     public void testAPISchemaValidation() {
