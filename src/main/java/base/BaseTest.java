@@ -57,7 +57,6 @@ public class BaseTest
 
 		// 3. Initialize driver
 		DriverManager.createDriver(browser);
-		DriverManager.getDriver().manage().window().maximize();
 
 		// Start reporting
 		String testName = method.getAnnotation(Test.class).testName();
