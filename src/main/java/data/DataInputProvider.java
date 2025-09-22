@@ -205,5 +205,118 @@ public class DataInputProvider {
             TestLogManager.error("Error saving workbook: " + path, e);
         }
     }
+    
+  //position based mark yes or no in Testdata
+  	public static Map<String, String> getLayoutAndCommNameMap(String datafileName, String sheetName, String testMethodName) throws Exception {
+  	    FileInputStream fis = new FileInputStream((TestDataUtil.getDataFilesPath(datafileName + ".xlsx")));
+  	    XSSFWorkbook workbook = new XSSFWorkbook(fis);
+  	    XSSFSheet sheet = workbook.getSheet(sheetName);
+   
+  	    Row header = sheet.getRow(0);
+  	    int posCol = -1, nameCol = -1, methodCol = -1, execTypeCol = -1, execLayoutCol = -1;
+   
+  	    // Locate column indexes
+  	    for (Cell cell : header) {
+  	        String val = cell.getStringCellValue().trim().toLowerCase();
+  	        switch (val) {
+  	            case "webmobileposition" -> posCol = cell.getColumnIndex();
+  	            case "communicationname" -> nameCol = cell.getColumnIndex();
+  	            case "testmethodname" -> methodCol = cell.getColumnIndex();
+  	            case "executiontype" -> execTypeCol = cell.getColumnIndex();
+  	            case "executedlayoutposition" -> execLayoutCol = cell.getColumnIndex();
+  	        }
+  	    }
+   
+  	    if (execTypeCol == -1) {
+  	        execTypeCol = header.getLastCellNum();
+  	        header.createCell(execTypeCol).setCellValue("executionType");
+  	    }
+   
+  	    if (execLayoutCol == -1) {
+  	        execLayoutCol = header.getLastCellNum();
+  	        header.createCell(execLayoutCol).setCellValue("executedLayoutPosition");
+  	    }
+   
+  	    String type = System.getProperty("Type", "").trim().toLowerCase();
+  	    String executionTypeValue = switch (type) {
+  	        case "bat", "smoke" -> "no";
+  	        case "regression", "e2e" -> "yes";
+  	        default -> throw new RuntimeException("Unknown Type in config.properties: " + type);
+  	    };
+   
+  	    Map<String, String> resultMap = new LinkedHashMap<>();
+   
+  	    for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+  	        Row row = sheet.getRow(i);
+  	        if (row == null) continue;
+   
+  	        String methodInRow = getCellValue(row, methodCol);
+  	        if (!methodInRow.equalsIgnoreCase(testMethodName)) continue;
+   
+  	        // Write the executionType to the matched row
+  	        row.createCell(execTypeCol).setCellValue(executionTypeValue);
+   
+  	        String allLayouts = getCellValue(row, posCol);
+  	        String allCommNames = getCellValue(row, nameCol);
+   
+  	        List<String> layouts = Arrays.stream(allLayouts.split(",")).map(String::trim).toList();
+  	        List<String> commNames = Arrays.stream(allCommNames.split(",")).map(String::trim).toList();
+   
+  	        if (layouts.size() != commNames.size()) {
+  	            throw new RuntimeException("Mismatch in layoutPosition and communicationName counts in row " + i);
+  	        }
+   
+  	        if (executionTypeValue.equalsIgnoreCase("yes")) {
+  	            for (int j = 0; j < layouts.size(); j++) {
+  	                resultMap.put(layouts.get(j), commNames.get(j));
+  	            }
+   
+  	        } else {
+  	            // Deployment – return only one not-yet-executed layout
+  	            String executedStr = getCellValue(row, execLayoutCol);
+  	            Set<String> executedSet = new HashSet<>(Arrays.stream(executedStr.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList());
+   
+  	            for (int j = 0; j < layouts.size(); j++) {
+  	                String layout = layouts.get(j);
+  	                if (!executedSet.contains(layout)) {
+  	                    executedSet.add(layout);
+  	                    Cell execCell = row.getCell(execLayoutCol) != null ? row.getCell(execLayoutCol) : row.createCell(execLayoutCol);
+  	                    execCell.setCellValue(String.join(",", executedSet));
+   
+  	                    resultMap.put(layout, commNames.get(j));
+  	                    break;
+  	                }
+  	            }
+   
+  	            // All executed → reset
+  	            if (resultMap.isEmpty()) {
+  	                row.getCell(execLayoutCol).setCellValue("");
+  	                resultMap.put(layouts.get(0), commNames.get(0));
+  	            }
+  	        }
+   
+  	        // Write Excel
+  	        fis.close();
+  	        FileOutputStream fos = new FileOutputStream(TestDataUtil.getDataFilesPath(datafileName + ".xlsx"));
+  	        workbook.write(fos);
+  	        fos.close();
+  	        workbook.close();
+  	        return resultMap;
+  	    }
+   
+  	    fis.close();
+  	    workbook.close();
+  	    return Collections.emptyMap();
+  	}
+  	
+  	private static String getCellValue(Row row, int colIndex)
+	{
+		if (row == null || row.getCell(colIndex) == null)
+			return "";
+		Cell cell = row.getCell(colIndex);
+		cell.setCellType(CellType.STRING);
+		return cell.getStringCellValue().trim();
+	}
+   
 
 }

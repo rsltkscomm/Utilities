@@ -19,6 +19,7 @@ import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
 
+import base.DriverManager;
 import reporting.NewSummaryReportGenerator.ModuleStats;
 
 public class DetailedTestReporter
@@ -84,14 +85,14 @@ public class DetailedTestReporter
 		return detailedTestReporter;
 	}
 	
-	public static void updateStep(boolean status, TestCase failConstant, TestCase passConstant, WebDriver driver)
+	public static void updateStep(boolean status, TestCase failConstant, TestCase passConstant)
 	{
 		if (!status)
 		{
-			DetailedTestReporter.addStep(failConstant, StepStatus.FAIL, driver);
+			DetailedTestReporter.addStep(failConstant, StepStatus.FAIL, DriverManager.getDriver());
 		} else
 		{
-			DetailedTestReporter.addStep(passConstant, StepStatus.PASS, driver);
+			DetailedTestReporter.addStep(passConstant, StepStatus.PASS, DriverManager.getDriver());
 		}
 	}
 

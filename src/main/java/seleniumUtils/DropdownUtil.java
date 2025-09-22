@@ -2,6 +2,7 @@ package seleniumUtils;
 
 import java.util.List;
 
+import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 
@@ -39,20 +40,17 @@ public class DropdownUtil extends AssertUtil
 			if (!allElements.isEmpty())
 			{
 				ExtentManager.infoTest("Dropdown elements found -> Count: " + allElements.size());
-
 				for (int i = 0; i < allElements.size(); i++)
 				{
 					allElements = findElements(elementspath); // refresh list
 					String eleText = allElements.get(i).getText().trim();
 					String inputVal = input.trim();
-
-					ExtentManager.infoTest("Checking option : <b>" + eleText + "</b>");
-
 					if (eleText.equalsIgnoreCase(inputVal) || eleText.toLowerCase().contains(inputVal.toLowerCase()))
 					{
 						allElements.get(i).click();
 						ExtentManager.passTest("Dropdown selection successful -> Selected: <b>" + eleText + "</b>");
 						elementFound = true;
+						ScreenshotUtil.takeScreenshot();
 						break;
 					}
 				}
@@ -76,4 +74,39 @@ public class DropdownUtil extends AssertUtil
 			return false;
 		}
 	}
+	
+	public boolean selectListElementByIndex(String elementsPath, int index)
+	{
+		List<WebElement> allElements = findElements(elementsPath);
+ 
+		if (index < 0 || index >= allElements.size())
+		{
+			throw new IllegalArgumentException("Invalid index: " + index + ". List size: " + allElements.size());
+		}
+ 
+		int attempts = 0;
+		while (attempts < 3)
+		{
+			try
+			{
+				// Re-find elements in case DOM changed
+				allElements = findElements(elementsPath);
+				if (index < allElements.size())
+				{
+					allElements.get(index).click();
+					return true; // Success - exit method
+				}
+			} catch (StaleElementReferenceException e)
+			{
+				// Ignore and retry
+				return false;
+			}
+			attempts++;
+		}
+ 
+		// If we get here, all attempts failed
+		throw new RuntimeException("Failed to click element at index " + index + " after 3 attempts");
+	}
+	
+	
 }

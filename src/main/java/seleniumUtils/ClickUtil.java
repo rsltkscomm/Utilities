@@ -5,6 +5,7 @@ import org.openqa.selenium.interactions.Actions;
 
 import pages.PageFactory;
 import reporting.ExtentManager;
+import reporting.TestLogManager;
 
 /**
  * Utility class for handling different click actions safely with logging.
@@ -91,6 +92,29 @@ public class ClickUtil extends ScrollUtil {
             return false;
         }
     }
+    
+    /**
+	 * Performs a click action using Selenium Actions class on the given locator.
+	 *
+	 * @param locator The locator of the element to be clicked.
+	 */
+	public boolean actionsClickElement(String locator)
+	{
+		try
+		{
+			WebElement element = driver.findElement(autolocator(locator));
+			TestLogManager.info("Located element with locator: " + locator);
+			Actions actions = new Actions(driver);
+			actions.click(element).build().perform();
+			ExtentManager.infoTest("Clicked : " + LocatorUtil.logName.get());
+			return true;
+		} catch (Exception e)
+		{
+			ExtentManager.failTest("Click failed : " + LocatorUtil.logName.get());
+			ExtentManager.failTest("Reason: " + e.getMessage());
+			return false;
+		}
+	}
 
     /* -------------------- RIGHT CLICK / CONTEXT CLICK -------------------- */
     public boolean rightClick(Object pr) {

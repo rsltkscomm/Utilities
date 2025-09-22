@@ -1,8 +1,6 @@
 package seleniumUtils;
 
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
-
 import pages.PageFactory;
 import reporting.ExtentManager;
 
@@ -44,9 +42,9 @@ public class FrameUtil extends SelectUtil {
     }
 
     /* -------------------- SWITCH TO FRAME BY WEBELEMENT -------------------- */
-    public boolean switchToFrame(WebElement frameElement) {
+    public boolean switchToFrame(Object frameElement) {
         try {
-            driver.switchTo().frame(frameElement);
+            driver.switchTo().frame(getElement(frameElement));
             ExtentManager.infoTest("Switched to frame by WebElement: " + frameElement.toString());
             return true;
         } catch (Exception e) {
@@ -81,19 +79,4 @@ public class FrameUtil extends SelectUtil {
             return false;
         }
     }
-    
-    public boolean switchToFramebyWebElement(String xpath)
-	{
-		try
-		{
-			WebElement ele = driver.findElement(autolocator(xpath));
-			driver.switchTo().frame(ele);
-			ExtentManager.passTest("Switched to frame successfully.");
-			return true;
-		} catch (Exception e)
-		{
-			ExtentManager.failTest("Failed to switch to frame");
-			return false;
-		}
-	}
 }

@@ -65,7 +65,7 @@ public class AssertUtil extends ElementUtil
 	
 	public boolean placeholderValueCheck(String locator, String placeHolderText)
 	{
-		String uiPlaceholderText = getStrText(locator);
+		String uiPlaceholderText = getText(locator);
 		boolean status = uiPlaceholderText.equals(placeHolderText);
 		if (status)
 		{
