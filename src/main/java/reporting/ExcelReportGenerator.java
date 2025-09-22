@@ -45,7 +45,6 @@ public class ExcelReportGenerator
 
 			try (Workbook workbook = file.exists() ? new XSSFWorkbook(new FileInputStream(file)) : new XSSFWorkbook())
 			{
-
 				Sheet sheet = getOrCreateSheet(workbook, sheetName);
 				Row headerRow = getOrCreateHeaderRow(sheet);
 

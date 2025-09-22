@@ -166,11 +166,11 @@ public class ElementUtil extends ClickUtil
 		}
 	}
 	
-	public boolean javaScriptEnterValue(String locator, String content)
+	public boolean javaScriptEnterValue(Object locator, String content)
 	{
 		try
 		{
-			WebElement contentArea = findElement(locator);
+			WebElement contentArea = findElement(getElement(locator));
 			if (contentArea != null && contentArea.isDisplayed())
 			{
 				contentArea.click();
@@ -219,11 +219,11 @@ public class ElementUtil extends ClickUtil
 		}
 	}
 
-	public List<WebElement> findElements(String pr)
+	public List<WebElement> findElements(Object pr)
 	{
 		try
 		{
-			List<WebElement> elements = driver.findElements(autolocator(pr));
+			List<WebElement> elements = getElements(pr);
 			ExtentManager.infoTest("Found " + elements.size() + " elements for " + LocatorUtil.logName.get() + "");
 			return elements;
 		} catch (Exception e)
@@ -244,6 +244,12 @@ public class ElementUtil extends ClickUtil
 	{
 		Actions action = new Actions(DriverManager.getDriver());
 		action.sendKeys(Keys.TAB).build().perform();
+	}
+	
+	public void clickEnter()
+	{
+		Actions action = new Actions(DriverManager.getDriver());
+		action.sendKeys(Keys.ENTER).build().perform();
 	}
 
 	@SuppressWarnings("unchecked")

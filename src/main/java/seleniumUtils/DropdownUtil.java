@@ -1,5 +1,6 @@
 package seleniumUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.openqa.selenium.StaleElementReferenceException;
@@ -106,6 +107,22 @@ public class DropdownUtil extends AssertUtil
  
 		// If we get here, all attempts failed
 		throw new RuntimeException("Failed to click element at index " + index + " after 3 attempts");
+	}
+	
+	public List<String> getDropdownValuesasList(String dropdownLocator, String dropdownlistLocator)
+	{
+		List<String> list = new ArrayList<String>();
+		scrollToElement(dropdownLocator);
+		clickElement(dropdownLocator);
+		List<WebElement> dropdownlists = findElements(dropdownlistLocator);
+		if (dropdownlists.size() > 1)
+		{
+			for (WebElement webElement : dropdownlists)
+			{
+				list.add(webElement.getText());
+			}
+		}
+		return list;
 	}
 	
 	
