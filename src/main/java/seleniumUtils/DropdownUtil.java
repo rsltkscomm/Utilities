@@ -42,12 +42,16 @@ public class DropdownUtil extends AssertUtil
 			{
 				for (int i = 0; i < allElements.size(); i++)
 				{
-					allElements = findElements(elementspath); // refresh list
+					allElements = findElements(elementspath);
+					highlightElement(allElements.get(i));
 					String eleText = allElements.get(i).getText().trim();
+					removeHighlight(allElements.get(i));
 					String inputVal = input.trim();
 					if (eleText.equalsIgnoreCase(inputVal) || eleText.toLowerCase().contains(inputVal.toLowerCase()))
 					{
+						highlightElement(allElements.get(i));
 						allElements.get(i).click();
+						removeHighlight(allElements.get(i));
 						ExtentManager.passTest("Dropdown selection successful -> Selected: <b>" + eleText + "</b>");
 						elementFound = true;
 						ScreenshotUtil.takeScreenshot();
