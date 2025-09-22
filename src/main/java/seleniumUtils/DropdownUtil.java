@@ -40,7 +40,6 @@ public class DropdownUtil extends AssertUtil
 
 			if (!allElements.isEmpty())
 			{
-				ExtentManager.infoTest("Dropdown elements found -> Count: " + allElements.size());
 				for (int i = 0; i < allElements.size(); i++)
 				{
 					allElements = findElements(elementspath); // refresh list

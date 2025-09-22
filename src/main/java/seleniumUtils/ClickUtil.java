@@ -10,90 +10,118 @@ import reporting.TestLogManager;
 /**
  * Utility class for handling different click actions safely with logging.
  */
-public class ClickUtil extends ScrollUtil {
+public class ClickUtil extends ScrollUtil
+{
 
-    private WebDriver driver;
+	private WebDriver driver;
 
-    public ClickUtil(WebDriver driver, PageFactory pageFactory) {
-        super(driver, pageFactory);
-        this.driver = driver;
-    }
+	public ClickUtil(WebDriver driver, PageFactory pageFactory) {
+		super(driver, pageFactory);
+		this.driver = driver;
+	}
 
-    /* -------------------- NORMAL CLICK -------------------- */
-    public boolean clickElement(Object pr) {
-        try {
-        	waitForClickable(getElement(pr), 120);
-            WebElement element = getElement(pr);
-            element.click();
-            ExtentManager.infoTest("Click : " + LocatorUtil.logName.get());
-            return true;
-        } catch (Exception e) {
-            ExtentManager.failTest("Click failed : " + LocatorUtil.logName.get());
-            ExtentManager.failTest("Reason: " + e.getMessage());
-            return false;
-        }
-    }
+	/* -------------------- NORMAL CLICK -------------------- */
+	public boolean clickElement(Object pr)
+	{
+		try
+		{
+			waitForClickable(getElement(pr), 120);
+			WebElement element = getElement(pr);
+			highlightElement(element);
+			element.click();
+			removeHighlight(element);
+			ExtentManager.infoTest("Clicked : <b>" + LocatorUtil.logName.get() + "</b>");
+			return true;
+		} catch (Exception e)
+		{
+			ExtentManager.failTest("Click failed <b>: " + LocatorUtil.logName.get() + "</b>");
+			ExtentManager.failTest("Reason: " + e.getMessage());
+			return false;
+		}
+	}
 
-    /* -------------------- SAFE CLICK -------------------- */
-    public boolean safeClick(Object pr) {
-        try {
-            WebElement element = waitForClickable(pr, 30);
-            if (element != null) {
-                element.click();
-                ExtentManager.infoTest("Safe Click : " + LocatorUtil.logName.get());
-                return true;
-            } else {
-                ExtentManager.failTest("SafeClick failed -> Element not clickable within timeout");
-            }
-        } catch (Exception e) {
-            ExtentManager.failTest("SafeClick failed : " + LocatorUtil.logName.get());
-            ExtentManager.failTest("Reason: " + e.getMessage());
-        }
-        return false;
-    }
+	/* -------------------- SAFE CLICK -------------------- */
+	public boolean safeClick(Object pr)
+	{
+		try
+		{
+			WebElement element = waitForClickable(pr, 30);
+			if (element != null)
+			{
+				highlightElement(element);
+				element.click();
+				removeHighlight(element);
+				ExtentManager.infoTest("Clicked : <b>" + LocatorUtil.logName.get() + "</b>");
+				return true;
+			} else
+			{
+				ExtentManager.failTest("Click failed -> Element not clickable within timeout");
+			}
+		} catch (Exception e)
+		{
+			ExtentManager.failTest("Click failed : " + LocatorUtil.logName.get());
+			ExtentManager.failTest("Reason: " + e.getMessage());
+		}
+		return false;
+	}
 
-    /* -------------------- JS CLICK -------------------- */
-    public boolean jsClick(Object pr) {
-        try {
-            WebElement element = getElement(pr);
-            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", element);
-            ExtentManager.passTest("JS Click : " + LocatorUtil.logName.get());
-            return true;
-        } catch (Exception e) {
-            ExtentManager.failTest("JS Click failed : " + LocatorUtil.logName.get());
-            ExtentManager.failTest("Reason: " + e.getMessage());
-            return false;
-        }
-    }
+	/* -------------------- JS CLICK -------------------- */
+	public boolean jsClick(Object pr)
+	{
+		try
+		{
+			WebElement element = getElement(pr);
+			highlightElement(element);
+			((JavascriptExecutor) driver).executeScript("arguments[0].click();", element);
+			removeHighlight(element);
+			ExtentManager.infoTest("Clicked : <b>" + LocatorUtil.logName.get() + "</b>");
+			return true;
+		} catch (Exception e)
+		{
+			ExtentManager.failTest("Click failed :  <b>" + LocatorUtil.logName.get()+"</b>");
+			ExtentManager.failTest("Reason: " + e.getMessage());
+			return false;
+		}
+	}
 
-    /* -------------------- CLICK WEBELEMENT -------------------- */
-    public boolean click(WebElement element, String elementName) {
-        try {
-            element.click();
-            ExtentManager.passTest("Click : " + elementName);
-            return true;
-        } catch (Exception e) {
-            ExtentManager.failTest("Click failed : " + elementName);
-            ExtentManager.failTest("Reason: " + e.getMessage());
-            return false;
-        }
-    }
+	/* -------------------- CLICK WEBELEMENT -------------------- */
+	public boolean click(WebElement element, String elementName)
+	{
+		try
+		{
+			highlightElement(element);
+			element.click();
+			removeHighlight(element);
+			ExtentManager.infoTest("Clicked : <b>" + LocatorUtil.logName.get() + "</b>");
+			return true;
+		} catch (Exception e)
+		{
+			ExtentManager.failTest("Click failed :  <b>" + elementName+"</b>");
+			ExtentManager.failTest("Reason: " + e.getMessage());
+			return false;
+		}
+	}
 
-    /* -------------------- DOUBLE CLICK -------------------- */
-    public boolean doubleClick(Object pr) {
-        try {
-            WebElement element = getElement(pr);
-            new Actions(driver).doubleClick(element).perform();
-            ExtentManager.infoTest("Double Click : " + LocatorUtil.logName.get());
-            return true;
-        } catch (Exception e) {
-            ExtentManager.failTest("Double Click failed : " + LocatorUtil.logName.get());
-            ExtentManager.failTest("Reason: " + e.getMessage());
-            return false;
-        }
-    }
-    
-    /**
+	/* -------------------- DOUBLE CLICK -------------------- */
+	public boolean doubleClick(Object pr)
+	{
+		try
+		{
+			WebElement element = getElement(pr);
+			highlightElement(element);
+			new Actions(driver).doubleClick(element).perform();
+			removeHighlight(element);
+			ExtentManager.infoTest("Double Click : <b>" + LocatorUtil.logName.get() + "</b>");
+			return true;
+		} catch (Exception e)
+		{
+			ExtentManager.failTest("Double Click failed : " + LocatorUtil.logName.get());
+			ExtentManager.failTest("Reason: " + e.getMessage());
+			return false;
+		}
+	}
+
+	/**
 	 * Performs a click action using Selenium Actions class on the given locator.
 	 *
 	 * @param locator The locator of the element to be clicked.
@@ -104,9 +132,11 @@ public class ClickUtil extends ScrollUtil {
 		{
 			WebElement element = driver.findElement(autolocator(locator));
 			TestLogManager.info("Located element with locator: " + locator);
+			highlightElement(element);
 			Actions actions = new Actions(driver);
 			actions.click(element).build().perform();
-			ExtentManager.infoTest("Clicked : " + LocatorUtil.logName.get());
+			removeHighlight(element);
+			ExtentManager.infoTest("Clicked : <b>" + LocatorUtil.logName.get() + "</b>");
 			return true;
 		} catch (Exception e)
 		{
@@ -116,32 +146,38 @@ public class ClickUtil extends ScrollUtil {
 		}
 	}
 
-    /* -------------------- RIGHT CLICK / CONTEXT CLICK -------------------- */
-    public boolean rightClick(Object pr) {
-        try {
-            WebElement element = getElement(pr);
-            new Actions(driver).contextClick(element).perform();
-            ExtentManager.infoTest("Right Click : " + LocatorUtil.logName.get());
-            return true;
-        } catch (Exception e) {
-            ExtentManager.failTest("Right Click failed : " + LocatorUtil.logName.get());
-            ExtentManager.failTest("Reason: " + e.getMessage());
-            return false;
-        }
-    }
+	/* -------------------- RIGHT CLICK / CONTEXT CLICK -------------------- */
+	public boolean rightClick(Object pr)
+	{
+		try
+		{
+			WebElement element = getElement(pr);
+			new Actions(driver).contextClick(element).perform();
+			ExtentManager.infoTest("Right Click : " + LocatorUtil.logName.get());
+			return true;
+		} catch (Exception e)
+		{
+			ExtentManager.failTest("Right Click failed : " + LocatorUtil.logName.get());
+			ExtentManager.failTest("Reason: " + e.getMessage());
+			return false;
+		}
+	}
 
-    /* -------------------- HOVER AND CLICK -------------------- */
-    public boolean hoverAndClick(Object pr) {
-        try {
-            WebElement element = getElement(pr);
-            new Actions(driver).moveToElement(element).click().perform();
-            ExtentManager.infoTest("Hovered and Clicked : " + LocatorUtil.logName.get());
-            return true;
-        } catch (Exception e) {
-            ExtentManager.failTest("Hover and Click failed : " + LocatorUtil.logName.get());
-            ExtentManager.failTest("Reason: " + e.getMessage());
-            return false;
-        }
-    }
+	/* -------------------- HOVER AND CLICK -------------------- */
+	public boolean hoverAndClick(Object pr)
+	{
+		try
+		{
+			WebElement element = getElement(pr);
+			new Actions(driver).moveToElement(element).click().perform();
+			ExtentManager.infoTest("Hovered and Clicked : " + LocatorUtil.logName.get());
+			return true;
+		} catch (Exception e)
+		{
+			ExtentManager.failTest("Hover and Click failed : " + LocatorUtil.logName.get());
+			ExtentManager.failTest("Reason: " + e.getMessage());
+			return false;
+		}
+	}
 
 }

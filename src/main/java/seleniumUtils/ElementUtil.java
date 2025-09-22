@@ -30,7 +30,7 @@ public class ElementUtil extends ClickUtil
 		this.driver = driver;
 	}
 
-	public String getTextBoxValue(Object locator,String value)
+	public String getTextBoxValue(Object locator, String value)
 	{
 		try
 		{
@@ -58,7 +58,7 @@ public class ElementUtil extends ClickUtil
 			return null;
 		}
 	}
-	
+
 	public String getAttribute(Object locator, String attribute)
 	{
 		try
@@ -79,7 +79,9 @@ public class ElementUtil extends ClickUtil
 		try
 		{
 			WebElement element = waitForVisible(getElement(locator), 60);
+			highlightElement(element);
 			element.sendKeys(dt);
+			removeHighlight(element);
 			return true;
 		} catch (Exception e)
 		{
@@ -154,7 +156,9 @@ public class ElementUtil extends ClickUtil
 		{
 			WebElement element = waitForVisible(getElement(locator), 60);
 			element.clear();
+			highlightElement(element);
 			element.sendKeys(dt);
+			removeHighlight(element);
 			String attribute = element.getAttribute("value");
 			boolean entered = attribute.equals(dt);
 			ExtentManager.infoTest("Enter value <b>'" + dt + "'</b> in " + LocatorUtil.logName.get());
@@ -165,7 +169,7 @@ public class ElementUtil extends ClickUtil
 			return false;
 		}
 	}
-	
+
 	public boolean javaScriptEnterValue(Object locator, String content)
 	{
 		try
@@ -245,7 +249,7 @@ public class ElementUtil extends ClickUtil
 		Actions action = new Actions(DriverManager.getDriver());
 		action.sendKeys(Keys.TAB).build().perform();
 	}
-	
+
 	public void clickEnter()
 	{
 		Actions action = new Actions(DriverManager.getDriver());
@@ -299,14 +303,14 @@ public class ElementUtil extends ClickUtil
 		}
 	}
 
-	//This method is used to find the goal ratio
+	// This method is used to find the goal ratio
 	public int findGCV(int a, int b)
 	{
 		if (b == 0)
 			return a;
 		return findGCV(b, a % b);
 	}
-	
+
 	public static String rgbToHexColor(String cssValue)
 	{
 		String[] RGBcolor = cssValue.replace("rgb(", "").replace(" ", "").replace(")", "").split(",");
@@ -317,7 +321,7 @@ public class ElementUtil extends ClickUtil
 		String hexcolour = "#" + Integer.toHexString(color.getRGB()).substring(2);
 		return hexcolour;
 	}
-	
+
 	public static String decodeBase64ToText(String base64Text)
 	{
 		byte[] decodedBytes = Base64.getDecoder().decode(base64Text);
