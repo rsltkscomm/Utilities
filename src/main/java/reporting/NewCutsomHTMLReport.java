@@ -12,8 +12,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import org.testng.ISuite;
 import org.testng.ISuiteListener;
 import org.testng.ITestListener;
