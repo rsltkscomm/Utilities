@@ -24,7 +24,6 @@ public class ScrollUtil extends BrowserUtil {
         try {
             WebElement element = getElement(pr);
             ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", element);
-            ExtentManager.infoTest("Scrolled into view: " + element.toString());
             return true;
         } catch (Exception e) {
             ExtentManager.failTest("Scroll to element failed. Reason: " + e.getMessage());
@@ -45,10 +44,6 @@ public class ScrollUtil extends BrowserUtil {
    			waitForVisible(pr, 50);
    			// Scroll element into view
    			((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center'});", getElement(pr));
-
-   			// Optional: highlight or log
-   			highlightElement(getElement(pr));
-   			ExtentManager.infoTest("Scrolled into view: " + logName.get());
    			wait(1);
    		} catch (NoSuchElementException e)
    		{
