@@ -7,9 +7,7 @@ import pages.PageFactory;
 
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.function.Function;
 
 /**
  * Utility class for handling all types of Selenium waits.
@@ -168,6 +166,14 @@ public class WaitUtil extends DateUtils {
 	public void wait(int seconds) {
 	    try {
 	        Thread.sleep(seconds * 1000);
+	    } catch (InterruptedException e) {
+	        Thread.currentThread().interrupt();
+	    }
+	}
+	
+	public void waitSecond(int seconds) {
+	    try {
+	        Thread.sleep(seconds);
 	    } catch (InterruptedException e) {
 	        Thread.currentThread().interrupt();
 	    }

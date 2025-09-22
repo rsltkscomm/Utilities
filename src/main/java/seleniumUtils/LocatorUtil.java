@@ -84,6 +84,11 @@ public class LocatorUtil
 		return (pr instanceof String) ? driver.findElement(autolocator(pr.toString())) : (WebElement) pr;
 	}
 
+	public static String replacePlaceHolder(String locator, String placeHolder, String placeHolder1)
+	{
+		return locator.replace("PLACE_HOLDER", placeHolder).replace("TEMP", placeHolder1);
+	}
+	
 	public List<WebElement> getElements(Object pr)
 	{
 		return (pr instanceof String) ? driver.findElements(autolocator(pr.toString())) : Arrays.asList((WebElement) pr);

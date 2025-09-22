@@ -1,10 +1,13 @@
 package seleniumUtils;
 
+import java.awt.Color;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -21,17 +24,18 @@ public class ElementUtil extends ClickUtil
 {
 
 	WebDriver driver;
+
 	public ElementUtil(WebDriver driver, PageFactory pageFactory) {
 		super(driver, pageFactory);
 		this.driver = driver;
 	}
 
-	public String getStrText(Object locator)
+	public String getTextBoxValue(Object locator,String value)
 	{
 		try
 		{
-			WebElement element = waitForVisible(getElement(locator), 60);
-			String text = (element != null) ? element.getText().trim() : null;
+			WebElement element = getElement(locator);
+			String text = (element != null) ? element.getAttribute(value).trim() : null;
 			ExtentManager.infoTest("Get text from " + LocatorUtil.logName.get() + " : <b>'" + text + "'</b>");
 			return text;
 		} catch (Exception e)
@@ -40,7 +44,7 @@ public class ElementUtil extends ClickUtil
 			return null;
 		}
 	}
-	
+
 	public String getText(Object locator)
 	{
 		try
@@ -54,7 +58,7 @@ public class ElementUtil extends ClickUtil
 			return null;
 		}
 	}
-
+	
 	public String getAttribute(Object locator, String attribute)
 	{
 		try
@@ -69,7 +73,7 @@ public class ElementUtil extends ClickUtil
 			return null;
 		}
 	}
-	
+
 	public boolean sendValue(Object locator, String dt)
 	{
 		try
@@ -161,6 +165,29 @@ public class ElementUtil extends ClickUtil
 			return false;
 		}
 	}
+	
+	public boolean javaScriptEnterValue(String locator, String content)
+	{
+		try
+		{
+			WebElement contentArea = findElement(locator);
+			if (contentArea != null && contentArea.isDisplayed())
+			{
+				contentArea.click();
+				((JavascriptExecutor) driver).executeScript("arguments[0].focus(); " + "document.execCommand('selectAll', false, null); " + "document.execCommand('insertText', false, arguments[1]);", contentArea, content);
+				ExtentManager.passTest("Content inserted successfully.");
+				return true;
+			} else
+			{
+				ExtentManager.warningTest("Content area not found or not visible.");
+				return false;
+			}
+		} catch (Exception e)
+		{
+			ExtentManager.failTest("Exception while inserting the content");
+			return false;
+		}
+	}
 
 	public boolean isElementPresent(String element)
 	{
@@ -205,55 +232,90 @@ public class ElementUtil extends ClickUtil
 			return null;
 		}
 	}
-	
-	public String getAllDropdownValues(String locator) {
-	    List<WebElement> dropdownValues = findElements(locator);
 
-	    return dropdownValues.stream()
-	            .map(WebElement::getText)
-	            .collect(Collectors.joining(","));
+	public String getAllDropdownValues(String locator)
+	{
+		List<WebElement> dropdownValues = findElements(locator);
+
+		return dropdownValues.stream().map(WebElement::getText).collect(Collectors.joining(","));
 	}
-	
+
 	public void tabAction()
 	{
 		Actions action = new Actions(DriverManager.getDriver());
 		action.sendKeys(Keys.TAB).build().perform();
 	}
-	
+
 	@SuppressWarnings("unchecked")
-	public void clearField(Object pr) {
-	    List<WebElement> elements = new ArrayList<>();
+	public void clearField(Object pr)
+	{
+		List<WebElement> elements = new ArrayList<>();
 
-	    if (pr instanceof String) {
-	        elements = driver.findElements(autolocator((String) pr));
-	    } else if (pr instanceof WebElement) {
-	        elements = Collections.singletonList((WebElement) pr);
-	    } else if (pr instanceof List<?>) {
-	        elements = (List<WebElement>) pr;
-	    }
-	    if (elements == null || elements.isEmpty()) {
-	        ExtentManager.getTest().log(Status.FAIL, "Unable to locate WebElement(s)");
-	        return;
-	    }
+		if (pr instanceof String)
+		{
+			elements = driver.findElements(autolocator((String) pr));
+		} else if (pr instanceof WebElement)
+		{
+			elements = Collections.singletonList((WebElement) pr);
+		} else if (pr instanceof List<?>)
+		{
+			elements = (List<WebElement>) pr;
+		}
+		if (elements == null || elements.isEmpty())
+		{
+			ExtentManager.getTest().log(Status.FAIL, "Unable to locate WebElement(s)");
+			return;
+		}
 
-	    for (WebElement ele : elements) {
-	        try {
-	            if (ele != null && ele.isDisplayed()) {
-	                ele.click();
-	                ele.sendKeys(Keys.chord(Keys.CONTROL, "a"), Keys.DELETE);
+		for (WebElement ele : elements)
+		{
+			try
+			{
+				if (ele != null && ele.isDisplayed())
+				{
+					ele.click();
+					ele.sendKeys(Keys.chord(Keys.CONTROL, "a"), Keys.DELETE);
 
-	                String placeholder = ele.getAttribute("placeholder");
-	                if (placeholder != null && !placeholder.isEmpty()) {
-	                    ExtentManager.getTest().log(Status.INFO, placeholder + " field text has been cleared");
-	                } else {
-	                    ExtentManager.getTest().log(Status.INFO, "Field text has been cleared");
-	                }
-	            }
-	        } catch (Exception e) {
-	            TestLogManager.error("Unable to clear text from element", e);
-	            ExtentManager.getTest().log(Status.FAIL, "Failed to clear field text");
-	        }
-	    }
+					String placeholder = ele.getAttribute("placeholder");
+					if (placeholder != null && !placeholder.isEmpty())
+					{
+						ExtentManager.getTest().log(Status.INFO, placeholder + " field text has been cleared");
+					} else
+					{
+						ExtentManager.getTest().log(Status.INFO, "Field text has been cleared");
+					}
+				}
+			} catch (Exception e)
+			{
+				TestLogManager.error("Unable to clear text from element", e);
+				ExtentManager.getTest().log(Status.FAIL, "Failed to clear field text");
+			}
+		}
+	}
+
+	//This method is used to find the goal ratio
+	public int findGCV(int a, int b)
+	{
+		if (b == 0)
+			return a;
+		return findGCV(b, a % b);
 	}
 	
+	public static String rgbToHexColor(String cssValue)
+	{
+		String[] RGBcolor = cssValue.replace("rgb(", "").replace(" ", "").replace(")", "").split(",");
+		int redColorValue = Integer.parseInt(RGBcolor[0]);
+		int greenColorValue = Integer.parseInt(RGBcolor[1]);
+		int blueColorValue = Integer.parseInt(RGBcolor[2]);
+		Color color = new Color(redColorValue, greenColorValue, blueColorValue);
+		String hexcolour = "#" + Integer.toHexString(color.getRGB()).substring(2);
+		return hexcolour;
+	}
+	
+	public static String decodeBase64ToText(String base64Text)
+	{
+		byte[] decodedBytes = Base64.getDecoder().decode(base64Text);
+		return new String(decodedBytes);
+	}
+
 }

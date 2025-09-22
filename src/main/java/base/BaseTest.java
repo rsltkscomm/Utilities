@@ -6,6 +6,7 @@ import constants.FrameworkConstants;
 import data.TestDataUtil;
 import data.XLSReader;
 import pages.PageFactory;
+import reporting.ExcelReportGenerator;
 import reporting.ExtentManager;
 import reporting.TestLogManager;
 import seleniumUtils.ScreenshotUtil;
@@ -87,6 +88,9 @@ public class BaseTest
 	@AfterMethod(alwaysRun = true)
 	public void tearDown(ITestResult result)
 	{
+		String flag = System.getProperty("DateWiseReport") + "," + System.getProperty("ReleasewiseReport") + "," + System.getProperty("AccountWiseReport");
+		String methodname = result.getMethod().getMethodName().toUpperCase();
+		String status = System.getProperty("Account") + "_" + System.getProperty("Environment");
 		// Reporting
 		ScreenshotUtil.takeScreenshot();
 		switch (result.getStatus())
@@ -106,6 +110,7 @@ public class BaseTest
 			ExtentManager.skipLabel(result.getThrowable().toString());
 		}
 		}
+		ExcelReportGenerator.writeToExcel(FrameworkConstants.ONEDRIVE_BASE_PATH, "Daily,Release,Account", flag, methodname, System.getProperty("ReleaseVersion"), status, System.getProperty("Account"), System.getProperty("SuiteName"));
 		// Cleanup driver
 		if (DriverManager.getDriver() != null)
 		{

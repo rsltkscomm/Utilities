@@ -1,5 +1,9 @@
 package data;
 
+import java.awt.AWTException;
+import java.awt.Desktop;
+import java.awt.Robot;
+import java.awt.event.KeyEvent;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -7,6 +11,7 @@ import java.util.*;
 
 import net.lingala.zip4j.ZipFile;
 import reporting.TestLogManager;
+import seleniumUtils.ScreenshotUtil;
 import reporting.ExtentManager;
 
 /**
@@ -335,4 +340,63 @@ public class FileUtils {
             throw new RuntimeException("Failed to list files", e);
         }
     }
+    
+ // pdf File
+ 	public void checkIsPdfExist()
+ 	{
+ 		File downloadDir = new File(System.getProperty("user.dir") + "/src/main/resources/data/DetailReports/");
+ 		File[] pdfFiles = downloadDir.listFiles((dir, name) -> name.toLowerCase().endsWith(".pdf"));
+  
+ 		if (pdfFiles == null || pdfFiles.length == 0)
+ 		{
+ 			ExtentManager.infoTest("No PDF files found in download folder.");
+ 			return;
+ 		}
+  
+ 		// Sort all PDF files by last modified time (descending)
+ 		Arrays.sort(pdfFiles, Comparator.comparingLong(File::lastModified).reversed());
+  
+ 		// Pick the latest one
+ 		File latestPdf = pdfFiles[0];
+  
+ 		if (latestPdf.exists())
+ 		{
+ 			String fileName = latestPdf.getName();
+ 			String filePath = latestPdf.getAbsolutePath();
+ 			String fileLink = "file:///" + filePath.replace("\\", "/");
+  
+ 			ExtentManager.infoTest("Latest downloaded PDF: " + fileName);
+ 			try
+ 			{
+ 				// Clickable file link in Extent Report
+ 				ExtentManager.infoTest("<a href='" + fileLink + "' target='_blank'>Open PDF File</a>");
+  
+ 				// Open the file
+ 				Desktop.getDesktop().open(latestPdf);
+ 				ExtentManager.infoTest(fileName + " opened successfully.");
+ 	 			ScreenshotUtil.takeScreenshot();
+ 				// Use Robot to close the file (Alt + F4)
+ 				try
+ 				{
+ 					Robot robot = new Robot();
+ 					robot.keyPress(KeyEvent.VK_ALT);
+ 					robot.keyPress(KeyEvent.VK_F4);
+ 					robot.keyRelease(KeyEvent.VK_F4);
+ 					robot.keyRelease(KeyEvent.VK_ALT);
+ 					ExtentManager.infoTest("PDF closed via Robot.");
+ 				} catch (AWTException e)
+ 				{
+ 					ExtentManager.warningTest("Error using Robot to close PDF: " + e.getMessage());
+ 				}
+  
+ 			} catch (IOException e)
+ 			{
+ 				ExtentManager.infoTest("Unable to open the PDF file: " + fileName);
+ 			}
+ 			ScreenshotUtil.takeScreenshot();
+ 		} else
+ 		{
+ 			ExtentManager.warningTest("File does not exist: " + latestPdf.getName());
+ 		}
+ 	}
 }

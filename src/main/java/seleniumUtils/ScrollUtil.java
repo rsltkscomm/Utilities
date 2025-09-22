@@ -1,15 +1,9 @@
 package seleniumUtils;
 
-import java.time.Duration;
-
-import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.WebDriverWait;
-
 import pages.PageFactory;
 import reporting.ExtentManager;
 import reporting.TestLogManager;
@@ -44,21 +38,16 @@ public class ScrollUtil extends BrowserUtil {
    	 *
    	 * @param pr - By calling autolocator method and object repository.
    	 */
-   	public void javaScriptScrollIntoView(String pr)
+   	public void javaScriptScrollIntoView(Object pr)
    	{
    		try
    		{
-   			By locator = autolocator(pr);
-
-   			// Wait for visibility before scrolling
-   			WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(30));
-   			WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(locator));
-
+   			waitForVisible(pr, 50);
    			// Scroll element into view
-   			((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center'});", element);
+   			((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center'});", getElement(pr));
 
    			// Optional: highlight or log
-   			highlightElement(element);
+   			highlightElement(getElement(pr));
    			ExtentManager.infoTest("Scrolled into view: " + logName.get());
    			wait(1);
    		} catch (NoSuchElementException e)
@@ -126,14 +115,14 @@ public class ScrollUtil extends BrowserUtil {
 
 			int retries = 0;
 			while (retries < 10)
-			{ // max retries
+			{
 				js.executeScript("window.scrollTo(0, document.body.scrollHeight);");
-				Thread.sleep(1000); // wait for page load / scroll
+				Thread.sleep(1000); 
 
 				long newHeight = (long) js.executeScript("return document.body.scrollHeight");
 				if (newHeight == lastHeight)
 				{
-					break; // ✅ no more scrolling possible
+					break;
 				}
 				lastHeight = newHeight;
 				retries++;
