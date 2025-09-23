@@ -53,6 +53,20 @@ public class WaitUtil extends DateUtils {
                     .until(ExpectedConditions.visibilityOf((WebElement) pr));
         }
     }
+    
+    public boolean explicitWaitTextToBePresent(String text, Object pr, int sec) {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(sec));
+
+        if (pr instanceof String) {
+            WebElement element = getElement(pr);
+            return wait.until(ExpectedConditions.textToBePresentInElementValue(element, text));
+        } else if (pr instanceof WebElement) {
+            WebElement element = wait.until(ExpectedConditions.visibilityOf((WebElement) pr));
+            return element != null;
+        } else {
+            throw new IllegalArgumentException("Parameter must be String or WebElement");
+        }
+    }
 
     public boolean waitForInvisibility(Object pr, int sec) {
         if (pr instanceof String) {
@@ -171,7 +185,7 @@ public class WaitUtil extends DateUtils {
 	    }
 	}
 	
-	public void waitSecond(int seconds) {
+	public void waitMs(int seconds) {
 	    try {
 	        Thread.sleep(seconds);
 	    } catch (InterruptedException e) {

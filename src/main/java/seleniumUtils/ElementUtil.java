@@ -228,11 +228,9 @@ public class ElementUtil extends ClickUtil
 		try
 		{
 			List<WebElement> elements = getElements(pr);
-			ExtentManager.infoTest("Found " + elements.size() + " elements for " + LocatorUtil.logName.get() + "");
 			return elements;
 		} catch (Exception e)
 		{
-			ExtentManager.failTest("Failed to find elements " + LocatorUtil.logName.get() + " : " + e.getMessage());
 			return null;
 		}
 	}
