@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -24,6 +25,27 @@ import reporting.NewSummaryReportGenerator.ModuleStats;
 
 public class DetailedTestReporter
 {
+	private static final Object MUTEX = new Object();
+	private static String escapeHtml(String value)
+	{
+		if (value == null)
+			return "";
+		StringBuilder out = new StringBuilder(Math.max(16, value.length()));
+		for (int i = 0; i < value.length(); i++)
+		{
+			char c = value.charAt(i);
+			switch (c)
+			{
+				case '<': out.append("&lt;"); break;
+				case '>': out.append("&gt;"); break;
+				case '"': out.append("&quot;"); break;
+				case '\'': out.append("&#39;"); break;
+				case '&': out.append("&amp;"); break;
+				default: out.append(c);
+			}
+		}
+		return out.toString();
+	}
 	
 	public static DetailedTestReporter detailedTestReporter;
 	public static final Map<String, AtomicInteger> modulePassCount = new ConcurrentHashMap<>();
@@ -47,32 +69,33 @@ public class DetailedTestReporter
 	private PerformanceMetrics performanceMetrics;
 
 	public DetailedTestReporter(String projectName, String reportPath) {
-		this.projectName = projectName;
-		this.reportPath = reportPath;
-		this.testExecutions = new ArrayList<>();
-		this.dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		DetailedTestReporter.projectName = projectName;
+		DetailedTestReporter.reportPath = reportPath;
+        DetailedTestReporter.testExecutions = new CopyOnWriteArrayList<>();
+		DetailedTestReporter.dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 		this.performanceMetrics = new PerformanceMetrics();
 	}
 
 	public void addTestExecution(String module, String scenarioId, String testCaseId, String shortDescription, ExecutionStatus status)
 	{
-		boolean exists = testExecutions.stream().anyMatch(e -> e.getTestCaseId().equals(testCaseId));
-
-		if (exists)
+		synchronized (MUTEX)
 		{
-			System.out.println("Duplicate Test Case ID: " + testCaseId + " — Skipping entry.");
-			return;
+			boolean exists = testExecutions.stream().anyMatch(e -> e.getTestCaseId().equals(testCaseId));
+			if (exists)
+			{
+				System.out.println("Duplicate Test Case ID: " + testCaseId + " — Skipping entry.");
+				return;
+			}
+			TestExecution execution = new TestExecution();
+			execution.setModule(module);
+			execution.setScenarioId(scenarioId);
+			execution.setTestCaseId(testCaseId);
+			execution.setShortDescription(shortDescription);
+			execution.setStartTime(new Date()); // auto-start time
+			execution.setStatus(status);
+			execution.setSteps(new ArrayList<>());
+			testExecutions.add(execution);
 		}
-
-		TestExecution execution = new TestExecution();
-		execution.setModule(module);
-		execution.setScenarioId(scenarioId);
-		execution.setTestCaseId(testCaseId);
-		execution.setShortDescription(shortDescription);
-		execution.setStartTime(new Date()); // auto-start time
-		execution.setStatus(status);
-		execution.setSteps(new ArrayList<>());
-		testExecutions.add(execution);
 	}
 	
 	public static void createDetailReport()
@@ -96,93 +119,106 @@ public class DetailedTestReporter
 		}
 	}
 
-	public static void addStep(TestCase testCase, StepStatus status, WebDriver driver) {
-	    boolean isDuplicate = false;
-	    Optional<TestExecution> executionOpt = getReport().getTestExecutions().stream()
-	            .filter(e -> e.getTestCaseId().equals(testCase.getTestCaseId()))
-	            .findFirst();
+    public static void addStep(TestCase testCase, StepStatus status, WebDriver driver) {
+        synchronized (MUTEX) {
+            boolean isDuplicate = false;
+            Optional<TestExecution> executionOpt = getReport().getTestExecutions().stream()
+                    .filter(e -> e.getTestCaseId().equals(testCase.getTestCaseId()))
+                    .findFirst();
 
-	    TestExecution execution;
-	    if (!executionOpt.isPresent()) {
-	        execution = new TestExecution();
-	        execution.setModule(testCase.getModuleName());
-	        execution.setScenarioId(testCase.getExecutionId());
-	        execution.setTestCaseId(testCase.getTestCaseId());
-	        execution.setShortDescription(testCase.getDescription());
-	        execution.setStartTime(new Date());
-	        execution.setSteps(new ArrayList<>());
-	        execution.setStatus(ExecutionStatus.PASS);
-	        // Remove hardcoded total expected steps - calculate dynamically
-	        execution.setTotalExpectedSteps(0); 
-	        getReport().getTestExecutions().add(execution);
-	    } else {
-	        execution = executionOpt.get();
-	        if (execution.getSteps() == null) {
-	            execution.setSteps(new ArrayList<>());
-	        }
-	    }
+            TestExecution execution;
+            if (!executionOpt.isPresent()) {
+                execution = new TestExecution();
+                execution.setModule(testCase.getModuleName());
+                execution.setScenarioId(testCase.getExecutionId());
+                execution.setTestCaseId(testCase.getTestCaseId());
+                execution.setShortDescription(testCase.getDescription());
+                execution.setStartTime(new Date());
+                execution.setSteps(new ArrayList<>());
+                execution.setStatus(ExecutionStatus.PASS);
+                // Remove hardcoded total expected steps - calculate dynamically
+                execution.setTotalExpectedSteps(0); 
+                getReport().getTestExecutions().add(execution);
+            } else {
+                execution = executionOpt.get();
+                if (execution.getSteps() == null) {
+                    execution.setSteps(new ArrayList<>());
+                }
+            }
 
-	    // Increment total expected steps only for new steps
-	    if (!isDuplicate) {
-	        execution.setTotalExpectedSteps(execution.getTotalExpectedSteps() + 1);
-	    }
+            // Determine duplicate first based on meaningful identity
+            isDuplicate = execution.getSteps().stream()
+                    .anyMatch(step -> step.getAction().equals(testCase.getAction()) 
+                            && step.getExpectedResult().equals(testCase.getExpectedResult()));
 
-	    isDuplicate = execution.getSteps().stream()
-	            .anyMatch(step -> step.getAction().equals(testCase.getAction()) 
-	                    && step.getExpectedResult().equals(testCase.getExpectedResult()));
+            // Increment total expected steps only for new steps
+            if (!isDuplicate) {
+                execution.setTotalExpectedSteps(execution.getTotalExpectedSteps() + 1);
+            }
 
-	    if (!isDuplicate) {
-	        getReport().addTestStep(
-	            testCase.getTestCaseId(),
-	            execution.getSteps().size() + 1,
-	            testCase.getAction(),
-	            testCase.getExpectedResult(),
-	            testCase.getActualResult(),
-	            status,
-	            encryptScreenshot(driver)
-	        );
+            if (!isDuplicate) {
+                getReport().addTestStep(
+                    testCase.getTestCaseId(),
+                    execution.getSteps().size() + 1,
+                    testCase.getAction(),
+                    testCase.getExpectedResult(),
+                    testCase.getActualResult(),
+                    status,
+                    encryptScreenshot(driver)
+                );
 
-	        if (status == StepStatus.FAIL) {
-	            execution.setStatus(ExecutionStatus.FAIL);
-	        }
-	    }
-	    
-	    // Mark execution as complete if this is the last step being added
-	    if (!isDuplicate && execution.getSteps().size() >= execution.getTotalExpectedSteps()) {
-	        execution.setEndTime(new Date());
+                if (status == StepStatus.FAIL) {
+                    execution.setStatus(ExecutionStatus.FAIL);
+                }
+            }
+            
+            // Mark execution as complete if explicitly equal and at least one step exists
+            if (!isDuplicate && execution.getTotalExpectedSteps() > 0 && execution.getSteps().size() == execution.getTotalExpectedSteps()) {
+                execution.setEndTime(new Date());
 
-	        // Update ModuleStats map
-	        ModuleStats stats = NewSummaryReportGenerator.moduleStats.computeIfAbsent(
-	            testCase.getModuleName(), m -> new ModuleStats());
+                // Update ModuleStats map
+                ModuleStats stats = NewSummaryReportGenerator.moduleStats.computeIfAbsent(
+                    testCase.getModuleName(), m -> new ModuleStats());
 
-	        switch (execution.getStatus()) {
-	            case PASS:
-	                stats.incrementPass();
-	                modulePassCount.computeIfAbsent(testCase.getModuleName(), 
-	                    k -> new AtomicInteger(0)).incrementAndGet();
-	                break;
-	            case FAIL:
-	                stats.incrementFail();
-	                moduleFailCount.computeIfAbsent(testCase.getModuleName(), 
-	                    k -> new AtomicInteger(0)).incrementAndGet();
-	                break;
-	            case SKIPPED:
-	                stats.incrementSkip();
-	                moduleSkipCount.computeIfAbsent(testCase.getModuleName(), 
-	                    k -> new AtomicInteger(0)).incrementAndGet();
-	                break;
-	        }
-	    }
+                switch (execution.getStatus()) {
+                    case PASS:
+                        stats.incrementPass();
+                        modulePassCount.computeIfAbsent(testCase.getModuleName(), 
+                            k -> new AtomicInteger(0)).incrementAndGet();
+                        break;
+                    case FAIL:
+                        stats.incrementFail();
+                        moduleFailCount.computeIfAbsent(testCase.getModuleName(), 
+                            k -> new AtomicInteger(0)).incrementAndGet();
+                        break;
+                    case SKIPPED:
+                        stats.incrementSkip();
+                        moduleSkipCount.computeIfAbsent(testCase.getModuleName(), 
+                            k -> new AtomicInteger(0)).incrementAndGet();
+                        break;
+                }
+            }
+        }
 	}
 	
-	 public static String encryptScreenshot(WebDriver driver)
-		{
-			TakesScreenshot ts = (TakesScreenshot) driver;
-			String screenshotAs = ts.getScreenshotAs(OutputType.BASE64);
-			return "data:image/png;base64," + screenshotAs;
-		}
+     public static String encryptScreenshot(WebDriver driver)
+        {
+            if (driver == null) {
+                return null;
+            }
+            try {
+                if (driver instanceof TakesScreenshot) {
+                    TakesScreenshot ts = (TakesScreenshot) driver;
+                    String screenshotAs = ts.getScreenshotAs(OutputType.BASE64);
+                    return "data:image/png;base64," + screenshotAs;
+                }
+            } catch (Exception e) {
+                // ignore screenshot errors and proceed without image
+            }
+            return null;
+        }
 
-	public List<TestExecution> getTestExecutions()
+    public List<TestExecution> getTestExecutions()
 	{
 		return testExecutions;
 	}
@@ -194,19 +230,22 @@ public class DetailedTestReporter
 
 	public void addTestStep(String testCaseId, int stepNumber, String action, String expectedResult, String actualResult, StepStatus status, String screenshotPath)
 	{
-		for (TestExecution execution : testExecutions)
+		synchronized (MUTEX)
 		{
-			if (execution.getTestCaseId().equals(testCaseId))
+			for (TestExecution execution : testExecutions)
 			{
-				TestStep step = new TestStep();
-				step.setStepNo(stepNumber > 0 ? stepNumber : execution.getSteps().size() + 1);
-				step.setAction(action);
-				step.setExpectedResult(expectedResult);
-				step.setActualResult(actualResult);
-				step.setStatus(status);
-				step.setScreenshotPath(screenshotPath);
-				execution.getSteps().add(step);
-				break;
+				if (execution.getTestCaseId().equals(testCaseId))
+				{
+					TestStep step = new TestStep();
+					step.setStepNo(stepNumber > 0 ? stepNumber : execution.getSteps().size() + 1);
+					step.setAction(action);
+					step.setExpectedResult(expectedResult);
+					step.setActualResult(actualResult);
+					step.setStatus(status);
+					step.setScreenshotPath(screenshotPath);
+					execution.getSteps().add(step);
+					break;
+				}
 			}
 		}
 	}
@@ -239,6 +278,7 @@ public class DetailedTestReporter
 
 	static String generateHTMLContent() {
 	    StringBuilder html = new StringBuilder();
+	    java.text.SimpleDateFormat localDateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
 	    int totalTests = testExecutions.size();
 	    int passedTests = (int) testExecutions.stream().filter(t -> t.getStatus() == ExecutionStatus.PASS).count();
@@ -337,9 +377,9 @@ public class DetailedTestReporter
 	        .append("<div class=\"container\">\n")
 
 	        // Header
-	        .append("<div class='report-header'>")
-	        .append("<h1>").append(projectName).append(" - Test Report</h1>")
-	        .append("<p>Generated on: ").append(dateFormat.format(new java.util.Date())).append("</p>")
+        .append("<div class='report-header'>")
+	        .append("<h1>").append(escapeHtml(projectName)).append(" - Test Report</h1>")
+	        .append("<p>Generated on: ").append(localDateFormat.format(new java.util.Date())).append("</p>")
 	        .append("</div>")
 
 	        // Summary cards
@@ -363,7 +403,7 @@ public class DetailedTestReporter
 	    
 	    // Add module options
 	    for (String module : modules) {
-	        html.append("<option value=\"").append(module).append("\">").append(module).append("</option>\n");
+	        html.append("<option value=\"").append(escapeHtml(module)).append("\">").append(escapeHtml(module)).append("</option>\n");
 	    }
 	    
 	    html.append("</select>\n")
@@ -389,25 +429,34 @@ public class DetailedTestReporter
 	        .append("</div>\n")
 
 	        // Table start
-	        .append("<table class=\"test-table\">\n<thead><tr><th>Module</th><th>Scenario ID</th><th>Test Case ID</th><th>Description</th><th>Start</th><th>End</th><th>Duration (ms)</th><th>Status</th></tr></thead><tbody>\n");
+            .append("<table class=\"test-table\">\n<thead><tr><th>Module</th><th>Scenario ID</th><th>Test Case ID</th><th>Description</th><th>Start</th><th>End</th><th>Duration (HH:MM:SS)</th><th>Status</th></tr></thead><tbody>\n");
 
 	    for (TestExecution exec : testExecutions) {
-	        long duration = exec.getEndTime().getTime() - exec.getStartTime().getTime();
+        Date start = exec.getStartTime();
+            Date end = exec.getEndTime();
+            String duration1 = "-";
+            if (start != null && end != null && end.after(start)) {
+                long duration = end.getTime() - start.getTime();
+                long hours = duration / 3_600_000;
+                long minutes = (duration / 60_000) % 60;
+                long seconds = (duration / 1_000) % 60;
+                duration1 = String.format("%02d:%02d:%02d", hours, minutes, seconds);
+            }
 	        String statusClass = "status-" + exec.getStatus().toString().toLowerCase();
 	        String rowColorClass = exec.getStatus() == ExecutionStatus.PASS ? "row-pass" :
 	                               exec.getStatus() == ExecutionStatus.FAIL ? "row-fail" : "";
 
 	        html.append("<tr class=\"test-row ").append(rowColorClass)
 	            .append("\" data-status=\"").append(exec.getStatus())
-	            .append("\" data-module=\"").append(exec.getModule())
+	            .append("\" data-module=\"").append(escapeHtml(exec.getModule()))
 	            .append("\" onclick=\"toggleAccordion(event, this)\">")
-	            .append("<td>").append(exec.getModule()).append("</td>")
-	            .append("<td>").append(exec.getScenarioId()).append("</td>")
-	            .append("<td>").append(exec.getTestCaseId()).append("</td>")
-	            .append("<td class='description-cell' title='").append(exec.getShortDescription()).append("'>").append(exec.getShortDescription()).append("</td>")
-	            .append("<td>").append(dateFormat.format(exec.getStartTime())).append("</td>")
-	            .append("<td>").append(dateFormat.format(exec.getEndTime())).append("</td>")
-	            .append("<td>").append(duration).append("</td>")
+	            .append("<td>").append(escapeHtml(exec.getModule())).append("</td>")
+	            .append("<td>").append(escapeHtml(exec.getScenarioId())).append("</td>")
+	            .append("<td>").append(escapeHtml(exec.getTestCaseId())).append("</td>")
+	            .append("<td class='description-cell' title='").append(escapeHtml(exec.getShortDescription())).append("'>").append(escapeHtml(exec.getShortDescription())).append("</td>")
+	            .append("<td>").append(exec.getStartTime() == null ? "-" : localDateFormat.format(exec.getStartTime())).append("</td>")
+	            .append("<td>").append(exec.getEndTime() == null ? "-" : localDateFormat.format(exec.getEndTime())).append("</td>")
+	            .append("<td>").append(duration1).append("</td>")
 	            .append("<td class=\"").append(statusClass).append("\">").append(exec.getStatus()).append("</td>")
 	            .append("</tr>\n");
 
@@ -420,9 +469,9 @@ public class DetailedTestReporter
 	                                       step.getStatus() == StepStatus.FAIL ? "row-fail" : "";
 
 	            html.append("<tr class=\"").append(stepRowColorClass).append("\"><td>").append(step.getStepNo()).append("</td>")
-	                .append("<td>").append(step.getAction()).append("</td>")
-	                .append("<td>").append(step.getExpectedResult()).append("</td>")
-	                .append("<td>").append(step.getActualResult()).append("</td>")
+	                .append("<td>").append(escapeHtml(step.getAction())).append("</td>")
+	                .append("<td>").append(escapeHtml(step.getExpectedResult())).append("</td>")
+	                .append("<td>").append(escapeHtml(step.getActualResult())).append("</td>")
 	                .append("<td class=\"").append(stepStatusClass).append("\">").append(step.getStatus()).append("</td>")
 	                .append("<td>").append((step.getScreenshotPath() != null && !step.getScreenshotPath().isEmpty())
 	                        ? "<img src='" + step.getScreenshotPath() + "' class='screenshot-thumb' onclick='openModal(this.src)'>"
@@ -501,9 +550,9 @@ public class DetailedTestReporter
 	        .append("}\n")
 	        .append("        \n")
 	        // Export functions
-	        .append("function exportToCSV() {\n")
+        .append("function exportToCSV() {\n")
 	        .append("    const rows = document.querySelectorAll('.test-row:not(.hidden)');\n")
-	        .append("    let csv = 'Module,Scenario ID,Test Case ID,Short Description,Start Time,End Time,Duration (ms),Execution Status\\n';\n")
+        .append("    let csv = 'Module,Scenario ID,Test Case ID,Short Description,Start Time,End Time,Duration (HH:MM:SS),Execution Status\\n';\n")
 	        .append("    \n")
 	        .append("    rows.forEach(row => {\n")
 	        .append("        const cells = row.querySelectorAll('td');\n")
