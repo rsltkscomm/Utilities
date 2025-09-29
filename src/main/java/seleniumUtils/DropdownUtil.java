@@ -79,6 +79,61 @@ public class DropdownUtil extends AssertUtil
 		}
 	}
 	
+	/**
+	 * Selects an element from a list of dropdown values.
+	 *
+	 * @param elementspath - Locator path for dropdown list elements
+	 * @param input        - Value to match and select
+	 * @return true if selection was successful, false otherwise
+	 */
+	public boolean selectExactListElements(String elementspath, String input)
+	{
+		try
+		{
+			List<WebElement> allElements = findElements(elementspath);
+			boolean elementFound = false;
+
+			if (!allElements.isEmpty())
+			{
+				for (int i = 0; i < allElements.size(); i++)
+				{
+					allElements = findElements(elementspath);
+					highlightElement(allElements.get(i));
+					String eleText = allElements.get(i).getText().trim();
+					removeHighlight(allElements.get(i));
+					String inputVal = input.trim();
+					if (eleText.equalsIgnoreCase(inputVal))
+					{
+						highlightElement(allElements.get(i));
+						allElements.get(i).click();
+						removeHighlight(allElements.get(i));
+						ExtentManager.passTest("Dropdown selection successful -> Selected: <b>" + eleText + "</b>");
+						elementFound = true;
+						ScreenshotUtil.takeScreenshot();
+						break;
+					}
+				}
+
+				if (!elementFound)
+				{
+					ExtentManager.failTest("Dropdown selection failed -> Value not found: <b>" + input + "</b>");
+				}
+				return elementFound;
+
+			} else
+			{
+				ExtentManager.failTest("Dropdown selection failed -> No elements found for locator: " + elementspath);
+				return false;
+			}
+
+		} catch (Exception e)
+		{
+			ExtentManager.failTest("Dropdown selection failed -> Locator: " + elementspath);
+			ExtentManager.failTest("Reason: " + e.getMessage());
+			return false;
+		}
+	}
+	
 	public boolean selectListElementByIndex(String elementsPath, int index)
 	{
 		List<WebElement> allElements = findElements(elementsPath);

@@ -1,17 +1,25 @@
 package seleniumUtils;
 
 import java.awt.Color;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.interactions.Actions;
+import org.testng.ITestResult;
+import org.testng.Reporter;
 
 import com.aventstack.extentreports.Status;
 
@@ -44,7 +52,7 @@ public class ElementUtil extends ClickUtil
 			return null;
 		}
 	}
-
+	
 	public String getText(Object locator)
 	{
 		try
@@ -324,6 +332,61 @@ public class ElementUtil extends ClickUtil
 	{
 		byte[] decodedBytes = Base64.getDecoder().decode(base64Text);
 		return new String(decodedBytes);
+	}
+	
+	public String getDescription()
+	{
+		ITestResult result = Reporter.getCurrentTestResult();
+		return result.getMethod().getDescription();
+	}
+	
+	public List<Map<String, String>> getWebTable(String tableValue)
+	{
+		List<Map<String, String>> list = new LinkedList<>();
+		WebElement table = findElement(tableValue);
+		List<WebElement> headers = table.findElements(By.tagName("th"));
+		List<WebElement> rows = driver.findElements(autolocator(tableValue + "//tbody//tr"));
+		for (WebElement row : rows)
+		{
+			Map<String, String> map = new LinkedHashMap<>();
+			List<WebElement> datas = row.findElements(By.tagName("td"));
+			int headerSize = headers.size();
+			for (int i = 0; i < headerSize; i++)
+			{
+
+				String head = headers.get(i).getText();
+				String dataValue = datas.get(i).getText();
+				map.put(head, dataValue);
+			}
+			list.add(map);
+		}
+		ExtentManager.infoTest(list.toString());
+		ExtentManager.customReport(list);
+		return list;
+	}
+	
+	public static boolean isValidURL(String urlStr)
+	{
+		try
+		{
+			new URL(urlStr);
+			return true;
+		} catch (MalformedURLException e)
+		{
+			return false;
+		}
+	}
+	
+	public String normalizeText(String input)
+	{
+		if (input == null)
+		{
+			return "";
+		}
+		return input.replace("\u00A0", " ") // Replace non-breaking spaces
+				.replaceAll("[\\u200B\\u200C\\u200D\\uFEFF]", "") // Remove invisible characters
+				.replaceAll("\\s+", " ") // Collapse multiple spaces
+				.trim(); // Final trim
 	}
 
 }
