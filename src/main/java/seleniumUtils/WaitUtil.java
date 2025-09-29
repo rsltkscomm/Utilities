@@ -185,7 +185,7 @@ public class WaitUtil extends DateUtils {
 	    }
 	}
 	
-	public void waitMs(int seconds) {
+	public void wait_Milli_Seconds(int seconds) {
 	    try {
 	        Thread.sleep(seconds);
 	    } catch (InterruptedException e) {
