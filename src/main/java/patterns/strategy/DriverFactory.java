@@ -19,11 +19,13 @@ public class DriverFactory {
     static {
         // Register default strategies
         registerStrategy(new ChromeDriverStrategy());
+        registerStrategy(new ChromeHeadlessDriverStrategy());
         registerStrategy(new FirefoxDriverStrategy());
         registerStrategy(new EdgeDriverStrategy());
         
         // Register cross-platform strategies
         registerStrategy(new CrossPlatformDriverStrategy("chrome"));
+        registerStrategy(new CrossPlatformDriverStrategy("chromeheadless"));
         registerStrategy(new CrossPlatformDriverStrategy("firefox"));
         registerStrategy(new CrossPlatformDriverStrategy("edge"));
 

@@ -6,6 +6,7 @@ import constants.FrameworkConstants;
 import data.TestDataUtil;
 import data.XLSReader;
 import pages.PageFactory;
+import reporting.ExcelReportGenerator;
 import reporting.ExtentManager;
 import reporting.TestLogManager;
 import seleniumUtils.ScreenshotUtil;
@@ -57,7 +58,6 @@ public class BaseTest
 
 		// 3. Initialize driver
 		DriverManager.createDriver(browser);
-		DriverManager.getDriver().manage().window().maximize();
 
 		// Start reporting
 		String testName = method.getAnnotation(Test.class).testName();
@@ -70,7 +70,7 @@ public class BaseTest
 				System.getProperty("FeaturewiseChecklist"));
 
 		String dataFile = appPropertyMap.getOrDefault(appName.get(), "");
-		String testDataFile = FrameworkConstants.TEAM_DATA_FILE + dataFile;
+		String testDataFile = TestDataUtil.getDataFilesPath(dataFile);
 
 		// 5. Set datatable (thread-safe)
 		datatable.set(new XLSReader(PageBase.getNormalizedPath(testDataFile)));
@@ -88,6 +88,9 @@ public class BaseTest
 	@AfterMethod(alwaysRun = true)
 	public void tearDown(ITestResult result)
 	{
+		String flag = System.getProperty("DateWiseReport") + "," + System.getProperty("ReleasewiseReport") + "," + System.getProperty("AccountWiseReport");
+		String methodname = result.getMethod().getMethodName().toUpperCase();
+		String status = System.getProperty("Account") + "_" + System.getProperty("Environment");
 		// Reporting
 		ScreenshotUtil.takeScreenshot();
 		switch (result.getStatus())
@@ -107,6 +110,7 @@ public class BaseTest
 			ExtentManager.skipLabel(result.getThrowable().toString());
 		}
 		}
+		ExcelReportGenerator.writeToExcel(FrameworkConstants.ONEDRIVE_BASE_PATH, "Daily,Release,Account", flag, methodname, System.getProperty("ReleaseVersion"), status, System.getProperty("Account"), System.getProperty("SuiteName"));
 		// Cleanup driver
 		if (DriverManager.getDriver() != null)
 		{

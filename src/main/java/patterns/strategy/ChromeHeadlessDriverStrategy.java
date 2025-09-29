@@ -18,17 +18,17 @@ import io.github.bonigarcia.wdm.WebDriverManager;
 /**
  * Strategy implementation for Chrome WebDriver creation.
  */
-public class ChromeDriverStrategy implements DriverStrategy {
+public class ChromeHeadlessDriverStrategy implements DriverStrategy {
     
     private final boolean headless;
     private final boolean remote;
     private final String remoteUrl;
     
-    public ChromeDriverStrategy() {
-        this(false, false, null);
+    public ChromeHeadlessDriverStrategy() {
+        this(true, false, null);
     }
     
-    public ChromeDriverStrategy(boolean headless, boolean remote, String remoteUrl) {
+    public ChromeHeadlessDriverStrategy(boolean headless, boolean remote, String remoteUrl) {
         this.headless = headless;
         this.remote = remote;
         this.remoteUrl = remoteUrl;
