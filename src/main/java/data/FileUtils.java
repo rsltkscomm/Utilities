@@ -98,7 +98,7 @@ public class FileUtils
 	}
 
 	// ---------------------- CSV Reading ----------------------
-	public List<Map<String, String>> fileHandler()
+	public static List<Map<String, String>> fileHandler()
 	{
 		List<Map<String, String>> result = new ArrayList<>();
 
@@ -536,5 +536,42 @@ public class FileUtils
 		{
 			ExtentManager.warningTest("File does not exist: " + latestPdf.getName());
 		}
+	}
+	
+	public List<Map<String, String>> dataFileReader(String path)
+	{
+		List<Map<String, String>> data = new ArrayList<>();
+		File csvFile = new File(path);
+		if (csvFile.exists())
+		{
+			int rowCount = 0;
+			try
+			{
+				BufferedReader reader = new BufferedReader(new FileReader(csvFile));
+				String line;
+
+				String[] headers = reader.readLine().split(",");
+				while ((line = reader.readLine()) != null)
+				{
+					Map<String, String> map = new LinkedHashMap<>();
+					String[] cell = line.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)");
+					for (int i = 0; i < headers.length; i++)
+					{
+						map.put(headers[i], cell[i]);
+					}
+					data.add(rowCount, map);
+					rowCount++;
+				}
+				reader.close();
+			} catch (IOException e)
+			{
+//					TestLogManager.error("Exception Occured while reading File " + e, e);
+			}
+		} else
+		{
+			ExtentManager.infoTest("File not found");
+		}
+		ExtentManager.infoTest("Data: " + data);
+		return data;
 	}
 }

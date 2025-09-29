@@ -185,11 +185,37 @@ public class WaitUtil extends DateUtils {
 	    }
 	}
 	
-	public void waitMs(int seconds) {
+	public void wait_Milli_Seconds(int seconds) {
 	    try {
 	        Thread.sleep(seconds);
 	    } catch (InterruptedException e) {
 	        Thread.currentThread().interrupt();
 	    }
+	}
+	
+	/**
+	 * Sleeps for the given total time but prints a message every 5 minutes.
+	 *
+	 * @param totalMillis total time to sleep (e.g., 780000 for 13 min)
+	 * @throws InterruptedException if the thread is interrupted
+	 */
+	public static void sleepWithFiveMinuteLogs(long totalMillis) throws InterruptedException
+	{
+		final long chunkMillis = 5 * 60 * 1000; // 5 minutes = 300000 ms
+		long remaining = totalMillis;
+		int chunkCount = 0;
+
+		while (remaining > 0)
+		{
+			long sleepTime = Math.min(chunkMillis, remaining);
+			Thread.sleep(sleepTime);
+
+			chunkCount++;
+			System.out.println("Completed " + chunkCount * 5 + " minutes...");
+
+			remaining -= sleepTime;
+		}
+
+		System.out.println("Total sleep of " + (totalMillis / 60000.0) + " minutes is done.");
 	}
 }
