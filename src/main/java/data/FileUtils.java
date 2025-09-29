@@ -480,7 +480,7 @@ public class FileUtils
 	}
 
 	// pdf File
-	public void checkIsPdfExist()
+	public static void checkIsPdfExist()
 	{
 		File downloadDir = new File(System.getProperty("user.dir") + "/src/main/resources/data/DetailReports/");
 		File[] pdfFiles = downloadDir.listFiles((dir, name) -> name.toLowerCase().endsWith(".pdf"));
@@ -538,7 +538,7 @@ public class FileUtils
 		}
 	}
 	
-	public List<Map<String, String>> dataFileReader(String path)
+	public static List<Map<String, String>> dataFileReader(String path)
 	{
 		List<Map<String, String>> data = new ArrayList<>();
 		File csvFile = new File(path);
