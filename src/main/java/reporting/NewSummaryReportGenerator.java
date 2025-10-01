@@ -308,13 +308,9 @@ public class NewSummaryReportGenerator
 	            <style>
 	                /* --- Approved Summary Styles --- */
 	                * { margin: 0; padding: 0; box-sizing: border-box; }
-	                body {
-	                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-	                    background: #f5f5f5;
-	                    color: #333;
-	                }
+	                body { font-family: 'Segoe UI', sans-serif; background:#f8f9fb; margin:0; color:#333; }
 	                .header {
-	                    background: linear-gradient(135deg, white 0%%, #00006e 100%%);
+	                    background: linear-gradient(90deg,#002b6b,#0052cc);
 	                    color: white;
 	                    padding: 5px 0;
 	                    text-align: center;
@@ -377,7 +373,7 @@ public class NewSummaryReportGenerator
 	                    border: 1px solid #ddd;
 	                }
 	                .module-table th {
-	                    background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+	                    background: linear-gradient(90deg,#002b6b,#0052cc);
 	                    color: white; padding: 15px 12px; text-align: center;
 	                }
 	                .module-table td { padding: 12px;font-weight:600; text-align: center; border-bottom: 1px solid #eee; }
