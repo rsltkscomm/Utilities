@@ -295,12 +295,12 @@ public class DetailedTestReporter
 	        .append("<title>").append(projectName).append(" - Test Report</title>\n")
 	        .append("<style>\n")
 	        /* Base styles */
-	        .append("body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f6f8; margin: 0; padding: 20px; color: #333; transition: background 0.3s, color 0.3s; }\n")
+	        .append("body { font-family: 'Segoe UI', sans-serif; background:#fff; margin:0; color:#333; }\n")
 	        .append(".dark-mode { background: #1e1e1e; color: #eaeaea; }\n")
 	        .append(".container { background: #fff; border-radius: 10px; padding: 25px; max-width: 1600px; margin: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.1); transition: background 0.3s; }\n")
 	        .append(".dark-mode .container { background: #2b2b2b; }\n")
 	        /* Header */
-	        .append(".report-header { background: linear-gradient(3deg,white, darkblue); color: white; padding: 20px;box-shadow:6px 10px 20px black; border-radius: 8px; text-align: center; margin-bottom: 20px; }\n")
+	        .append(".report-header { background: linear-gradient(90deg,#004080,#007bff); color: white; padding: 20px;box-shadow:6px 10px 20px black; border-radius: 8px; text-align: center; margin-bottom: 20px; }\n")
 	        .append(".report-header h1 { margin: 0; font-size: 28px; }\n")
 	        .append(".report-header p { margin: 5px 0 0; font-size: 14px; opacity: 0.9; }\n")
 	        /* Summary cards */
