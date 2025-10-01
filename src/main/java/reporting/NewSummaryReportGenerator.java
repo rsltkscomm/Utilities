@@ -146,7 +146,7 @@ public class NewSummaryReportGenerator
 
 	public static void generateReport(int pass, int fail, int noRun, String duration, String startTime)
 	{
-		String reportFileName = System.getProperty("reportFileName") + "_" + DateUtils.getCurrentDate("ddmmmyyyy")+".html";
+		String reportFileName = System.getProperty("reportFileName") + "_" + DateUtils.getCurrentDate("ddMMMyyyy")+".html";
 		String customreport = System.getProperty("user.dir") + File.separator + reportFileName;
 		String pageloadReportPath = System.getProperty("user.dir") + File.separator + "TestReport.html";
 		String reportPath = System.getProperty("IsPageLoadReport").toLowerCase().equals("yes") ? pageloadReportPath : customreport;
