@@ -378,7 +378,7 @@ public class DetailedTestReporter
 
 	        // Header
         .append("<div class='report-header'>")
-	        .append("<h1>").append(escapeHtml(projectName)).append(" - Test Report</h1>")
+	        .append("<h1>").append("Detail Test Report</h1>")
 	        .append("<p>Generated on: ").append(localDateFormat.format(new java.util.Date())).append("</p>")
 	        .append("</div>")
 
