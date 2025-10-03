@@ -1,15 +1,27 @@
 package reporting;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
+import org.apache.poi.openxml4j.util.ZipSecureFile;
+
+import constants.FrameworkConstants;
 import jakarta.mail.*;
 import jakarta.mail.internet.*;
 
 public class EmailSender {
-
+	public static String zipPath;
+	public static String FilePath;
+	public static String ReportName = System.getProperty("reportFileName");
     public static void sendEmail(String filePaths,String fileNames) {
         String host = System.getProperty("host");
         String port = System.getProperty("port");
@@ -26,12 +38,27 @@ public class EmailSender {
             Message message = prepareMessage(session, senderEmail, recipientEmails, subject);
             Multipart multipart = new MimeMultipart("mixed");
 
+         // Attach files
+            String[] filePath = filePaths.split(",");
+            String[] fileName = fileNames.split(",");
+            String Onedrivepath=FrameworkConstants.ONEDRIVE_BASE_PATH+"\\DailyCheckListResults\\";
+             zipPath = zipHtmlWithTimestamp(filePath[0], Onedrivepath);
+           // FilePath="https://azureresulticks-my.sharepoint.com/personal/a_maheshanand_resulticks_com/_layouts/15/onedrive.aspx?id=%2Fpersonal%2Fa%5Fmaheshanand%5Fresulticks%5Fcom%2FDocuments%2FQA%20Reports%2FDailyCheckListReports&ga=1";
+            FilePath="https://azureresulticks-my.sharepoint.com/:f:/g/personal/qaautomation_resulticks_com/Ev1Aog7jO5RAt_0Wrx5wJPkBsy0sQ47Tr2hTAfm0kiHUaw";
+
+            
+            if (ReportName.contains("Daily"))
+			{
+            	ReportName="Daily Checklist";
+			}else if (ReportName.contains("Deploy")) {
+            	ReportName="Deployment Checklist";
+
+			}
             // Add HTML content
             addHtmlPart(multipart, getMailHtml());
 
-            // Attach files
-            String[] filePath = filePaths.split(",");
-            String[] fileName = fileNames.split(",");
+            
+            System.out.println(" Final ZIP stored at: " + zipPath);
             for (int i = 0; i < filePath.length; i++)
 			{
             	 attachFile(multipart, filePath[i], fileName[i]);
@@ -111,60 +138,92 @@ public class EmailSender {
 
     private static String getMailHtml() {
         return """
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <style>
-                body {
-                  font-family: Arial, sans-serif;
-                  background-color: #e9ecef;
-                }
-                .email-container {
-                  background-color: rgba(0, 0, 0, 0);
-                  padding: 30px;
-                  margin: 30px auto;
-                  border-radius: 12px;
-                  box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-                  max-width: 70%;
-                  border: 1px solid #ddd;
-                }
-                .header-title {
-                  text-align: center;
-                  font-size: 24px;
-                  font-weight: bold;
-                  color: #ffffff;
-                  margin-bottom: 20px;
-                }
-                p {
-                  font-size: 16px;
-                  color: #ffffff;
-                  line-height: 1.6;
-                }
-                .footer {
-                  text-align: center;
-                  margin-top: 30px;
-                  font-size: 12px;
-                  color: #ffffff;
-                }
-              </style>
-            </head>
-            <body>
-              <table width="100%" cellspacing="0" cellpadding="0" border="0"
-                style="background-image: url('https://www.go.resul.io/media/f5hgjx30/banner1.jpg?anchor=center&mode=crop&width=1920&height=1080&rnd=132285603734830000'); background-size: cover; background-repeat: no-repeat;">
-                <tr>
-                  <td>
-                    <div class="email-container">
-                      <div class="header-title">Automation Test Suite Report</div>
-                      <p>Hello,</p>
-                      <p>The Selenium Automation Test Suite has completed successfully.</p>
-                      <p>Please find the attached HTML report for detailed results.</p>
-                      <div class="footer">Regards,<br/>Automation Team</div>
-                    </div>
-                  </td>
-                </tr>
-              </table>
-            </body>
-            </html>
-        """;
+               <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+        }
+        .email-container {
+          padding: 20px;
+          margin: 0 auto;
+          max-width: 700px;
+        }
+        .header-title {
+          text-align: center;
+          font-size: 20px;
+          font-weight: bold;
+          margin-bottom: 20px;
+        }
+        p {
+          font-size: 14px;
+          line-height: 1.6;
+        }
+       .footer {
+  text-align: center;
+  margin-top: 50px; /* increase spacing from content */
+  font-size: 18px;
+}
+        a {
+          font-weight: bold;
+          text-decoration: underline;
+        }
+      </style>
+    </head>
+    <body>
+      <table width="100%%" cellspacing="0" cellpadding="0" border="0">
+        <tr>
+          <td>
+            <div class="email-container">
+    """ +
+              "<div class=\"header-title\">" + ReportName + " Report</div>\n" +
+              "<p>Hello Team,</p>\n" +
+              "<p>The " + ReportName + " Test Suite execution has been completed successfully.</p>\n" +
+              "<p>\n" +
+              "  Please find the attached HTML report for detailed results,<br/>\n" +
+              "  You can also access the report directly via the following link:<br/><br/>\n" +
+              "  <a href='" + FilePath + "'>[Execution Results : OneDrive Link]</a>\n" +
+              "</p>\n" +
+    """          
+              <div class="footer">Regards,<br/>Automation Team</div>
+            </div>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+            """;
+    }
+
+    
+    public static String zipHtmlWithTimestamp(String sourceFile, String oneDriveFolder) {
+    	 // ⚡ Fix for Zip bomb detection
+        ZipSecureFile.setMinInflateRatio(0.001);  // allow smaller compression ratios
+
+        String timeStamp = new SimpleDateFormat("ddMMMyyyy_HHmmss").format(new Date());
+        String zipFileName = "DailyCheckList_" + timeStamp + ".zip";
+        String destZipFile = oneDriveFolder + File.separator + zipFileName;
+        
+        try (FileOutputStream fos = new FileOutputStream(destZipFile);
+             ZipOutputStream zipOut = new ZipOutputStream(fos);
+             FileInputStream fis = new FileInputStream(new File(sourceFile))) {
+
+            ZipEntry zipEntry = new ZipEntry(new File(sourceFile).getName());
+            zipOut.putNextEntry(zipEntry);
+
+            byte[] bytes = new byte[1024];
+            int length;
+            while ((length = fis.read(bytes)) >= 0) {
+                zipOut.write(bytes, 0, length);
+            }
+            zipOut.closeEntry();
+
+            return destZipFile; // ✅ Return the saved path
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }

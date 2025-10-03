@@ -360,7 +360,7 @@ public class NewSummaryReportGenerator
 	            .detailed-section { display: none; }
 	            .step-table { width:90%%; margin:10px auto; border-collapse:collapse; font-size:0.85em; }
 	            .step-table th, .step-table td { border:1px solid #ccc; padding:5px; text-align:left; }
-	            .step-table th { background:#f1f1f1; }
+	            .step-table th { background:#f1f1f1; color:black; }
 	            .screenshot { width:100px; cursor:pointer; }
 	            .details { display:none; }
 	            .environment-ribbon { background:#f4f6f8; padding:10px; font-size:0.9em; border-bottom:1px solid #ddd; display:flex; justify-content:space-around; }

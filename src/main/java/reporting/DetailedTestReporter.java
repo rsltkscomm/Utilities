@@ -10,12 +10,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
-
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
@@ -26,27 +23,7 @@ import reporting.NewSummaryReportGenerator.ModuleStats;
 public class DetailedTestReporter
 {
 	private static final Object MUTEX = new Object();
-//	private static String escapeHtml(String value)
-//	{
-//		if (value == null)
-//			return "";
-//		StringBuilder out = new StringBuilder(Math.max(16, value.length()));
-//		for (int i = 0; i < value.length(); i++)
-//		{
-//			char c = value.charAt(i);
-//			switch (c)
-//			{
-//				case '<': out.append("&lt;"); break;
-//				case '>': out.append("&gt;"); break;
-//				case '"': out.append("&quot;"); break;
-//				case '\'': out.append("&#39;"); break;
-//				case '&': out.append("&amp;"); break;
-//				default: out.append(c);
-//			}
-//		}
-//		return out.toString();
-//	}
-	
+
 	public static DetailedTestReporter detailedTestReporter;
 	public static final Map<String, AtomicInteger> modulePassCount = new ConcurrentHashMap<>();
 	public static final Map<String, AtomicInteger> moduleFailCount = new ConcurrentHashMap<>();
@@ -148,8 +125,8 @@ public class DetailedTestReporter
 
             // Determine duplicate first based on meaningful identity
             isDuplicate = execution.getSteps().stream()
-                    .anyMatch(step -> step.getAction().equals(testCase.getAction()) 
-                            && step.getExpectedResult().equals(testCase.getExpectedResult()));
+                    .anyMatch(step -> safeEquals(step.getAction(), testCase.getAction()) 
+                            && safeEquals(step.getExpectedResult(), testCase.getExpectedResult()));
 
             // Increment total expected steps only for new steps
             if (!isDuplicate) {
@@ -320,15 +297,15 @@ public class DetailedTestReporter
 	        .append("</div>\n")
 	        .append("</div>\n")
 	        .append("<table id=\"testcaseTable\">\n")
-	        .append("<tr><th></th><th>Module</th><th>Test Case ID</th><th>Description</th><th>Status</th><th>Duration</th></tr>\n");
+	        .append("<thead><tr><th></th><th>Module</th><th>Test Case ID</th><th>Description</th><th>Status</th><th>Duration</th></tr></thead>\n")
+	        .append("<tbody>\n");
 
 	    // Generate test case rows
 	    int testCaseCounter = 1;
 	    for (TestExecution exec : testExecutions) {
 	        String statusIcon = exec.getStatus() == ExecutionStatus.PASS ? "✅ Passed" :
-	                          exec.getStatus() == ExecutionStatus.FAIL ? "❌ Failed" : "⚠️ Skipped";
-	        
-	        // Calculate duration
+	                             exec.getStatus() == ExecutionStatus.FAIL ? "❌ Failed" : "⚠️ Skipped";
+
 	        String duration = "-";
 	        if (exec.getStartTime() != null && exec.getEndTime() != null && exec.getEndTime().after(exec.getStartTime())) {
 	            long durationMs = exec.getEndTime().getTime() - exec.getStartTime().getTime();
@@ -336,23 +313,23 @@ public class DetailedTestReporter
 	            duration = seconds + "s";
 	        }
 
-	        html.append("<tr onclick=\"toggleDetails('tc").append(testCaseCounter).append("', this)\" style=\"cursor:pointer;\">")
-	            .append("<td>+</td>")
+	        html.append("<tr data-test-id=\"tc").append(testCaseCounter).append("\" data-expanded=\"false\" onclick=\"toggleDetails(this)\" style=\"cursor:pointer;\">")
+	            .append("<td class=\"expand-icon\">+</td>")
 	            .append("<td>").append(escapeHtml(exec.getModule())).append("</td>")
 	            .append("<td>").append(escapeHtml(exec.getTestCaseId())).append("</td>")
 	            .append("<td>").append(escapeHtml(exec.getShortDescription())).append("</td>")
 	            .append("<td class=\"").append(getStatusClass(exec.getStatus())).append("\">").append(statusIcon).append("</td>")
 	            .append("<td>").append(duration).append("</td>")
 	            .append("</tr>\n")
-	            .append("<tr class=\"details\" id=\"tc").append(testCaseCounter).append("\"><td colspan=\"6\">\n")
+	            .append("<tr class=\"details-row\" id=\"tc").append(testCaseCounter).append("-details\" style=\"display:none;\">")
+	            .append("<td colspan=\"6\">\n")
 	            .append("<table class=\"step-table\">\n")
 	            .append("<tr><th>Action</th><th>Expected Result</th><th>Actual Result</th><th>Status</th><th>Screenshot</th></tr>\n");
 
-	        // Generate step rows
 	        for (TestStep step : exec.getSteps()) {
 	            String stepStatusIcon = step.getStatus() == StepStatus.PASS ? "✅" :
-	                                  step.getStatus() == StepStatus.FAIL ? "❌" : "⚠️";
-	            
+	                                     step.getStatus() == StepStatus.FAIL ? "❌" : "⚠️";
+
 	            html.append("<tr>")
 	                .append("<td>").append(escapeHtml(step.getAction())).append("</td>")
 	                .append("<td>").append(escapeHtml(step.getExpectedResult())).append("</td>")
@@ -365,141 +342,82 @@ public class DetailedTestReporter
 
 	        html.append("</table>\n")
 	            .append("</td></tr>\n");
-	        
+
 	        testCaseCounter++;
 	    }
 
-	    html.append("</table>\n")
+	    html.append("</tbody>\n")
+	        .append("</table>\n")
 	        .append("</div>\n")
 	        .append("<script>\n")
-	        .append("function toggleDetails(id, row) {\n")
-	        .append("  var details = document.getElementById(id);\n")
-	        .append("  if (details.style.display === 'table-row') {\n")
-	        .append("    details.style.display = 'none';\n")
-	        .append("    row.cells[0].innerText = '+';\n")
+
+	        // toggle expand/collapse
+	        .append("function toggleDetails(row) {\n")
+	        .append("  if (!row) return;\n")
+	        .append("  var testId = row.getAttribute('data-test-id');\n")
+	        .append("  var detailsRow = document.getElementById(testId + '-details');\n")
+	        .append("  if (!detailsRow) return;\n")
+	        .append("  var expanded = row.getAttribute('data-expanded') === 'true';\n")
+	        .append("  var expandIcon = row.querySelector('.expand-icon');\n")
+	        .append("  if (expanded) {\n")
+	        .append("    detailsRow.style.display = 'none';\n")
+	        .append("    row.setAttribute('data-expanded', 'false');\n")
+	        .append("    if (expandIcon) expandIcon.textContent = '+';\n")
 	        .append("  } else {\n")
-	        .append("    details.style.display = 'table-row';\n")
-	        .append("    row.cells[0].innerText = '-';\n")
+	        .append("    detailsRow.style.display = 'table-row';\n")
+	        .append("    row.setAttribute('data-expanded', 'true');\n")
+	        .append("    if (expandIcon) expandIcon.textContent = '-';\n")
 	        .append("  }\n")
 	        .append("}\n")
-	        .append("// Lightbox functionality\n")
-	        .append("var modal = document.getElementById(\"lightboxModal\");\n")
-	        .append("var modalImg = document.getElementById(\"lightboxImage\");\n")
-	        .append("var closeBtn = document.getElementById(\"closeModal\");\n")
-	        .append("document.querySelectorAll('.screenshot').forEach(function(img) {\n")
-	        .append("  img.onclick = function() {\n")
-	        .append("    modal.style.display = \"block\";\n")
-	        .append("    modalImg.src = this.src;\n")
-	        .append("  }\n")
-	        .append("});\n")
-	        .append("closeBtn.onclick = function() {\n")
-	        .append("  modal.style.display = \"none\";\n")
-	        .append("}\n")
-	        .append("modal.onclick = function(e) {\n")
-	        .append("  if (e.target == modal) {\n")
-	        .append("    modal.style.display = \"none\";\n")
-	        .append("  }\n")
-	        .append("}\n")
-	        .append("// Search function\n")
-	        .append("function searchTests() {\n")
-	        .append("  let input = document.getElementById(\"searchInput\").value.toLowerCase();\n")
-	        .append("  let rows = document.querySelectorAll(\"#testcaseTable tr\");\n")
-	        .append("  for (let i = 1; i < rows.length; i++) {\n")
-	        .append("    let row = rows[i];\n")
-	        .append("    if (row.classList.contains('details')) continue;\n")
-	        .append("    let text = row.innerText.toLowerCase();\n")
-	        .append("    row.style.display = text.includes(input) ? \"\" : \"none\";\n")
-	        .append("    // Hide corresponding detail rows\n")
-	        .append("    if (i + 1 < rows.length && rows[i + 1].classList.contains('details')) {\n")
-	        .append("      rows[i + 1].style.display = text.includes(input) ? \"\" : \"none\";\n")
-	        .append("    }\n")
-	        .append("  }\n")
-	        .append("}\n")
-	        .append("// Filter function\n")
-	        .append("document.getElementById(\"statusFilter\").addEventListener(\"change\", function() {\n")
-	        .append("  let filter = this.value;\n")
-	        .append("  let rows = document.querySelectorAll(\"#testcaseTable tr\");\n")
-	        .append("  for (let i = 1; i < rows.length; i++) {\n")
-	        .append("    let row = rows[i];\n")
-	        .append("    if (row.classList.contains('details')) continue;\n")
-	        .append("    let statusCell = row.cells[4];\n")
-	        .append("    let status = statusCell.textContent.includes('Passed') ? 'PASS' : \n")
-	        .append("                 statusCell.textContent.includes('Failed') ? 'FAIL' : 'SKIPPED';\n")
-	        .append("    if (!filter || status === filter) {\n")
-	        .append("      row.style.display = \"\";\n")
-	        .append("      // Show corresponding detail row\n")
-	        .append("      if (i + 1 < rows.length && rows[i + 1].classList.contains('details')) {\n")
-	        .append("        rows[i + 1].style.display = \"\";\n")
+
+	        // FIXED: applySearchAndFilter ensures details rows follow main rows
+	        .append("function applySearchAndFilter() {\n")
+	        .append("  var searchText = document.getElementById('searchInput').value.toLowerCase().trim();\n")
+	        .append("  var filterValue = document.getElementById('statusFilter').value;\n")
+	        .append("  var mainRows = document.querySelectorAll('#testcaseTable tbody tr:not(.details-row)');\n")
+	        .append("  mainRows.forEach(function(row) {\n")
+	        .append("    var rowText = row.textContent.toLowerCase();\n")
+	        .append("    var statusText = row.cells[4] ? row.cells[4].textContent.toLowerCase() : '';\n")
+	        .append("    var rowStatus = statusText.includes('pass') ? 'PASS' : statusText.includes('fail') ? 'FAIL' : statusText.includes('skip') ? 'SKIPPED' : '';\n")
+	        .append("    var matchesSearch = !searchText || rowText.includes(searchText);\n")
+	        .append("    var matchesFilter = !filterValue || rowStatus === filterValue;\n")
+	        .append("    var shouldShow = matchesSearch && matchesFilter;\n")
+	        .append("    var testId = row.getAttribute('data-test-id');\n")
+	        .append("    var detailsRow = document.getElementById(testId + '-details');\n")
+	        .append("    if (shouldShow) {\n")
+	        .append("      row.style.display = '';\n")
+	        .append("      if (detailsRow) {\n")
+	        .append("        var expanded = row.getAttribute('data-expanded') === 'true';\n")
+	        .append("        detailsRow.style.display = expanded ? 'table-row' : 'none';\n")
 	        .append("      }\n")
 	        .append("    } else {\n")
-	        .append("      row.style.display = \"none\";\n")
-	        .append("      // Hide corresponding detail row\n")
-	        .append("      if (i + 1 < rows.length && rows[i + 1].classList.contains('details')) {\n")
-	        .append("        rows[i + 1].style.display = \"none\";\n")
+	        .append("      row.style.display = 'none';\n")
+	        .append("      if (detailsRow) detailsRow.style.display = 'none';\n")
+	        .append("      if (row.querySelector('.expand-icon')) {\n")
+	        .append("        row.querySelector('.expand-icon').textContent = '+';\n")
+	        .append("        row.setAttribute('data-expanded', 'false');\n")
 	        .append("      }\n")
 	        .append("    }\n")
-	        .append("  }\n")
+	        .append("  });\n")
+	        .append("}\n")
+
+	        // event listeners
+	        .append("document.addEventListener('DOMContentLoaded', function() {\n")
+	        .append("  var searchInput = document.getElementById('searchInput');\n")
+	        .append("  var statusFilter = document.getElementById('statusFilter');\n")
+	        .append("  if (searchInput) searchInput.addEventListener('input', applySearchAndFilter);\n")
+	        .append("  if (statusFilter) statusFilter.addEventListener('change', applySearchAndFilter);\n")
 	        .append("});\n")
-	        .append("document.getElementById(\"searchInput\").addEventListener(\"keyup\", searchTests);\n")
-	        .append("// Export functions\n")
-	        .append("function exportToCSV() {\n")
-	        .append("  let visibleRows = [];\n")
-	        .append("  let rows = document.querySelectorAll(\"#testcaseTable tr\");\n")
-	        .append("  for (let i = 1; i < rows.length; i++) {\n")
-	        .append("    if (!rows[i].classList.contains('details') && rows[i].style.display !== 'none') {\n")
-	        .append("      visibleRows.push(rows[i]);\n")
-	        .append("    }\n")
-	        .append("  }\n")
-	        .append("  let csv = [];\n")
-	        .append("  visibleRows.forEach(r => {\n")
-	        .append("    let cols = r.querySelectorAll(\"td\");\n")
-	        .append("    // Skip the first column (expand/collapse icon)\n")
-	        .append("    let rowData = [];\n")
-	        .append("    for (let i = 1; i < cols.length; i++) {\n")
-	        .append("      rowData.push('\"' + cols[i].innerText + '\"');\n")
-	        .append("    }\n")
-	        .append("    csv.push(rowData.join(\",\"));\n")
-	        .append("  });\n")
-	        .append("  let blob = new Blob([csv.join(\"\\n\")], { type: \"text/csv\" });\n")
-	        .append("  let a = document.createElement(\"a\");\n")
-	        .append("  a.href = URL.createObjectURL(blob);\n")
-	        .append("  a.download = \"detailed_report.csv\";\n")
-	        .append("  a.click();\n")
-	        .append("}\n")
-	        .append("function exportToJSON() {\n")
-	        .append("  let visibleRows = [];\n")
-	        .append("  let rows = document.querySelectorAll(\"#testcaseTable tr\");\n")
-	        .append("  for (let i = 1; i < rows.length; i++) {\n")
-	        .append("    if (!rows[i].classList.contains('details') && rows[i].style.display !== 'none') {\n")
-	        .append("      visibleRows.push(rows[i]);\n")
-	        .append("    }\n")
-	        .append("  }\n")
-	        .append("  let data = [];\n")
-	        .append("  visibleRows.forEach(r => {\n")
-	        .append("    let cols = r.querySelectorAll(\"td\");\n")
-	        .append("    data.push({\n")
-	        .append("      module: cols[1].innerText,\n")
-	        .append("      testCaseId: cols[2].innerText,\n")
-	        .append("      description: cols[3].innerText,\n")
-	        .append("      status: cols[4].innerText,\n")
-	        .append("      duration: cols[5].innerText\n")
-	        .append("    });\n")
-	        .append("  });\n")
-	        .append("  let blob = new Blob([JSON.stringify(data, null, 2)], { type: \"application/json\" });\n")
-	        .append("  let a = document.createElement(\"a\");\n")
-	        .append("  a.href = URL.createObjectURL(blob);\n")
-	        .append("  a.download = \"detailed_report.json\";\n")
-	        .append("  a.click();\n")
-	        .append("}\n")
-	        .append("function exportToPDF() {\n")
-	        .append("  var element = document.getElementById('detailed-section');\n")
-	        .append("  html2pdf().from(element).save(\"detailed_report.pdf\");\n")
-	        .append("}\n")
+
 	        .append("</script>\n");
 
 	    return html.toString();
 	}
 
+
+
+
+	
 	// Helper method to get status class
 	private static String getStatusClass(ExecutionStatus status) {
 	    switch (status) {
@@ -529,6 +447,12 @@ public class DetailedTestReporter
 	    }
 	}
 
+	// Utility to safely compare strings (null-safe)
+	private static boolean safeEquals(String a, String b) {
+	    if (a == null && b == null) return true;
+	    if (a == null || b == null) return false;
+	    return a.equals(b);
+	}
 
 	// Performance Metrics class
 	public static class PerformanceMetrics
