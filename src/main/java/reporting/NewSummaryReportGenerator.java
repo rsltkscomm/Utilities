@@ -315,319 +315,369 @@ public class NewSummaryReportGenerator
 		return "all".equalsIgnoreCase(suiteName) ? "All Modules" : suiteName;
 	}
 
-	public static String getReportHtml(String productName, int pass, int fail, int noRun, int total, String duration, String startTime)
-	{
-		String detailedReportContent = DetailedTestReporter.generateHTMLContent();
-		String moduleDataJson = getModuleDataJson();
-		String overallDurationFormatted = formatMillisAsHMS(duration);
+	public static String getReportHtml(String productName, int pass, int fail, int noRun, int total, String duration, String startTime) {
+	    String detailedReportContent = DetailedTestReporter.generateHTMLContent();
+	    String moduleDataJson = getModuleDataJson();
+	    String overallDurationFormatted = formatMillisAsHMS(duration);
+	    String reportTitle = System.getProperty("reportTitle");
+	    String gap = reportTitle.toLowerCase().contains("daily")? "80px" : reportTitle.toLowerCase().contains("deployment") ? "30px":reportTitle.toLowerCase().contains("smoke") ? "60px" : "50px";
+	    
+	    // Get environment properties with fallbacks
+	    String environment = getSystemProperty("Environment", "Not Specified");
+	    String account = getSystemProperty("Account", "Not Specified");
+	    String browser = getSystemProperty("Browser", "Not Specified");
+	    String username = getSystemProperty("UserName", "Not Specified");
+	    String releaseVersion = getSystemProperty("ReleaseVersion", "Not Specified");
+	    String requestedBy = getSystemProperty("user.name", "Not Specified");
+	    String machineUser = getSystemProperty("user.name", "Not Specified");
+	    
+	    return String.format("""
+	            <!DOCTYPE html>
+	            <html lang="en">
+	            <head>
+	                <meta charset="UTF-8">
+	                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	                <title>Automation Test Summary Report</title>
+	                <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+	                <style>
+	                    /* --- Approved Summary Styles --- */
+	                    * { margin: 0; padding: 0; box-sizing: border-box; }
+	                    body { font-family: 'Segoe UI', sans-serif; background:#f8f9fb; margin:0; color:#333; }
+	                    .header {
+	                        background: linear-gradient(90deg,#002b6b,#0052cc);
+	                        color: white;
+	                        padding: 5px 0;
+	                        text-align: center;
+	                        position: relative;
+	                        box-shadow: 6px 10px 20px black;
+	                        border-radius:10px
+	                    }
+	                    .header-content {
+	                        max-width: 1400px;
+	                        margin: 0 auto;
+	                        padding: 0 20px;
+	                        display: flex;
+	                        align-items: center;
+	                        justify-content: flex-start;
+	                        gap: %s;
+	                        margin-top:10px;
+	                    }
+	                    .header-text { text-align: center; }
+	                    .header h1 { font-size: 2em; margin-bottom: 5px; color: white; margin-left: 80px; }
+	                    .header p { font-size: 1.2em; opacity: 0.9; color: white; padding-left:110px;}
+	                    .logo-container { display: flex; align-items: center; gap: 15px; }
+	                    #resulticks-logo { height: 60px; width: 200px; object-fit: contain; margin-left: 30px; }
+	                    .resul-logo-wrap { display: flex; flex-direction: column; align-items: flex-start; }
+	                    #resul-logo { height: 40px; width: 100px; object-fit: contain; margin-left: 90px; }
+	                    #total-duration { color: #ffffff; font-size: 0.95em; margin-left: 50px; margin-top: 6px; opacity: 0.95; }
+	                    .environment-info {
+	                        background: #f8f9fa; border-bottom: 1px solid #ddd;
+	                        padding: 10px 0; font-size: 0.85em; color: #666; width: 1150px;
+	                    }
+	                    .environment-grid {
+	                        max-width: 1100px; margin: 40px 0px 0px 20px; padding: 20px;
+	                        display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	                        gap: 30px;
+	                    }
+	                    .env-label { font-weight: bold; color: #333; }
+	                    .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+	                    .stats-grid {
+	                        display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+	                        gap: 70px; margin-bottom: 30px;
+	                    }
+	                    .stat-card {
+	                        background: white; padding: 10px; border-radius: 10px;
+	                        box-shadow: 6px 10px 20px black;
+	                        text-align: center; transition: transform 0.3s ease;
+	                    }
+	                    .stat-card:hover { transform: translateY(-5px); }
+	                    .stat-label { color: #666; font-size: 1.1em;font-weight:500 }
+	                    .passed { color: #28a745; } .failed { color: #dc3545; }
+	                    .skipped { color: #ffc107; } .total { color: #007bff; }
+	                    .charts-section {
+	                        background: white; border-radius: 10px; padding: 30px;
+	                        margin-bottom: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+	                    }
+	                    .charts-section h2 { color: black; text-align: left; }
+	                    .analytics-dashboard { display: grid; grid-template-columns: 0.4fr 1.6fr; gap: 30px; margin-top: 20px; }
+	                    .table-side { display: flex; flex-direction: column; }
+	                    .module-table {
+	                        width: 100%%; border-collapse: collapse; margin-top: 20px; background: white;
+	                        border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+	                        border: 1px solid #ddd;
+	                    }
+	                    .module-table th {
+	                        background: linear-gradient(90deg,#002b6b,#0052cc);
+	                        color: white; padding: 15px 12px; text-align: center;
+	                    }
+	                    .module-table td { padding: 12px;font-weight:600; text-align: center; border-bottom: 1px solid #eee; }
+	                    .module-name { font-weight: 600; color: #333; text-align: left; }
+	                    .footer {
+	                        background: #ffffff;
+	                        color: #333333; text-align: center; padding: 16px; margin-top: 30px;
+	                        border-top: 1px solid #e0e0e0;
+	                    }
+	                    .footer-note { color: #333333; font-style: italic; }
+	                    .email-link { color: #007bff; font-weight: 600; text-decoration: underline; }
 
-		return String.format("""
-				<!DOCTYPE html>
-				<html lang="en">
-				<head>
-				    <meta charset="UTF-8">
-				    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-				    <title>Automation Test Summary Report</title>
-				    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-				    <style>
-				        /* --- Approved Summary Styles --- */
-				        * { margin: 0; padding: 0; box-sizing: border-box; }
-				        body { font-family: 'Segoe UI', sans-serif; background:#f8f9fb; margin:0; color:#333; }
-				        .header {
-				            background: linear-gradient(90deg,#002b6b,#0052cc);
-				            color: white;
-				            padding: 5px 0;
-				            text-align: center;
-				            position: relative;
-				            box-shadow: 6px 10px 20px black;
-				            border-radius:10px
-				        }
-				        .header-content {
-				            max-width: 1400px;
-				            margin: 0 auto;
-				            padding: 0 20px;
-				            display: flex;
-				            align-items: center;
-				            justify-content: flex-start;
-				            gap: 50px;
-				            margin-top:10px;
-				        }
-				        .header-text { text-align: center; }
-				        .header h1 { font-size: 2em; margin-bottom: 5px; color: white; margin-left: 80px; }
-				        .header p { font-size: 1.2em; opacity: 0.9; color: white; padding-left:110px;}
-				        .logo-container { display: flex; align-items: center; gap: 15px; }
-				        #resulticks-logo { height: 60px; width: 200px; object-fit: contain; margin-left: 30px; }
-				        .resul-logo-wrap { display: flex; flex-direction: column; align-items: flex-start; }
-				        #resul-logo { height: 40px; width: 100px; object-fit: contain; margin-left: 90px; }
-				        #total-duration { color: #ffffff; font-size: 0.95em; margin-left: 50px; margin-top: 6px; opacity: 0.95; }
-				        .environment-info {
-				            background: #f8f9fa; border-bottom: 1px solid #ddd;
-				            padding: 10px 0; font-size: 0.85em; color: #666; width: 1150px;
-				        }
-				        .environment-grid {
-				            max-width: 1100px; margin: 40px 0px 0px 20px; padding: 20px;
-				            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-				            gap: 30px;
-				        }
-				        .env-label { font-weight: bold; color: #333; }
-				        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
-				        .stats-grid {
-				            display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-				            gap: 70px; margin-bottom: 30px;
-				        }
-				        .stat-card {
-				            background: white; padding: 10px; border-radius: 10px;
-				            box-shadow: 6px 10px 20px black;
-				            text-align: center; transition: transform 0.3s ease;
-				        }
-				        .stat-card:hover { transform: translateY(-5px); }
-				        .stat-label { color: #666; font-size: 1.1em;font-weight:500 }
-				        .passed { color: #28a745; } .failed { color: #dc3545; }
-				        .skipped { color: #ffc107; } .total { color: #007bff; }
-				        .charts-section {
-				            background: white; border-radius: 10px; padding: 30px;
-				            margin-bottom: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-				        }
-				        .charts-section h2 { color: black; text-align: left; }
-				        .analytics-dashboard { display: grid; grid-template-columns: 0.4fr 1.6fr; gap: 30px; margin-top: 20px; }
-				        .table-side { display: flex; flex-direction: column; }
-				        .module-table {
-				            width: 100%%; border-collapse: collapse; margin-top: 20px; background: white;
-				            border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-				            border: 1px solid #ddd;
-				        }
-				        .module-table th {
-				            background: linear-gradient(90deg,#002b6b,#0052cc);
-				            color: white; padding: 15px 12px; text-align: center;
-				        }
-				        .module-table td { padding: 12px;font-weight:600; text-align: center; border-bottom: 1px solid #eee; }
-				        .module-name { font-weight: 600; color: #333; text-align: left; }
-				        .footer {
-				            background: #ffffff;
-				            color: #333333; text-align: center; padding: 16px; margin-top: 30px;
-				            border-top: 1px solid #e0e0e0;
-				        }
-				        .footer-note { color: #333333; font-style: italic; }
-				        .email-link { color: #007bff; font-weight: 600; text-decoration: underline; }
+	                    /* --- Toggle Sections --- */
+	                    .detailed-section { display: none; }
+	                    .back-btn {
+	                        background: #764ba2; color: white; padding: 8px 15px;
+	                        border-radius: 5px; text-decoration: none;
+	                        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+	                        display:inline-block; margin:20px 0;
+	                    }
+	                    .detailed-report-link {
+	                        position: relative; top: 60px; right: 40px;left:540px;
+	                        background: #fff; color: #764ba2;
+	                        padding: 0px; border-radius: 0px;
+	                        font-weight: 400;
+	                        font-style: italic;
+	                        text-decoration :underline;
+	                    }
+	                    .chart-container {
+	                        position: relative;
+	                        height: 300px;
+	                        width: 300px;
+	                        margin: 0 220px;
+	                    }
+	                    .chart-side>h3{
+	                        margin-bottom:30px;
+	                        text-align:center;
+	                    }
+	                    .stats-grid .stat-number {
+	                        box-shadow: none !important;
+	                        font-size: 1.8em;
+	                        font-weight: bold;
+	                        margin-bottom: 6px;
+	                    }
+	                    .count-passed { color: #28a745; font-weight: bold; }
+	                    .count-failed { color: #dc3545; font-weight: bold; }
+	                    .count-skipped { color: #ffc107; font-weight: bold; }
+	                    
+	                    /* Responsive design */
+	                    @media (max-width: 768px) {
+	                        .header-content { flex-direction: column; gap: 20px; }
+	                        .header h1 { margin-left: 0; font-size: 1.5em; }
+	                        .header p { padding-left: 0; }
+	                        .analytics-dashboard { grid-template-columns: 1fr; }
+	                        .chart-container { margin: 0 auto; }
+	                        .environment-info { width: 100%%; }
+	                        .environment-grid { margin: 20px auto; }
+	                        .detailed-report-link { position: static; text-align: center; display: block; margin: 10px 0; }
+	                    }
+	                </style>
+	            </head>
+	            <body>
+	                <div id="summary-section">
+	                    <div class="header">
+	                        <div class="header-content">
+	                            <div class="logo-container">
+	                                <img id="resulticks-logo"
+	                                     src="https://www.resulticks.com/images/logos/resulticks-logo-blue.svg"
+	                                     alt="Resulticks Logo"/>
+	                            </div>
+	                            <div class="header-text">
+	                                <h1>%s</h1>
+	                                <p>Comprehensive Test Execution Report with Analytics</p>
+	                            </div>
+	                            <div class="resul-logo-wrap">
+	                                <img id="resul-logo"
+	                                     src="https://run19.resul.io/assets/resulticks-logo-white-391eec89.svg"
+	                                     alt="Resul Logo"/>
+	                                      <div id="total-duration">Total Duration: %s</div>
+	                            </div>
+	                        </div>
+	                        <a href="javascript:void(0)" class="detailed-report-link"
+	                           onclick="showDetailedReport()">Detailed Report</a>
+	                    </div>
+	                    <div class="environment-info">
+	                        <div class="environment-grid">
+	                            <div class="env-item"><span class="env-label">Environment:</span> <span>%s</span></div>
+	                            <div class="env-item"><span class="env-label">Account:</span> <span>%s</span></div>
+	                            <div class="env-item"><span class="env-label">Browser:</span> <span>%s</span></div>
+	                            <div class="env-item"><span class="env-label">Username:</span> <span>%s</span></div>
+	                            <div class="env-item"><span class="env-label">Release Version:</span> <span>%s</span></div>
+	                            <div class="env-item"><span class="env-label">Requested By:</span> <span>%s</span></div>
+	                            <div class="env-item"><span class="env-label">Machine User:</span> <span>%s</span></div>
+	                            <div class="env-item"><span class="env-label">Execution Date:</span> <span>%s</span></div>
+	                        </div>
+	                    </div>
 
-				        /* --- Toggle Sections --- */
-				        .detailed-section { display: none; }
-				        .back-btn {
-				            background: #764ba2; color: white; padding: 8px 15px;
-				            border-radius: 5px; text-decoration: none;
-				            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-				            display:inline-block; margin:20px 0;
-				        }
-				        .detailed-report-link {
-				            position: relative; top: 60px; right: 40px;left:540px;
-				            background: #fff; color: #764ba2;
-				            padding: 0px; border-radius: 0px;
-				            font-weight: 400;
-				            font-style: italic;
-				            text-decoration :underline;
-				        }
-				        .chart-container {
-				            position: relative;
-				            height: 300px;
-				            width: 300px;
-				            margin: 0 220px;
-				        }
-				        .chart-side>h3{
-				            margin-bottom:30px;
-				            text-align:center;
-				        }
-				        .stats-grid .stat-number {
-				            box-shadow: none !important;
-				            font-size: 1.8em;
-				            font-weight: bold;
-				            margin-bottom: 6px;
-				        }
-				        .count-passed { color: #28a745; font-weight: bold; }
-				        .count-failed { color: #dc3545; font-weight: bold; }
-				        .count-skipped { color: #ffc107; font-weight: bold; }
-				    </style>
-				</head>
-				<body>
-				    <div id="summary-section">
-				        <div class="header">
-				            <div class="header-content">
-				                <div class="logo-container">
-				                    <img id="resulticks-logo"
-				                         src="https://www.resulticks.com/images/logos/resulticks-logo-blue.svg"
-				                         alt="Resulticks Logo"/>
-				                </div>
-				                <div class="header-text">
-				                    <h1>AUTOMATION - TEST SUMMARY REPORT</h1>
-				                    <p>Comprehensive Test Execution Report with Analytics</p>
-				                </div>
-				                <div class="resul-logo-wrap">
-				                    <img id="resul-logo"
-				                         src="https://run19.resul.io/assets/resulticks-logo-white-391eec89.svg"
-				                         alt="Resul Logo"/>
-				                          <div id="total-duration">Total Duration: %s</div>
-				                </div>
-				            </div>
-				            <a href="javascript:void(0)" class="detailed-report-link"
-				               onclick="showDetailedReport()">Detailed Report</a>
-				        </div>
-				        <div class="environment-info">
-				            <div class="environment-grid">
-				                <div class="env-item"><span class="env-label">Environment:</span> <span>%s</span></div>
-				                <div class="env-item"><span class="env-label">Account:</span> <span>%s</span></div>
-				                <div class="env-item"><span class="env-label">Browser:</span> <span>%s</span></div>
-				                <div class="env-item"><span class="env-label">Username:</span> <span>%s</span></div>
-				                <div class="env-item"><span class="env-label">Release Version:</span> <span>%s</span></div>
-				                <div class="env-item"><span class="env-label">Requested By:</span> <span>%s</span></div>
-				                <div class="env-item"><span class="env-label">Machine User:</span> <span>%s</span></div>
-				                <div class="env-item"><span class="env-label">Execution Date:</span> <span>%s</span></div>
-				            </div>
-				        </div>
+	                    <div class="container">
+	                        <div class="stats-grid">
+	                            <div class="stat-card"><div class="stat-number passed">%d</div><div class="stat-label">Passed Tests</div></div>
+	                            <div class="stat-card"><div class="stat-number failed">%d</div><div class="stat-label">Failed Tests</div></div>
+	                            <div class="stat-card"><div class="stat-number skipped">%d</div><div class="stat-label">Skipped Tests</div></div>
+	                            <div class="stat-card"><div class="stat-number total">%d</div><div class="stat-label">Total Tests</div></div>
+	                        </div>
 
-				        <div class="container">
-				            <div class="stats-grid">
-				                <div class="stat-card"><div class="stat-number passed">%d</div><div class="stat-label">Passed Tests</div></div>
-				                <div class="stat-card"><div class="stat-number failed">%d</div><div class="stat-label">Failed Tests</div></div>
-				                <div class="stat-card"><div class="stat-number skipped">%d</div><div class="stat-label">Skipped Tests</div></div>
-				                <div class="stat-card"><div class="stat-number total">%d</div><div class="stat-label">Total Tests</div></div>
-				            </div>
+	                        <div class="charts-section">
+	                            <h2>📊 Test Analytics Dashboard</h2>
+	                            <div class="analytics-dashboard">
+	                                <div class="table-side">
+	                                    <h3>📋 Module-wise Test Results</h3>
+	                                    <table class="module-table">
+	                                        <thead>
+	                                            <tr>
+	                                                <th id="th-module">Module</th>
+	                                                <th id="th-total">Total</th>
+	                                                <th id="th-passed">Passed</th>
+	                                                <th id="th-failed">Failed</th>
+	                                                <th id="th-skipped">Skipped</th>
+	                                                <th id="th-duration">Duration</th>
+	                                                <th id="th-success">Success %%</th>
+	                                            </tr>
+	                                        </thead>
+	                                        <tbody id="moduleTableBody"></tbody>
+	                                    </table>
+	                                </div>
+	                                <div class="chart-side">
+	                                    <h3>Test Summary Chart</h3>
+	                                    <div class="chart-container">
+	                                        <canvas id="mainChart"></canvas>
+	                                    </div>
+	                                </div>
+	                            </div>
+	                        </div>
+	                    </div>
 
-				            <div class="charts-section">
-				                <h2>📊 Test Analytics Dashboard</h2>
-				                <div class="analytics-dashboard">
-				                    <div class="table-side">
-				                        <h3>📋 Module-wise Test Results</h3>
-				                        <table class="module-table">
-				                            <thead>
-				                                <tr>
-				                                    <th id="th-module">Module</th>
-				                                    <th id="th-total">Total</th>
-				                                    <th id="th-passed">Passed</th>
-				                                    <th id="th-failed">Failed</th>
-				                                    <th id="th-skipped">Skipped</th>
-				                                    <th id="th-duration">Duration</th>
-				                                    <th id="th-success">Success %%</th>
-				                                </tr>
-				                            </thead>
-				                            <tbody id="moduleTableBody"></tbody>
-				                        </table>
-				                    </div>
-				                    <div class="chart-side">
-				                        <h3>Test Summary Chart</h3>
-				                        <div class="chart-container">
-				                            <canvas id="mainChart"></canvas>
-				                        </div>
-				                    </div>
-				                </div>
-				            </div>
-				        </div>
+	                    <div class="footer">
+	                        <div class="footer-note">
+	                            <i class="fas fa-envelope"></i> For any queries, please reach out to
+	                            <a href="mailto:qaautomation@resulticks.com" class="email-link">qaautomation@resulticks.com</a>.
+	                        </div>
+	                    </div>
+	                </div>
 
-				        <div class="footer">
-				            <div class="footer-note">
-				                <i class="fas fa-envelope"></i> For any queries, please reach out to
-				                <a href="mailto:qaautomation@resulticks.com" class="email-link">qaautomation@resulticks.com</a>.
-				            </div>
-				        </div>
-				    </div>
+	                <div id="detailed-section" class="detailed-section">
+	                    <a href="javascript:void(0)" class="back-btn" onclick="showSummary()">← Back to Summary</a>
+	                    %s
+	                </div>
 
-				    <div id="detailed-section" class="detailed-section">
-				        <a href="javascript:void(0)" class="back-btn" onclick="showSummary()">← Back to Summary</a>
-				        %s
-				    </div>
+	                <script>
+	                    function showDetailedReport() {
+	                        document.getElementById("summary-section").style.display = "none";
+	                        document.getElementById("detailed-section").style.display = "block";
+	                        window.scrollTo(0,0);
+	                    }
+	                    function showSummary() {
+	                        document.getElementById("detailed-section").style.display = "none";
+	                        document.getElementById("summary-section").style.display = "block";
+	                        window.scrollTo(0,0);
+	                    }
 
-				    <script>
-				        function showDetailedReport() {
-				            document.getElementById("summary-section").style.display = "none";
-				            document.getElementById("detailed-section").style.display = "block";
-				            window.scrollTo(0,0);
-				        }
-				        function showSummary() {
-				            document.getElementById("detailed-section").style.display = "none";
-				            document.getElementById("summary-section").style.display = "block";
-				            window.scrollTo(0,0);
-				        }
+	                    const moduleData = %s;
 
-				        const moduleData = %s;
+	                    // Initialize the chart
+	                    function initChart() {
+	                        try {
+	                            const ctx = document.getElementById('mainChart').getContext('2d');
+	                            new Chart(ctx, {
+	                                type: 'doughnut',
+	                                data: {
+	                                    labels: ['Passed', 'Failed', 'Skipped'],
+	                                    datasets: [{
+	                                        data: [%d, %d, %d],
+	                                        backgroundColor: ['#28a745', '#dc3545', '#ffc107'],
+	                                        borderWidth: 2,
+	                                        borderColor: '#fff'
+	                                    }]
+	                                },
+	                                options: {
+	                                    responsive: true,
+	                                    maintainAspectRatio: false,
+	                                    plugins: {
+	                                        legend: {
+	                                            position: 'bottom',
+	                                            labels: {
+	                                                font: { size: 12 },
+	                                                usePointStyle: true,
+	                                                boxWidth: 12,
+	                                                padding: 20
+	                                            }
+	                                        },
+	                                        tooltip: {
+	                                            callbacks: {
+	                                                label: function(context) {
+	                                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+	                                                    const percentage = ((context.parsed / total) * 100).toFixed(1);
+	                                                    return `${context.label}: ${context.parsed} (${percentage}%%)`;
+	                                                }
+	                                            }
+	                                        }
+	                                    }
+	                                }
+	                            });
+	                        } catch (e) {
+	                            console.error("Chart initialization error:", e);
+	                        }
+	                    }
 
-				        // Initialize the chart
-				        function initChart() {
-				            try {
-				                const ctx = document.getElementById('mainChart').getContext('2d');
-				                new Chart(ctx, {
-				                    type: 'doughnut',
-				                    data: {
-				                        labels: ['Passed', 'Failed', 'Skipped'],
-				                        datasets: [{
-				                            data: [%d, %d, %d],
-				                            backgroundColor: ['#28a745', '#dc3545', '#ffc107'],
-				                            borderWidth: 2,
-				                            borderColor: '#fff'
-				                        }]
-				                    },
-				                    options: {
-				                        responsive: true,
-				                        maintainAspectRatio: false,
-				                        plugins: {
-				                            legend: {
-				                                position: 'bottom',
-				                                labels: {
-				                                    font: { size: 12 },
-				                                    usePointStyle: true,
-				                                    boxWidth: 12,
-				                                    padding: 20
-				                                }
-				                            },
-				                            tooltip: {
-				                                callbacks: {
-				                                    label: function(context) {
-				                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-				                                        const percentage = ((context.parsed / total) * 100).toFixed(1);
-				                                        return `${context.label}: ${context.parsed} (${percentage}%%)`;
-				                                    }
-				                                }
-				                            }
-				                        }
-				                    }
-				                });
-				            } catch (e) {
-				                console.error("Chart initialization error:", e);
-				            }
-				        }
+	                    function formatDuration(ms) {
+	                        if (!ms || ms <= 0) return '-';
+	                        const totalSeconds = Math.floor(ms / 1000);
+	                        const hours = Math.floor(totalSeconds / 3600);
+	                        const minutes = Math.floor((totalSeconds %% 3600) / 60);
+	                        const seconds = totalSeconds %% 60;
+	                        const pad = (n) => n.toString().padStart(2, '0');
+	                        return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+	                    }
 
-				        function formatDuration(ms) {
-				            if (!ms || ms <= 0) return '-';
-				            const totalSeconds = Math.floor(ms / 1000);
-				            const hours = Math.floor(totalSeconds / 3600);
-				            const minutes = Math.floor((totalSeconds %% 3600) / 60);
-				            const seconds = totalSeconds %% 60;
-				            const pad = (n) => n.toString().padStart(2, '0');
-				            return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
-				        }
+	                    function populateModuleTable() {
+	                        const tableBody = document.getElementById('moduleTableBody');
+	                        if (!moduleData || !Array.isArray(moduleData)) {
+	                            tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #666;">No module data available</td></tr>';
+	                            return;
+	                        }
+	                        
+	                        tableBody.innerHTML = moduleData.map(m => {
+	                            const rate = m.total > 0 ? ((m.passed/m.total)*100).toFixed(1) : '0.0';
+	                            return `<tr>
+	                                <td class="module-name">${m.module || 'Unknown Module'}</td>
+	                                <td>${m.total || 0}</td>
+	                                <td class="count-passed">${m.passed || 0}</td>
+	                                <td class="count-failed">${m.failed || 0}</td>
+	                                <td class="count-skipped">${m.skipped || 0}</td>
+	                                <td>${formatDuration(m.durationMillis || 0)}</td>
+	                                <td><div class="count-passed">${rate}%%</div></td>
+	                            </tr>`;
+	                        }).join('');
+	                    }
 
-				        function populateModuleTable() {
-				            const tableBody = document.getElementById('moduleTableBody');
-				            tableBody.innerHTML = moduleData.map(m => {
-				                const rate = ((m.passed/m.total)*100).toFixed(1);
-				                return `<tr>
-				                    <td class="module-name">${m.module}</td>
-				                    <td>${m.total}</td>
-				                    <td class="count-passed">${m.passed}</td>
-				                    <td class="count-failed">${m.failed}</td>
-				                    <td class="count-skipped">${m.skipped}</td>
-				                    <td>${formatDuration(m.durationMillis || 0)}</td>
-				                    <td><div class="count-passed">${rate}%%</div></td>
-				                </tr>`;
-				            }).join('');
-				        }
+	                    // Handle page load and resize events
+	                    window.addEventListener('DOMContentLoaded', () => {
+	                        initChart();
+	                        populateModuleTable();
+	                    });
+	                    
+	                    window.addEventListener('resize', () => {
+	                        // Reinitialize chart on resize for better responsiveness
+	                        const chart = Chart.getChart('mainChart');
+	                        if (chart) {
+	                            chart.destroy();
+	                        }
+	                        initChart();
+	                    });
+	                </script>
+	            </body>
+	            </html>
+	            """,
+	            gap,reportTitle, overallDurationFormatted, environment, account, browser, 
+	            username, releaseVersion, requestedBy, machineUser, startTime, 
+	            pass, fail, noRun, total, detailedReportContent, moduleDataJson, 
+	            pass, fail, noRun);
+	}
 
-				        window.addEventListener('DOMContentLoaded', () => {
-				            initChart();
-				            populateModuleTable();
-				        });
-				    </script>
-				</body>
-				</html>
-				""", overallDurationFormatted, System.getProperty("Environment"), System.getProperty("Account"), System.getProperty("Browser"), System.getProperty("UserName"), System.getProperty("ReleaseVersion"), System.getProperty("user.name"),
-				System.getProperty("user.name"), startTime, pass, fail, noRun, total, detailedReportContent, moduleDataJson, pass, fail, noRun);
+	// Helper method to safely get system properties with fallback
+	private static String getSystemProperty(String key, String defaultValue) {
+	    try {
+	        String value = System.getProperty(key);
+	        return (value != null && !value.trim().isEmpty()) ? value : defaultValue;
+	    } catch (Exception e) {
+	        return defaultValue;
+	    }
 	}
 
 	private static String formatMillisAsHMS(String millisString)
