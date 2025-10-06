@@ -352,7 +352,7 @@ public class NewSummaryReportGenerator
 	            .chart-container { flex:1; display:flex; justify-content:center; align-items:center; }
 	            .table-container { flex:1; background:white; padding:15px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
 	            .table-container table { width:100%%; border-collapse:collapse; }
-	            .table-container th, .table-container td { padding:8px; border-bottom:1px solid #eee; text-align:center; }
+	            .table-container th, .table-container td { padding:8px; border-bottom:1px solid #eee; text-align:left; }
 	            .table-container th { background:#002b6b; color:white; }
 	            .footer { text-align:center; font-size:0.8em; padding:10px; background:#f1f1f1; margin-top:20px; }
 	            
