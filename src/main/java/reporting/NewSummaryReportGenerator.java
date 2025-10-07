@@ -26,6 +26,7 @@ public class NewSummaryReportGenerator
 
 	private static String html = "";
 	public static final Map<String, ModuleStats> moduleStats = new ConcurrentHashMap<>();
+	public static List<Map<String, Object>> modules;
 
 	private static String extractModuleName(String testName)
 	{
@@ -126,7 +127,7 @@ public class NewSummaryReportGenerator
 	public static String getModuleDataJson()
 	{
 		AggregatedStats agg = aggregateStats();
-		List<Map<String, Object>> modules = new ArrayList<>();
+		modules = new ArrayList<>();
 		for (Map.Entry<String, ModuleSummary> entry : agg.perModule.entrySet())
 		{
 			ModuleSummary ms = entry.getValue();
