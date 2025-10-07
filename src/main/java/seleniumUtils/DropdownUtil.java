@@ -183,5 +183,21 @@ public class DropdownUtil extends AssertUtil
 		return list;
 	}
 	
+	public boolean selectListElementByAttribute(Object pr, String attribute, String value)
+	{
+		List<WebElement> elements = findElements(pr);
+		for (int i = 0; i < elements.size(); i++)
+		{
+			String attrValue = elements.get(i).getAttribute(attribute).trim();
+			if (attrValue.contains(value))
+			{
+				elements.get(i).click();
+				ExtentManager.infoTest("Clicked on element with " + attribute + ": " + value);
+				return true;
+			}
+		}
+		return false;
+	}
+	
 	
 }

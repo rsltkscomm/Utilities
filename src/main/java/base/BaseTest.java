@@ -9,6 +9,7 @@ import pages.PageFactory;
 import reporting.ExcelReportGenerator;
 import reporting.ExtentManager;
 import reporting.TestLogManager;
+import seleniumUtils.DateUtils;
 import seleniumUtils.ScreenshotUtil;
 
 import java.lang.reflect.Method;
@@ -27,17 +28,24 @@ public class BaseTest
 	public static ThreadLocal<String> sheet_name = new ThreadLocal<>();
 	public static ThreadLocal<XLSReader> datatable = new ThreadLocal<>();
 	public static ThreadLocal<Integer> currentRow = new ThreadLocal<Integer>();
+	
+	public static String currentDate;
+    public static String EndDateTime;
+
+
 
 	@BeforeSuite(alwaysRun = true)
 	@Parameters({ "runner" })
 	public void beforeSuite(String runner)
 	{
+		
 		ExtentManager.initReports();
 		TestLogManager.reloadConfiguration();
 		if (GridManager.checkIfGrid(runner))
 		{
 			DockerManager.dockerContainterUp();
 		}
+		currentDate = DateUtils.getCurrentDate("dd-MMM-yyyy HH:mm");
 		TestLogManager.info("==== Test Suite Started ====");
 	}
 
@@ -80,6 +88,8 @@ public class BaseTest
 		if (!testDataUtil.isTCIDFound(this))
 		{
 			throw new RuntimeException("TestMethodName not found in Excel sheet: " + method_name.get());
+		}else {
+			System.out.println(method_name.get());
 		}
 		TestDataUtil.createDataRef();
 		PageBase.getDeviceSpecs();
@@ -132,6 +142,7 @@ public class BaseTest
 			DockerManager.dockerContainterDown();
 		}
 		ExtentManager.openExtentReport();
+		EndDateTime = DateUtils.getCurrentDate(" HH:mm");
 		TestLogManager.info("==== Test Suite Finished ====");
 	}
 

@@ -28,8 +28,8 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener
 	private final List<String> failMethods = new LinkedList<>();
 	private final List<String> noRunMethods = new LinkedList<>();
 
-	private long startTime;
-	private String dateTime;
+	public static long startTime;
+	public static String dateTime;
 
 	/**
 	 * Called when the suite starts. Captures start time.
