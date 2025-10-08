@@ -147,6 +147,7 @@ public class NewSummaryReportGenerator
 
 	public static void generateReport(int pass, int fail, int noRun, String duration, String startTime)
 	{
+		zephyrIntegration.JiraZephyrClient.zephyrUpdater();
 		String reportFileName = System.getProperty("reportFileName") + "_" + DateUtils.getCurrentDate("ddMMMyyyy")+".html";
 		String customreport = System.getProperty("user.dir") + File.separator + reportFileName;
 		String pageloadReportPath = System.getProperty("user.dir") + File.separator + "TestReport.html";
