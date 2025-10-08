@@ -195,7 +195,7 @@ public class DetailedTestReporter
             return null;
         }
 
-    public List<TestExecution> getTestExecutions()
+    public static List<TestExecution> getTestExecutions()
 	{
 		return testExecutions;
 	}

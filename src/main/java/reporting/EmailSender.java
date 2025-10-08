@@ -58,12 +58,13 @@ public class EmailSender {
             Message message = prepareMessage(session, senderEmail, recipients, subject);
             Multipart multipart = new MimeMultipart("mixed");
 
-            // Add email body (HTML)
-            addHtmlPart(multipart, getMailHtml());
-
             // Zip and attach reports
             handleReportAttachments(filePaths, fileNames, multipart);
 
+            // Add email body (HTML)
+            addHtmlPart(multipart, getMailHtml());
+
+          
             // Send email
             message.setContent(multipart);
             Transport.send(message);
@@ -211,12 +212,23 @@ public class EmailSender {
         Date = CurrentDate;
         Time = CurrentTime;
 
-        Map<String, Object> moduleData = NewSummaryReportGenerator.modules.get(0);
-        Total = String.valueOf(moduleData.get("total"));
-        Passed = String.valueOf(moduleData.get("passed"));
-        Failed = String.valueOf(moduleData.get("failed"));
-        Skipped = String.valueOf(moduleData.get("skipped"));
+        List<Map<String, Object>> moduleData = NewSummaryReportGenerator.modules;
+        int total = 0;
+        int passed = 0;
+        int failed = 0;
+        int skipped = 0;
 
+        for (Map<String, Object> module : moduleData) {
+            total += Integer.parseInt(String.valueOf(module.get("total")));
+            passed += Integer.parseInt(String.valueOf(module.get("passed")));
+            failed += Integer.parseInt(String.valueOf(module.get("failed")));
+            skipped += Integer.parseInt(String.valueOf(module.get("skipped")));
+        }
+
+         Total = String.valueOf(total);
+         Passed = String.valueOf(passed);
+         Failed = String.valueOf(failed);
+         Skipped = String.valueOf(skipped);
         int totalTests = Integer.parseInt(Total);
         int passedTests = Integer.parseInt(Passed);
         PassRate = totalTests > 0 ? String.valueOf((passedTests * 100) / totalTests) : "0";
@@ -254,24 +266,31 @@ public class EmailSender {
     }
 
     private static void setTriggerAndGitInfo() {
-        TriggerType = Optional.ofNullable(System.getenv("BUILD_CAUSE"))
-                .map(v -> v.contains("TIMERTRIGGER") ? "Scheduled" : "On-Demand")
-                .orElse("Unknown");
+    	// Trigger type
+    			String buildCause = System.getenv("BUILD_CAUSE");
+    			TriggerType = (buildCause != null && buildCause.contains("TIMERTRIGGER")) ? "Scheduled" : "On-Demand";
 
-        Branch = System.getenv("GIT_BRANCH");
-        ShortSHA = System.getenv("GIT_COMMIT");
+    			// Branch and commit
+    			Branch = System.getenv("GIT_BRANCH");
+    			ShortSHA = System.getenv("GIT_COMMIT");
 
-        if (Branch == null || ShortSHA == null) {
-            try {
-                Branch = execCommand("git rev-parse --abbrev-ref HEAD");
-                ShortSHA = execCommand("git rev-parse --short HEAD");
-            } catch (IOException ignored) {
-                Branch = "Unknown";
-                ShortSHA = "Unknown";
-            }
-        }
-        System.out.println("Trigger: " + TriggerType + ", Branch: " + Branch + ", Commit: " + ShortSHA);
-    }
+    			// Fallback to git command if env variables not present
+    			if (Branch == null || ShortSHA == null)
+    			{
+    				try
+    				{
+    					Process p1 = Runtime.getRuntime().exec("git rev-parse --abbrev-ref HEAD");
+    					Branch = new BufferedReader(new InputStreamReader(p1.getInputStream())).readLine();
+
+    					Process p2 = Runtime.getRuntime().exec("git rev-parse --short HEAD");
+    					ShortSHA = new BufferedReader(new InputStreamReader(p2.getInputStream())).readLine();
+    				} catch (IOException e)
+    				{
+    					Branch = "Unknown";
+    					ShortSHA = "Unknown";
+    				}
+    			}
+ }
 
     private static String execCommand(String command) throws IOException {
         Process process = Runtime.getRuntime().exec(command);
