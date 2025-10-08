@@ -76,6 +76,26 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
+		<dependency>
+    <groupId>org.json</groupId>
+    <artifactId>json</artifactId>
+    <version>20230227</version>
+</dependency>
+<dependency>
+    <groupId>io.jsonwebtoken</groupId>
+    <artifactId>jjwt-api</artifactId>
+    <version>0.11.5</version>
+</dependency>
+<dependency>
+    <groupId>io.jsonwebtoken</groupId>
+    <artifactId>jjwt-impl</artifactId>
+    <version>0.11.5</version>
+</dependency>
+<dependency>
+    <groupId>io.jsonwebtoken</groupId>
+    <artifactId>jjwt-jackson</artifactId>
+    <version>0.11.5</version>
+</dependency>
 		<!-- Web Automation -->
 		<dependency>
 			<groupId>org.seleniumhq.selenium</groupId>
@@ -142,14 +162,14 @@
 			<artifactId>rest-assured</artifactId>
 			<version>${rest-assured.version}</version>
 		</dependency>
-		
+
 		<!-- JSON Schema Validation -->
 		<dependency>
 			<groupId>com.networknt</groupId>
 			<artifactId>json-schema-validator</artifactId>
 			<version>1.0.87</version>
 		</dependency>
-		
+
 		<!-- Reporting -->
 		<dependency>
 			<groupId>com.aventstack</groupId>
@@ -239,7 +259,7 @@
 			<artifactId>httpclient5-fluent</artifactId>
 			<version>${httpclient5.version}</version>
 		</dependency>
-		
+
 		<!-- https://mvnrepository.com/artifact/com.jcraft/jsch -->
 <dependency>
     <groupId>com.jcraft</groupId>

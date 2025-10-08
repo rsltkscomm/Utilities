@@ -9,7 +9,6 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.remote.RemoteWebDriver;
 import reporting.DetailedTestReporter.ExecutionStatus;
 import reporting.DetailedTestReporter.TestExecution;
-import seleniumUtils.DateUtils;
 
 import java.io.*;
 import java.text.SimpleDateFormat;
