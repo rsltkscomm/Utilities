@@ -1,4 +1,4 @@
-package zephyrIntegration;
+package testManagement;
 
 
 import reporting.DetailedTestReporter;
@@ -15,7 +15,6 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 
 public class JiraZephyrClient {
 
@@ -32,21 +31,14 @@ public class JiraZephyrClient {
     }
 
     private void loadConfig() {
-        try (InputStream input = new FileInputStream("config.properties")) {
-            Properties prop = new Properties();
-            prop.load(input);
+            JIRA_BASE_URL = System.getProperty("JIRA_BASE_URL");
+            JIRA_EMAIL = System.getProperty("JIRA_EMAIL");
+            JIRA_API_KEY = System.getProperty("JIRA_API_KEY");
+            ZEPHYR_API_KEY = System.getProperty("ZEPHYR_API_KEY");
+            PROJECT_KEY = System.getProperty("PROJECT_KEY");
+            TEST_CYCLE_KEY = System.getProperty("TEST_CYCLE_ID");
+            REPORT_BUG = "No".equalsIgnoreCase(System.getProperty("ReportBug"));
 
-            JIRA_BASE_URL = prop.getProperty("JIRA_BASE_URL");
-            JIRA_EMAIL = prop.getProperty("JIRA_EMAIL");
-            JIRA_API_KEY = prop.getProperty("JIRA_API_KEY");
-            ZEPHYR_API_KEY = prop.getProperty("ZEPHYR_API_KEY");
-            PROJECT_KEY = prop.getProperty("PROJECT_KEY");
-            TEST_CYCLE_KEY = prop.getProperty("TEST_CYCLE_ID");
-            REPORT_BUG = "No".equalsIgnoreCase(prop.getProperty("ReportBug"));
-
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to load config.properties", e);
-        }
     }
 
     // ------------------------------------------------------------------
