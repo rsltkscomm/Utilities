@@ -147,7 +147,6 @@ public class NewSummaryReportGenerator
 
 	public static void generateReport(int pass, int fail, int noRun, String duration, String startTime)
 	{
-		testManagement.JiraZephyrClient.zephyrUpdater();;
 		String reportFileName = System.getProperty("reportFileName") + "_" + DateUtils.getCurrentDate("ddMMMyyyy")+".html";
 		String customreport = System.getProperty("user.dir") + File.separator + reportFileName;
 		String pageloadReportPath = System.getProperty("user.dir") + File.separator + "TestReport.html";
@@ -223,6 +222,14 @@ public class NewSummaryReportGenerator
 		{
 			System.err.println("❌ Failed to send email: " + e.getMessage());
 			e.printStackTrace();
+		}
+		if ("yes".equalsIgnoreCase(System.getProperty("isJiraZephyrUpdate")))
+		{
+			testManagement.JiraZephyrClient.zephyrUpdater();
+			System.out.println("🔄 Initiating Jira Zephyr update...");
+		} else
+		{
+			return;
 		}
 	}
 

@@ -216,7 +216,6 @@ public class JiraZephyrClient {
             	TestResults.add(new TestResult(testcaseID, "Skipped", null));
             }
             client.updateTestResults(TestResults);
-            
         }
     }
 }
