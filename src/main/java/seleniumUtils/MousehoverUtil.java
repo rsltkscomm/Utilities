@@ -24,10 +24,8 @@ public class MousehoverUtil extends KeyboardUtil {
         try {
             WebElement element = getElement(pr);
             new Actions(driver).moveToElement(element).perform();
-            ExtentManager.infoTest("Mouse hovered on element (Actions): " + element.toString());
             return true;
         } catch (Exception e) {
-            ExtentManager.failTest("Mouse hover failed. Reason: " + e.getMessage());
             return false;
         }
     }
@@ -37,10 +35,8 @@ public class MousehoverUtil extends KeyboardUtil {
         try {
             WebElement element = getElement(pr);
             new Actions(driver).moveToElement(element).click().perform();
-            ExtentManager.infoTest("Hovered and clicked on element (Actions): " + element.toString());
             return true;
         } catch (Exception e) {
-            ExtentManager.failTest("Hover and click failed. Reason: " + e.getMessage());
             return false;
         }
     }
@@ -50,10 +46,8 @@ public class MousehoverUtil extends KeyboardUtil {
         try {
             WebElement element = getElement(pr);
             new Actions(driver).moveToElement(element).doubleClick().perform();
-            ExtentManager.infoTest("Hovered and double clicked on element (Actions): " + element.toString());
             return true;
         } catch (Exception e) {
-            ExtentManager.failTest("Hover and double click failed. Reason: " + e.getMessage());
             return false;
         }
     }
@@ -63,10 +57,8 @@ public class MousehoverUtil extends KeyboardUtil {
         try {
             WebElement element = getElement(pr);
             new Actions(driver).moveToElement(element).contextClick().perform();
-            ExtentManager.infoTest("Hovered and right clicked on element (Actions): " + element.toString());
             return true;
         } catch (Exception e) {
-            ExtentManager.failTest("Hover and right click failed. Reason: " + e.getMessage());
             return false;
         }
     }
@@ -76,10 +68,8 @@ public class MousehoverUtil extends KeyboardUtil {
         try {
             WebElement element = getElement(pr);
             new Actions(driver).moveToElement(element).sendKeys(keys).perform();
-            ExtentManager.infoTest("Hovered and sent keys '" + keys + "' (Actions) to element: " + element.toString());
             return true;
         } catch (Exception e) {
-            ExtentManager.failTest("Hover and send keys failed. Reason: " + e.getMessage());
             return false;
         }
     }
@@ -92,7 +82,6 @@ public class MousehoverUtil extends KeyboardUtil {
             ExtentManager.infoTest("Hovered on element with offset X:" + xOffset + " Y:" + yOffset + " (Actions)");
             return true;
         } catch (Exception e) {
-            ExtentManager.failTest("Hover by offset failed. Reason: " + e.getMessage());
             return false;
         }
     }
@@ -111,10 +100,8 @@ public class MousehoverUtil extends KeyboardUtil {
                     "false, false, false, false, 0, null);" +
                     "arguments[0].dispatchEvent(evObj);";
             ((JavascriptExecutor) driver).executeScript(script, element);
-            ExtentManager.infoTest("JavaScript hover triggered (mouseover) on element: " + element.toString());
             return true;
         } catch (Exception e) {
-            ExtentManager.failTest("JS hover failed. Reason: " + e.getMessage());
             return false;
         }
     }
@@ -125,10 +112,8 @@ public class MousehoverUtil extends KeyboardUtil {
             WebElement element = getElement(pr);
             jsMouseHover(pr); // trigger hover first
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", element);
-            ExtentManager.infoTest("JavaScript hover + click executed on element: " + element.toString());
             return true;
         } catch (Exception e) {
-            ExtentManager.failTest("JS hover and click failed. Reason: " + e.getMessage());
             return false;
         }
     }
@@ -138,10 +123,8 @@ public class MousehoverUtil extends KeyboardUtil {
         try {
             WebElement element = getElement(pr);
             ((JavascriptExecutor) driver).executeScript("arguments[0].setAttribute('style', arguments[0].getAttribute('style') + ';background: yellow; border: 2px solid red;');", element);
-            ExtentManager.infoTest("JavaScript hover simulated via CSS highlight for element: " + element.toString());
             return true;
         } catch (Exception e) {
-            ExtentManager.failTest("JS hover via CSS failed. Reason: " + e.getMessage());
             return false;
         }
     }
