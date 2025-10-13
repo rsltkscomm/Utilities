@@ -294,8 +294,8 @@ public class DefectReporter
 		JSONArray content = new JSONArray();
 
 		// Header
-		content.put(createAdfHeading("Test Case Failure Report", 2));
-		content.put(createAdfParagraph("This bug was automatically generated due to test case failure during automation execution."));
+//		content.put(createAdfHeading("Test Case Failure Report", 2));
+//		content.put(createAdfParagraph("This bug was automatically generated due to test case failure during automation execution."));
 
 		// Test Information
 		content.put(createAdfHeading("Test Information", 3));
@@ -362,7 +362,7 @@ public class DefectReporter
 
 		// Additional Information
 		content.put(createAdfHeading("Additional Information", 3));
-		content.put(createAdfParagraph("Automation Framework: Selenium + TestNG"));
+//		content.put(createAdfParagraph("Automation Framework: Selenium + TestNG"));
 		content.put(createAdfParagraph("Browser: Chrome (Latest)"));
 		content.put(createAdfParagraph("Operating System: Windows 10"));
 

@@ -16,6 +16,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.logging.LogEntries;
+import org.openqa.selenium.logging.LogEntry;
+import org.openqa.selenium.logging.LogType;
 
 import base.DriverManager;
 import reporting.NewSummaryReportGenerator.ModuleStats;
@@ -87,16 +90,69 @@ public class DetailedTestReporter
 	
 	public static void updateStep(boolean status, TestCase failConstant, TestCase passConstant)
 	{
-		if (!status)
-		{
-			DetailedTestReporter.addStep(failConstant, StepStatus.FAIL, DriverManager.getDriver());
-		} else
-		{
-			DetailedTestReporter.addStep(passConstant, StepStatus.PASS, DriverManager.getDriver());
-		}
+	    WebDriver driver = DriverManager.getDriver();
+	    String logPath = "";
+	    File harFile = null;
+	    if (!status)
+	    {
+	        try {
+	            LogEntries logs = driver.manage().logs().get(LogType.BROWSER);
+	            if (logs != null && logs.getAll().size() > 0) {
+	            	logPath = saveBrowserLogs(logs, failConstant.getDescription());
+	            } else {
+	                System.out.println("⚠️ No browser logs available for this failure.");
+	            }
+	        } catch (Exception e) {
+	            System.out.println("❌ Could not capture browser logs: " + e.getMessage());
+	        }
+	        DetailedTestReporter.addStep(failConstant, StepStatus.FAIL, driver,logPath,harFile);
+	    } 
+	    else
+	    {
+	        DetailedTestReporter.addStep(passConstant, StepStatus.PASS, driver,logPath,harFile);
+	    }
+	}
+	
+	/**
+	 * Save browser console logs to a timestamped file
+	 */
+	private static String saveBrowserLogs(LogEntries logEntries, String stepName)
+	{
+	    try {
+	        String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+	        String fileName = "browser_logs_" + stepName + "_" + timestamp + ".txt";
+	        File file = new File("./logs/" + fileName);
+
+	        StringBuilder content = new StringBuilder();
+	        content.append("=====================================================================\n");
+	        content.append("BROWSER CONSOLE LOGS (").append(stepName).append(")\n");
+	        content.append("=====================================================================\n\n");
+
+	        int count = 1;
+	        for (LogEntry entry : logEntries) {
+	            content.append(count++)
+	                   .append(". [")
+	                   .append(entry.getLevel())
+	                   .append("] ")
+	                   .append(new SimpleDateFormat("HH:mm:ss").format(new Date(entry.getTimestamp())))
+	                   .append(" - ")
+	                   .append(entry.getMessage())
+	                   .append("\n");
+	        }
+
+	        try (FileWriter writer = new FileWriter(file)) {
+	            writer.write(content.toString());
+	        }
+
+	        System.out.println("✅ Browser logs saved: " + file.getAbsolutePath());
+	        return file.getAbsolutePath(); 
+	    } catch (Exception e) {
+	        System.out.println("❌ Failed to save browser logs: " + e.getMessage());
+	        return null;
+	    }
 	}
 
-    public static void addStep(TestCase testCase, StepStatus status, WebDriver driver) {
+    public static void addStep(TestCase testCase, StepStatus status, WebDriver driver,String logFilePath,File harFile) {
         synchronized (MUTEX) {
             boolean isDuplicate = false;
             Optional<TestExecution> executionOpt = getReport().getTestExecutions().stream()
@@ -141,7 +197,10 @@ public class DetailedTestReporter
                     testCase.getExpectedResult(),
                     testCase.getActualResult(),
                     status,
-                    encryptScreenshot(driver)
+                    encryptScreenshot(driver),
+                    logFilePath,
+                    harFile
+                    
                 );
 
                 if (status == StepStatus.FAIL) {
@@ -200,12 +259,12 @@ public class DetailedTestReporter
 		return testExecutions;
 	}
 
-	public void addTestStep(String testCaseId, String action, String expectedResult, String actualResult, StepStatus status, String screenshotPath)
+	public void addTestStep(String testCaseId, String action, String expectedResult, String actualResult, StepStatus status, String screenshotPath,String filePath,File harFilePath)
 	{
-		addTestStep(testCaseId, -1, action, expectedResult, actualResult, status, screenshotPath);
+		addTestStep(testCaseId, -1, action, expectedResult, actualResult, status, screenshotPath,filePath,harFilePath);
 	}
 
-	public void addTestStep(String testCaseId, int stepNumber, String action, String expectedResult, String actualResult, StepStatus status, String screenshotPath)
+	public void addTestStep(String testCaseId, int stepNumber, String action, String expectedResult, String actualResult, StepStatus status, String screenshotPath,String filePath,File harFilePath)
 	{
 		synchronized (MUTEX)
 		{
@@ -220,6 +279,8 @@ public class DetailedTestReporter
 					step.setActualResult(actualResult);
 					step.setStatus(status);
 					step.setScreenshotPath(screenshotPath);
+					step.setLogFilePath(filePath);
+					step.setHarFilePath(harFilePath);
 					execution.getSteps().add(step);
 					break;
 				}
@@ -647,6 +708,8 @@ public class DetailedTestReporter
 		private String actualResult;
 		private StepStatus status;
 		private String screenshotPath;
+		private String logFilePath;
+		private File harFilePath;
 
 		// Getters and setters
 		public int getStepNo()
@@ -707,6 +770,22 @@ public class DetailedTestReporter
 		public void setScreenshotPath(String screenshotPath)
 		{
 			this.screenshotPath = screenshotPath;
+		}
+		
+		public String getLogFilePath() {
+			return logFilePath;
+		}
+		
+		public void setLogFilePath(String logFilePath) {
+			this.logFilePath = logFilePath;
+		}
+		
+		public File getHarFilePath() {
+			return harFilePath;
+		}
+		
+		public void setHarFilePath(File harFilePath) {
+			this.harFilePath = harFilePath;
 		}
 	}
 

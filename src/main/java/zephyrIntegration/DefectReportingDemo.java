@@ -28,6 +28,8 @@ public class DefectReportingDemo {
     public void defectReporting() {
         String failureReason = "Fail occured.";
         String screenshot = "";
+        String logFilePath = "";
+        File harFilePath = null;
         
         defectReporter = new DefectReporter();
         List<TestExecution> testExecutions = DetailedTestReporter.getTestExecutions();
@@ -49,6 +51,8 @@ public class DefectReportingDemo {
     				{
             			failureReason = stepResults.get(j).getActualResult();
             			screenshot = stepResults.get(j).getScreenshotPath();
+            			logFilePath = stepResults.get(j).getLogFilePath();
+            			harFilePath = stepResults.get(j).getHarFilePath();
     					break;
     				}
     			}
@@ -62,7 +66,9 @@ public class DefectReportingDemo {
                     failureReason, 
                     stepResults, 
                     screenshotFile, 
-                    logFile
+                    logFile,
+                    new File(logFilePath),
+                    harFilePath
                 );
                 if (bugKey != null) {
                     System.out.println("✅ Defect reported successfully with key: " + bugKey);
