@@ -38,42 +38,77 @@ public class EmailSender {
     // ──────────────────────────────
     // 🔹 MAIN EMAIL SENDER
     // ──────────────────────────────
-    public static void sendEmail(String filePaths, String fileNames) {
-        try {
-            // Load system properties
-            String host = System.getProperty("host");
-            String port = System.getProperty("port");
-            String senderEmail = System.getProperty("senderEmail");
-            String senderPassword = System.getProperty("senderPassword");
-            String recipients = System.getProperty("recipientEmails");
-            String subject = getEmailSubject();
-
-            // Prepare data
-            GetParameter();
-
-            // Create mail session
-            Session session = createMailSession(getSmtpProperties(host, port), senderEmail, senderPassword);
-
-            Message message = prepareMessage(session, senderEmail, recipients, subject);
-            Multipart multipart = new MimeMultipart("mixed");
-
-            // Zip and attach reports
-            handleReportAttachments(filePaths, fileNames, multipart);
-
-            // Add email body (HTML)
-            addHtmlPart(multipart, getMailHtml());
-
-          
-            // Send email
-            message.setContent(multipart);
-            Transport.send(message);
-            System.out.println("✅ Email sent successfully to: " + recipients);
-
-        } catch (Exception e) {
-            System.err.println("❌ Failed to send email: " + e.getMessage());
-            e.printStackTrace();
+    public static void sendEmail(String filePaths, String fileNames) {try {
+        // Load system properties
+        String host = System.getProperty("host");
+        String port = System.getProperty("port");
+        String senderEmail = System.getProperty("senderEmail");
+        String senderPassword = System.getProperty("senderPassword");
+        String recipients = System.getProperty("recipientEmails");
+        String subject = getEmailSubject();
+ 
+        // Prepare data
+        GetParameter();
+ 
+        // Create mail session
+        Session session = createMailSession(getSmtpProperties(host, port), senderEmail, senderPassword);
+ 
+        Message message = prepareMessage(session, senderEmail, recipients, subject);
+        Multipart multipart = new MimeMultipart("mixed");
+ 
+        // Zip and attach reports
+        handleReportAttachments(filePaths, fileNames, multipart);
+ 
+        // Add email body (HTML)
+        addHtmlPart(multipart, getMailHtml());
+ 
+      
+        // Send email
+        message.setContent(multipart);
+        Transport.send(message);
+        System.out.println("✅ Email sent successfully to: " + recipients);
+ 
+    } catch (SendFailedException e) {
+        System.err.println("❌ Failed to send email: " + e.getMessage());
+ 
+        // 🔹 Log invalid addresses
+        if (e.getInvalidAddresses() != null) {
+            System.err.println("🚫 Invalid Addresses:");
+            for (Address addr : e.getInvalidAddresses()) {
+                System.err.println("   ➤ " + addr.toString());
+            }
         }
-    }
+ 
+        // 🔹 Log valid but unsent addresses (like mailbox full)
+        if (e.getValidUnsentAddresses() != null) {
+            System.err.println("⚠️ Valid but not sent (SMTP rejection):");
+            for (Address addr : e.getValidUnsentAddresses()) {
+                System.err.println("   ➤ " + addr.toString());
+            }
+        }
+ 
+        // 🔹 Log successfully sent ones
+        if (e.getValidSentAddresses() != null) {
+            System.out.println("✅ Successfully sent to:");
+            for (Address addr : e.getValidSentAddresses()) {
+                System.out.println("   ➤ " + addr.toString());
+            }
+        }
+ 
+        // 🔹 Get nested SMTP error info (specific failed recipient)
+        Exception next = e.getNextException();
+        if (next instanceof com.sun.mail.smtp.SMTPAddressFailedException smtpEx) {
+            System.err.println("📧 Failed recipient: " + smtpEx.getAddress());
+            System.err.println("📩 SMTP error code: " + smtpEx.getReturnCode());
+            System.err.println("📜 Server message: " + smtpEx.getMessage());
+        }
+ 
+        e.printStackTrace();
+ 
+    } catch (Exception e) {
+        System.err.println("❌ General email failure: " + e.getMessage());
+        e.printStackTrace();
+    }}
 
     // ──────────────────────────────
     // 🔹 SMTP & SESSION HANDLERS
@@ -135,9 +170,12 @@ public class EmailSender {
             FilePath = "https://azureresulticks-my.sharepoint.com/:f:/g/personal/qaautomation_resulticks_com/ElTgyT1WS9lDvvhRMHlnL4ABWvmHGIYvYUu4QR0GkDQTmw?e=fkj5xP";
             LogsLink = "https://azureresulticks-my.sharepoint.com/:f:/g/personal/a_maheshanand_resulticks_com/Eq7fuRascUlEk9jufCwOBeYByg5PbIo-dOjEf3mfTbKBJg?e=4e7gMT";
         }
-
-        for (int i = 0; i < paths.length; i++) {
-            attachFile(multipart, paths[i], names[i]);
+        boolean useCustomName = "yes".equalsIgnoreCase(System.getProperty("AttachMailFile", "no"));
+        if (useCustomName)
+        {
+                for (int i = 0; i < paths.length; i++) {
+                    attachFile(multipart, paths[i], names[i]);
+                }
         }
 
         System.out.println("📦 Final ZIP stored at: " + zipPath);

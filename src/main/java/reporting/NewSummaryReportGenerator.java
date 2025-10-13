@@ -223,14 +223,6 @@ public class NewSummaryReportGenerator
 			System.err.println("❌ Failed to send email: " + e.getMessage());
 			e.printStackTrace();
 		}
-		if ("yes".equalsIgnoreCase(System.getProperty("isJiraZephyrUpdate")))
-		{
-			testManagement.JiraZephyrClient.zephyrUpdater();
-			System.out.println("🔄 Initiating Jira Zephyr update...");
-		} else
-		{
-			return;
-		}
 	}
 
 	// removed unused percent() helper
