@@ -38,6 +38,14 @@ public class BaseTest
 	@Parameters({ "runner" })
 	public void beforeSuite(String runner)
 	{
+
+		// Initialize new configuration system (backward compatible)
+		try {
+			config.ConfigurationInitializer.initialize();
+		} catch (Exception e) {
+			TestLogManager.warning("Failed to initialize configuration system, using defaults", e);
+		}
+
 		
 		ExtentManager.initReports();
 		TestLogManager.reloadConfiguration();
