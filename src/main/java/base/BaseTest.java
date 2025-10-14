@@ -6,8 +6,10 @@ import constants.FrameworkConstants;
 import data.TestDataUtil;
 import data.XLSReader;
 import pages.PageFactory;
+import reporting.ExcelReportGenerator;
 import reporting.ExtentManager;
 import reporting.TestLogManager;
+import seleniumUtils.DateUtils;
 import seleniumUtils.ScreenshotUtil;
 
 import java.lang.reflect.Method;
@@ -26,17 +28,30 @@ public class BaseTest
 	public static ThreadLocal<String> sheet_name = new ThreadLocal<>();
 	public static ThreadLocal<XLSReader> datatable = new ThreadLocal<>();
 	public static ThreadLocal<Integer> currentRow = new ThreadLocal<Integer>();
+	
+	public static String currentDate;
+    public static String EndDateTime;
+
+
 
 	@BeforeSuite(alwaysRun = true)
 	@Parameters({ "runner" })
 	public void beforeSuite(String runner)
 	{
+		// Initialize new configuration system (backward compatible)
+		try {
+			config.ConfigurationInitializer.initialize();
+		} catch (Exception e) {
+			TestLogManager.warning("Failed to initialize configuration system, using defaults", e);
+		}
+		
 		ExtentManager.initReports();
 		TestLogManager.reloadConfiguration();
 		if (GridManager.checkIfGrid(runner))
 		{
 			DockerManager.dockerContainterUp();
 		}
+		currentDate = DateUtils.getCurrentDate("dd-MMM-yyyy HH:mm");
 		TestLogManager.info("==== Test Suite Started ====");
 	}
 
@@ -79,6 +94,8 @@ public class BaseTest
 		if (!testDataUtil.isTCIDFound(this))
 		{
 			throw new RuntimeException("TestMethodName not found in Excel sheet: " + method_name.get());
+		}else {
+			System.out.println(method_name.get());
 		}
 		TestDataUtil.createDataRef();
 		PageBase.getDeviceSpecs();
@@ -87,6 +104,9 @@ public class BaseTest
 	@AfterMethod(alwaysRun = true)
 	public void tearDown(ITestResult result)
 	{
+		String flag = System.getProperty("DateWiseReport") + "," + System.getProperty("ReleasewiseReport") + "," + System.getProperty("AccountWiseReport");
+		String methodname = result.getMethod().getMethodName().toUpperCase();
+		String status = System.getProperty("Account") + "_" + System.getProperty("Environment");
 		// Reporting
 		ScreenshotUtil.takeScreenshot();
 		switch (result.getStatus())
@@ -106,6 +126,7 @@ public class BaseTest
 			ExtentManager.skipLabel(result.getThrowable().toString());
 		}
 		}
+		ExcelReportGenerator.writeToExcel(FrameworkConstants.ONEDRIVE_BASE_PATH, "Daily,Release,Account", flag, methodname, System.getProperty("ReleaseVersion"), status, System.getProperty("Account"), System.getProperty("SuiteName"));
 		// Cleanup driver
 		if (DriverManager.getDriver() != null)
 		{
@@ -127,6 +148,7 @@ public class BaseTest
 			DockerManager.dockerContainterDown();
 		}
 		ExtentManager.openExtentReport();
+		EndDateTime = DateUtils.getCurrentDate(" HH:mm");
 		TestLogManager.info("==== Test Suite Finished ====");
 	}
 

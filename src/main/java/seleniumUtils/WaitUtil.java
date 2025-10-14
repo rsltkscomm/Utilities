@@ -7,9 +7,7 @@ import pages.PageFactory;
 
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.function.Function;
 
 /**
  * Utility class for handling all types of Selenium waits.
@@ -53,6 +51,20 @@ public class WaitUtil extends DateUtils {
         } else {
             return new WebDriverWait(driver, Duration.ofSeconds(sec))
                     .until(ExpectedConditions.visibilityOf((WebElement) pr));
+        }
+    }
+    
+    public boolean explicitWaitTextToBePresent(String text, Object pr, int sec) {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(sec));
+
+        if (pr instanceof String) {
+            WebElement element = getElement(pr);
+            return wait.until(ExpectedConditions.textToBePresentInElementValue(element, text));
+        } else if (pr instanceof WebElement) {
+            WebElement element = wait.until(ExpectedConditions.visibilityOf((WebElement) pr));
+            return element != null;
+        } else {
+            throw new IllegalArgumentException("Parameter must be String or WebElement");
         }
     }
 
@@ -171,5 +183,39 @@ public class WaitUtil extends DateUtils {
 	    } catch (InterruptedException e) {
 	        Thread.currentThread().interrupt();
 	    }
+	}
+	
+	public void wait_Milli_Seconds(int seconds) {
+	    try {
+	        Thread.sleep(seconds);
+	    } catch (InterruptedException e) {
+	        Thread.currentThread().interrupt();
+	    }
+	}
+	
+	/**
+	 * Sleeps for the given total time but prints a message every 5 minutes.
+	 *
+	 * @param totalMillis total time to sleep (e.g., 780000 for 13 min)
+	 * @throws InterruptedException if the thread is interrupted
+	 */
+	public static void sleepWithFiveMinuteLogs(long totalMillis) throws InterruptedException
+	{
+		final long chunkMillis = 5 * 60 * 1000; // 5 minutes = 300000 ms
+		long remaining = totalMillis;
+		int chunkCount = 0;
+
+		while (remaining > 0)
+		{
+			long sleepTime = Math.min(chunkMillis, remaining);
+			Thread.sleep(sleepTime);
+
+			chunkCount++;
+			System.out.println("Completed " + chunkCount * 5 + " minutes...");
+
+			remaining -= sleepTime;
+		}
+
+		System.out.println("Total sleep of " + (totalMillis / 60000.0) + " minutes is done.");
 	}
 }

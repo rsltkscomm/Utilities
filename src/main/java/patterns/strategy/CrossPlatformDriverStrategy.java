@@ -46,6 +46,8 @@ public class CrossPlatformDriverStrategy implements DriverStrategy {
         switch (browserType) {
             case "chrome":
                 return new ChromeDriverStrategy();
+            case "chromeheadless":
+                return new ChromeHeadlessDriverStrategy();
             case "firefox":
                 return new FirefoxDriverStrategy();
             case "edge":

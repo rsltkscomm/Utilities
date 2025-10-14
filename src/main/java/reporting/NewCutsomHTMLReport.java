@@ -12,14 +12,13 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import org.testng.ISuite;
 import org.testng.ISuiteListener;
 import org.testng.ITestListener;
 import org.testng.ITestResult;
 
-import reporting.DetailedTestReporter.ExecutionStatus;
+import zephyrIntegration.DefectReportingDemo;
+
 /**
  * Custom TestNG Listener for generating an HTML report. Tracks test execution results and duration.
  */
@@ -31,8 +30,8 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener
 	private final List<String> failMethods = new LinkedList<>();
 	private final List<String> noRunMethods = new LinkedList<>();
 
-	private long startTime;
-	private String dateTime;
+	public static long startTime;
+	public static String dateTime;
 
 	/**
 	 * Called when the suite starts. Captures start time.
@@ -93,14 +92,18 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener
 //		// Load properties before generating report
 //		loadPropertiesFromJar();
 
-		// Generate summary report
-		int totalPass = (int) DetailedTestReporter.testExecutions.stream().filter(t -> t.getStatus() == ExecutionStatus.PASS).count();
-		int totalFail = (int) DetailedTestReporter.testExecutions.stream().filter(t -> t.getStatus() == ExecutionStatus.FAIL).count();
-		int totalSkip = (int) DetailedTestReporter.testExecutions.stream().filter(t -> t.getStatus() == ExecutionStatus.SKIPPED).count();
-
-		long totalDuration = DetailedTestReporter.testExecutions.stream().mapToLong(t -> t.getEndTime().getTime() - t.getStartTime().getTime()).sum();
-		
-		NewSummaryReportGenerator.generateReport(totalPass, totalFail, totalSkip,String.valueOf(totalDuration), dateTime);
+		// Generate summary report using aggregated stats
+		NewSummaryReportGenerator.AggregatedStats agg = NewSummaryReportGenerator.aggregateStats();
+		NewSummaryReportGenerator.generateReport(
+			agg.totalPass,
+			agg.totalFail,
+			agg.totalSkip,
+			String.valueOf(agg.totalDurationMillis),
+			dateTime);
+		if ("yes".toLowerCase().contains(System.getProperty("isJiraZephyrUpdate")))
+		{
+			new DefectReportingDemo().defectReporting();
+		}
 	}
 
 	public void filterCount(List<String> passMethod, List<String> failMethod, List<String> noRunMethod)

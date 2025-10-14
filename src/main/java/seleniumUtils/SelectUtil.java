@@ -1,5 +1,6 @@
 package seleniumUtils;
 
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.Select;
@@ -184,4 +185,29 @@ public class SelectUtil extends DropdownUtil {
             return false;
         }
     }
+    
+    public boolean jsSelectAllText(String locator)
+	{
+		try
+		{
+			WebElement contentArea = findElement(locator);
+			if (contentArea != null && contentArea.isDisplayed())
+			{
+				contentArea.click();
+				((JavascriptExecutor) driver).executeScript(
+						"var element = arguments[0];" + "var selection = window.getSelection();" + "var range = document.createRange();" + "range.selectNodeContents(element);" + "selection.removeAllRanges();" + "selection.addRange(range);",
+						contentArea);
+				ExtentManager.infoTest("All text selected inside content area.");
+				return true;
+			} else
+			{
+				ExtentManager.warningTest("Content area not found or not visible.");
+				return false;
+			}
+		} catch (Exception e)
+		{
+			ExtentManager.failTest("Error selecting all text in content area");
+			return false;
+		}
+	}
 }

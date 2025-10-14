@@ -95,7 +95,7 @@ public class ScreenshotUtil extends WaitUtil {
     /**
      * Highlight element by adding red border using JavaScript.
      */
-    protected static void highlightElement(WebElement element) {
+    public static void highlightElement(WebElement element) {
         try {
             JavascriptExecutor js = (JavascriptExecutor) DriverManager.getDriver();
             js.executeScript("arguments[0].setAttribute('style', arguments[0].getAttribute('style') + '; border: 3px solid red; background: yellow;');", element);
@@ -124,7 +124,7 @@ public class ScreenshotUtil extends WaitUtil {
     /**
      * Remove element highlight.
      */
-    private static void removeHighlight(WebElement element) {
+    public static void removeHighlight(WebElement element) {
         try {
             JavascriptExecutor js = (JavascriptExecutor) DriverManager.getDriver();
             js.executeScript("arguments[0].setAttribute('style', arguments[0].getAttribute('style').replace(/; border: 3px solid red; background: yellow;/g, ''));", element);

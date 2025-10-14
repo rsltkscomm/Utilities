@@ -10,20 +10,23 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
-
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.logging.LogEntries;
+import org.openqa.selenium.logging.LogEntry;
+import org.openqa.selenium.logging.LogType;
 
+import base.DriverManager;
 import reporting.NewSummaryReportGenerator.ModuleStats;
 
 public class DetailedTestReporter
 {
-	
+	private static final Object MUTEX = new Object();
+
 	public static DetailedTestReporter detailedTestReporter;
 	public static final Map<String, AtomicInteger> modulePassCount = new ConcurrentHashMap<>();
 	public static final Map<String, AtomicInteger> moduleFailCount = new ConcurrentHashMap<>();
@@ -46,32 +49,33 @@ public class DetailedTestReporter
 	private PerformanceMetrics performanceMetrics;
 
 	public DetailedTestReporter(String projectName, String reportPath) {
-		this.projectName = projectName;
-		this.reportPath = reportPath;
-		this.testExecutions = new ArrayList<>();
-		this.dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		DetailedTestReporter.projectName = projectName;
+		DetailedTestReporter.reportPath = reportPath;
+        DetailedTestReporter.testExecutions = new CopyOnWriteArrayList<>();
+		DetailedTestReporter.dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 		this.performanceMetrics = new PerformanceMetrics();
 	}
 
 	public void addTestExecution(String module, String scenarioId, String testCaseId, String shortDescription, ExecutionStatus status)
 	{
-		boolean exists = testExecutions.stream().anyMatch(e -> e.getTestCaseId().equals(testCaseId));
-
-		if (exists)
+		synchronized (MUTEX)
 		{
-			System.out.println("Duplicate Test Case ID: " + testCaseId + " — Skipping entry.");
-			return;
+			boolean exists = testExecutions.stream().anyMatch(e -> e.getTestCaseId().equals(testCaseId));
+			if (exists)
+			{
+				System.out.println("Duplicate Test Case ID: " + testCaseId + " — Skipping entry.");
+				return;
+			}
+			TestExecution execution = new TestExecution();
+			execution.setModule(module);
+			execution.setScenarioId(scenarioId);
+			execution.setTestCaseId(testCaseId);
+			execution.setShortDescription(shortDescription);
+			execution.setStartTime(new Date()); // auto-start time
+			execution.setStatus(status);
+			execution.setSteps(new ArrayList<>());
+			testExecutions.add(execution);
 		}
-
-		TestExecution execution = new TestExecution();
-		execution.setModule(module);
-		execution.setScenarioId(scenarioId);
-		execution.setTestCaseId(testCaseId);
-		execution.setShortDescription(shortDescription);
-		execution.setStartTime(new Date()); // auto-start time
-		execution.setStatus(status);
-		execution.setSteps(new ArrayList<>());
-		testExecutions.add(execution);
 	}
 	
 	public static void createDetailReport()
@@ -84,128 +88,202 @@ public class DetailedTestReporter
 		return detailedTestReporter;
 	}
 	
-	public static void updateStep(boolean status, TestCase failConstant, TestCase passConstant, WebDriver driver)
+	public static void updateStep(boolean status, TestCase failConstant, TestCase passConstant)
 	{
-		if (!status)
-		{
-			DetailedTestReporter.addStep(failConstant, StepStatus.FAIL, driver);
-		} else
-		{
-			DetailedTestReporter.addStep(passConstant, StepStatus.PASS, driver);
-		}
-	}
-
-	public static void addStep(TestCase testCase, StepStatus status, WebDriver driver) {
-	    boolean isDuplicate = false;
-	    Optional<TestExecution> executionOpt = getReport().getTestExecutions().stream()
-	            .filter(e -> e.getTestCaseId().equals(testCase.getTestCaseId()))
-	            .findFirst();
-
-	    TestExecution execution;
-	    if (!executionOpt.isPresent()) {
-	        execution = new TestExecution();
-	        execution.setModule(testCase.getModuleName());
-	        execution.setScenarioId(testCase.getExecutionId());
-	        execution.setTestCaseId(testCase.getTestCaseId());
-	        execution.setShortDescription(testCase.getDescription());
-	        execution.setStartTime(new Date());
-	        execution.setSteps(new ArrayList<>());
-	        execution.setStatus(ExecutionStatus.PASS);
-	        // Remove hardcoded total expected steps - calculate dynamically
-	        execution.setTotalExpectedSteps(0); 
-	        getReport().getTestExecutions().add(execution);
-	    } else {
-	        execution = executionOpt.get();
-	        if (execution.getSteps() == null) {
-	            execution.setSteps(new ArrayList<>());
+	    WebDriver driver = DriverManager.getDriver();
+	    String logPath = "";
+	    File harFile = null;
+	    if (!status)
+	    {
+	        try {
+	            LogEntries logs = driver.manage().logs().get(LogType.BROWSER);
+	            if (logs != null && logs.getAll().size() > 0) {
+	            	logPath = saveBrowserLogs(logs, failConstant.getDescription());
+	            } else {
+	                System.out.println("⚠️ No browser logs available for this failure.");
+	            }
+	        } catch (Exception e) {
+	            System.out.println("❌ Could not capture browser logs: " + e.getMessage());
 	        }
-	    }
-
-	    // Increment total expected steps only for new steps
-	    if (!isDuplicate) {
-	        execution.setTotalExpectedSteps(execution.getTotalExpectedSteps() + 1);
-	    }
-
-	    isDuplicate = execution.getSteps().stream()
-	            .anyMatch(step -> step.getAction().equals(testCase.getAction()) 
-	                    && step.getExpectedResult().equals(testCase.getExpectedResult()));
-
-	    if (!isDuplicate) {
-	        getReport().addTestStep(
-	            testCase.getTestCaseId(),
-	            execution.getSteps().size() + 1,
-	            testCase.getAction(),
-	            testCase.getExpectedResult(),
-	            testCase.getActualResult(),
-	            status,
-	            encryptScreenshot(driver)
-	        );
-
-	        if (status == StepStatus.FAIL) {
-	            execution.setStatus(ExecutionStatus.FAIL);
-	        }
-	    }
-	    
-	    // Mark execution as complete if this is the last step being added
-	    if (!isDuplicate && execution.getSteps().size() >= execution.getTotalExpectedSteps()) {
-	        execution.setEndTime(new Date());
-
-	        // Update ModuleStats map
-	        ModuleStats stats = NewSummaryReportGenerator.moduleStats.computeIfAbsent(
-	            testCase.getModuleName(), m -> new ModuleStats());
-
-	        switch (execution.getStatus()) {
-	            case PASS:
-	                stats.incrementPass();
-	                modulePassCount.computeIfAbsent(testCase.getModuleName(), 
-	                    k -> new AtomicInteger(0)).incrementAndGet();
-	                break;
-	            case FAIL:
-	                stats.incrementFail();
-	                moduleFailCount.computeIfAbsent(testCase.getModuleName(), 
-	                    k -> new AtomicInteger(0)).incrementAndGet();
-	                break;
-	            case SKIPPED:
-	                stats.incrementSkip();
-	                moduleSkipCount.computeIfAbsent(testCase.getModuleName(), 
-	                    k -> new AtomicInteger(0)).incrementAndGet();
-	                break;
-	        }
+	        DetailedTestReporter.addStep(failConstant, StepStatus.FAIL, driver,logPath,harFile);
+	    } 
+	    else
+	    {
+	        DetailedTestReporter.addStep(passConstant, StepStatus.PASS, driver,logPath,harFile);
 	    }
 	}
 	
-	 public static String encryptScreenshot(WebDriver driver)
-		{
-			TakesScreenshot ts = (TakesScreenshot) driver;
-			String screenshotAs = ts.getScreenshotAs(OutputType.BASE64);
-			return "data:image/png;base64," + screenshotAs;
-		}
+	/**
+	 * Save browser console logs to a timestamped file
+	 */
+	private static String saveBrowserLogs(LogEntries logEntries, String stepName)
+	{
+	    try {
+	        String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+	        String fileName = "browser_logs_" + stepName + "_" + timestamp + ".txt";
+	        File file = new File("./logs/" + fileName);
 
-	public List<TestExecution> getTestExecutions()
+	        StringBuilder content = new StringBuilder();
+	        content.append("=====================================================================\n");
+	        content.append("BROWSER CONSOLE LOGS (").append(stepName).append(")\n");
+	        content.append("=====================================================================\n\n");
+
+	        int count = 1;
+	        for (LogEntry entry : logEntries) {
+	            content.append(count++)
+	                   .append(". [")
+	                   .append(entry.getLevel())
+	                   .append("] ")
+	                   .append(new SimpleDateFormat("HH:mm:ss").format(new Date(entry.getTimestamp())))
+	                   .append(" - ")
+	                   .append(entry.getMessage())
+	                   .append("\n");
+	        }
+
+	        try (FileWriter writer = new FileWriter(file)) {
+	            writer.write(content.toString());
+	        }
+
+	        System.out.println("✅ Browser logs saved: " + file.getAbsolutePath());
+	        return file.getAbsolutePath(); 
+	    } catch (Exception e) {
+	        System.out.println("❌ Failed to save browser logs: " + e.getMessage());
+	        return null;
+	    }
+	}
+
+    public static void addStep(TestCase testCase, StepStatus status, WebDriver driver,String logFilePath,File harFile) {
+        synchronized (MUTEX) {
+            boolean isDuplicate = false;
+            Optional<TestExecution> executionOpt = getReport().getTestExecutions().stream()
+                    .filter(e -> e.getTestCaseId().equals(testCase.getTestCaseId()))
+                    .findFirst();
+
+            TestExecution execution;
+            if (!executionOpt.isPresent()) {
+                execution = new TestExecution();
+                execution.setModule(testCase.getModuleName());
+                execution.setScenarioId(testCase.getExecutionId());
+                execution.setTestCaseId(testCase.getTestCaseId());
+                execution.setShortDescription(testCase.getDescription());
+                execution.setStartTime(new Date());
+                execution.setSteps(new ArrayList<>());
+                execution.setStatus(ExecutionStatus.PASS);
+                // Remove hardcoded total expected steps - calculate dynamically
+                execution.setTotalExpectedSteps(0); 
+                getReport().getTestExecutions().add(execution);
+            } else {
+                execution = executionOpt.get();
+                if (execution.getSteps() == null) {
+                    execution.setSteps(new ArrayList<>());
+                }
+            }
+
+            // Determine duplicate first based on meaningful identity
+            isDuplicate = execution.getSteps().stream()
+                    .anyMatch(step -> safeEquals(step.getAction(), testCase.getAction()) 
+                            && safeEquals(step.getExpectedResult(), testCase.getExpectedResult()));
+
+            // Increment total expected steps only for new steps
+            if (!isDuplicate) {
+                execution.setTotalExpectedSteps(execution.getTotalExpectedSteps() + 1);
+            }
+
+            if (!isDuplicate) {
+                getReport().addTestStep(
+                    testCase.getTestCaseId(),
+                    execution.getSteps().size() + 1,
+                    testCase.getAction(),
+                    testCase.getExpectedResult(),
+                    testCase.getActualResult(),
+                    status,
+                    encryptScreenshot(driver),
+                    logFilePath,
+                    harFile
+                    
+                );
+
+                if (status == StepStatus.FAIL) {
+                    execution.setStatus(ExecutionStatus.FAIL);
+                }
+            }
+            
+            // Mark execution as complete if explicitly equal and at least one step exists
+            if (!isDuplicate && execution.getTotalExpectedSteps() > 0 && execution.getSteps().size() == execution.getTotalExpectedSteps()) {
+                execution.setEndTime(new Date());
+
+                // Update ModuleStats map
+                ModuleStats stats = NewSummaryReportGenerator.moduleStats.computeIfAbsent(
+                    testCase.getModuleName(), m -> new ModuleStats());
+
+                switch (execution.getStatus()) {
+                    case PASS:
+                        stats.incrementPass();
+                        modulePassCount.computeIfAbsent(testCase.getModuleName(), 
+                            k -> new AtomicInteger(0)).incrementAndGet();
+                        break;
+                    case FAIL:
+                        stats.incrementFail();
+                        moduleFailCount.computeIfAbsent(testCase.getModuleName(), 
+                            k -> new AtomicInteger(0)).incrementAndGet();
+                        break;
+                    case SKIPPED:
+                        stats.incrementSkip();
+                        moduleSkipCount.computeIfAbsent(testCase.getModuleName(), 
+                            k -> new AtomicInteger(0)).incrementAndGet();
+                        break;
+                }
+            }
+        }
+	}
+	
+     public static String encryptScreenshot(WebDriver driver)
+        {
+            if (driver == null) {
+                return null;
+            }
+            try {
+                if (driver instanceof TakesScreenshot) {
+                    TakesScreenshot ts = (TakesScreenshot) driver;
+                    String screenshotAs = ts.getScreenshotAs(OutputType.BASE64);
+                    return "data:image/png;base64," + screenshotAs;
+                }
+            } catch (Exception e) {
+                // ignore screenshot errors and proceed without image
+            }
+            return null;
+        }
+
+    public static List<TestExecution> getTestExecutions()
 	{
 		return testExecutions;
 	}
 
-	public void addTestStep(String testCaseId, String action, String expectedResult, String actualResult, StepStatus status, String screenshotPath)
+	public void addTestStep(String testCaseId, String action, String expectedResult, String actualResult, StepStatus status, String screenshotPath,String filePath,File harFilePath)
 	{
-		addTestStep(testCaseId, -1, action, expectedResult, actualResult, status, screenshotPath);
+		addTestStep(testCaseId, -1, action, expectedResult, actualResult, status, screenshotPath,filePath,harFilePath);
 	}
 
-	public void addTestStep(String testCaseId, int stepNumber, String action, String expectedResult, String actualResult, StepStatus status, String screenshotPath)
+	public void addTestStep(String testCaseId, int stepNumber, String action, String expectedResult, String actualResult, StepStatus status, String screenshotPath,String filePath,File harFilePath)
 	{
-		for (TestExecution execution : testExecutions)
+		synchronized (MUTEX)
 		{
-			if (execution.getTestCaseId().equals(testCaseId))
+			for (TestExecution execution : testExecutions)
 			{
-				TestStep step = new TestStep();
-				step.setStepNo(stepNumber > 0 ? stepNumber : execution.getSteps().size() + 1);
-				step.setAction(action);
-				step.setExpectedResult(expectedResult);
-				step.setActualResult(actualResult);
-				step.setStatus(status);
-				step.setScreenshotPath(screenshotPath);
-				execution.getSteps().add(step);
-				break;
+				if (execution.getTestCaseId().equals(testCaseId))
+				{
+					TestStep step = new TestStep();
+					step.setStepNo(stepNumber > 0 ? stepNumber : execution.getSteps().size() + 1);
+					step.setAction(action);
+					step.setExpectedResult(expectedResult);
+					step.setActualResult(actualResult);
+					step.setStatus(status);
+					step.setScreenshotPath(screenshotPath);
+					step.setLogFilePath(filePath);
+					step.setHarFilePath(harFilePath);
+					execution.getSteps().add(step);
+					break;
+				}
 			}
 		}
 	}
@@ -238,360 +316,204 @@ public class DetailedTestReporter
 
 	static String generateHTMLContent() {
 	    StringBuilder html = new StringBuilder();
+	    java.text.SimpleDateFormat localDateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
-	    int totalTests = testExecutions.size();
-	    int passedTests = (int) testExecutions.stream().filter(t -> t.getStatus() == ExecutionStatus.PASS).count();
-	    int failedTests = (int) testExecutions.stream().filter(t -> t.getStatus() == ExecutionStatus.FAIL).count();
-	    int skippedTests = (int) testExecutions.stream().filter(t -> t.getStatus() == ExecutionStatus.SKIPPED).count();
-
-	    // Get unique modules for filter dropdown
-	    Set<String> modules = testExecutions.stream()
-	        .map(TestExecution::getModule)
-	        .collect(Collectors.toSet());
-
-	    html.append("<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n")
-	        .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n")
-	        .append("<title>").append(projectName).append(" - Test Report</title>\n")
-	        .append("<style>\n")
-	        /* Base styles */
-	        .append("body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f6f8; margin: 0; padding: 20px; color: #333; transition: background 0.3s, color 0.3s; }\n")
-	        .append(".dark-mode { background: #1e1e1e; color: #eaeaea; }\n")
-	        .append(".container { background: #fff; border-radius: 10px; padding: 25px; max-width: 1600px; margin: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.1); transition: background 0.3s; }\n")
-	        .append(".dark-mode .container { background: #2b2b2b; }\n")
-	        /* Header */
-	        .append(".report-header { background: linear-gradient(3deg,white, darkblue); color: white; padding: 20px;box-shadow:6px 10px 20px black; border-radius: 8px; text-align: center; margin-bottom: 20px; }\n")
-	        .append(".report-header h1 { margin: 0; font-size: 28px; }\n")
-	        .append(".report-header p { margin: 5px 0 0; font-size: 14px; opacity: 0.9; }\n")
-	        /* Summary cards */
-	        .append(".summary { display: flex; gap: 20px; margin-bottom: 25px;margin-top: 50px; flex-wrap: wrap; justify-content: center; }\n")
-	        .append(".summary-cards { flex: 1 1 150px; color: white; border-radius: 10px; text-align: center; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; }\n")
-	        .append(".summary-cards:hover { transform: translateY(-4px); box-shadow:6px 10px 20px black }\n")
-	        .append(".total { background: white;color:#007bff;font-size: 1.2em;font-weight: bold;padding:20px;box-shadow:6px 10px 20px black;}\n")
-	        .append(".passed { background: white;color: #28a745;font-size: 1.2em;font-weight: bold;padding:20px;box-shadow:6px 10px 20px black;}\n")
-	        .append(".failed { background: white;color: #dc3545;font-size: 1.2em;font-weight: bold;padding:20px;box-shadow:6px 10px 20px black;}\n")
-	        .append(".skipped { background: white;color: #ffc107;font-size: 1.2em;font-weight: bold;padding:20px;box-shadow:6px 10px 20px black;}\n")
-	        /* Filter controls */
-	        .append(".filter-controls { display: flex; gap: 15px;margin-top: 50px; margin-bottom: 15px; flex-wrap: wrap; }\n")
-	        .append(".filter-group { display: flex; align-items: center; gap: 8px; }\n")
-	        .append(".filter-group label { font-weight: bold; }\n")
-	        .append(".filter-group select, .filter-group input { padding: 8px 12px; border-radius: 5px; border: 1px solid #ccc; }\n")
-	        .append(".action-buttons { display: flex; gap: 10px; margin-bottom: 30px;margin-top: 30px; }\n")
-	        .append(".action-buttons button { padding: 8px 15px; border-radius: 5px; border: none; background: #007bff; color: white; cursor: pointer; }\n")
-	        .append(".action-buttons button:hover { background: #0069d9; }\n")
-	        /* Table */
-	        .append(".test-table { width: 100%;box-shadow:6px 10px 20px black; border-collapse: separate; border-spacing: 0; border-radius: 8px; overflow: hidden; }\n")
-	        .append(".test-table th, .test-table td { padding: 10px 12px; }\n")
-	        .append(".test-table th { background: royalblue; position: sticky; top: 0;color:white }\n")
-	        .append(".dark-mode .test-table th { background: #444; }\n")
-	        .append(".test-table tr:nth-child(even) { background: #f9f9f9; }\n")
-	        .append(".dark-mode .test-table tr:nth-child(even) { background: #333; }\n")
-	        .append(".test-row:hover { background: #e3f2fd; cursor: pointer; }\n")
-	        .append(".dark-mode .test-row:hover { background: #3a3a3a; }\n")
-	        .append(".hidden { display: none; }\n")
-	        /* Status colors */
-	        .append(".status-pass { color: #28a745; font-weight: bold; }\n")
-	        .append(".status-fail { color: #dc3545; font-weight: bold; }\n")
-	        .append(".status-skipped { color: #ffc107; font-weight: bold; }\n")
-	        /* Row background colors for PASS/FAIL */
-	        .append(".row-pass { background: #C6F7BF !important; }\n")
-	        .append(".row-fail { background: #FFB3B3 !important; }\n")
-	        .append(".dark-mode .row-pass { background: #225522 !important; }\n")
-	        .append(".dark-mode .row-fail { background: #552222 !important; }\n")
-	        /* Search */
-	        .append("#searchInput { padding: 8px 12px; width: 200px; border-radius: 5px; border: 1px solid #ccc; }\n")
-	        /* Description cell ellipsis */
-	        .append("td.description-cell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px; }\n")
-	        .append("td.description-cell:hover { white-space: normal; background: #ffffcc; position: relative; z-index: 1; }\n")
-	        .append(".dark-mode td.description-cell:hover { background: #444; color: #fff; }\n")
-	        /* Accordion step details */
-	        .append(".accordion-content { display: none; overflow: hidden; background: #f4f4f4; }\n")
-	        .append(".dark-mode .accordion-content { background: #2f2f2f; }\n")
-	        /* Screenshot thumbnail */
-	        .append(".screenshot-thumb { max-width: 80px; max-height: 60px; cursor: pointer; border-radius: 4px; border: 1px solid #ddd; transition: transform 0.2s; }\n")
-	        .append(".screenshot-thumb:hover { transform: scale(1.05); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }\n")
-	        /* Modal */
-	        .append(".modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.9); }\n")
-	        .append(".modal-content { display: block; margin: auto; max-width: 90%; max-height: 90%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }\n")
-	        .append(".close { position: absolute; top: 20px; right: 35px; color: white; font-size: 40px; font-weight: bold; cursor: pointer; }\n")
-	        /* Ellipsis for accordion step detail cells */
-	        .append(".accordion-content table.test-table td {\n")
-	        .append("  white-space: nowrap;\n")
-	        .append("  overflow: hidden;\n")
-	        .append("  text-overflow: ellipsis;\n")
-	        .append("  max-width: 200px;\n")
-	        .append("}\n")
-	        /* Optional: Hover to expand ellipsis text in accordion */
-	        .append(".accordion-content table.test-table td:hover {\n")
-	        .append("  white-space: normal;\n")
-	        .append("  background: #ffffcc;\n")
-	        .append("  position: relative;\n")
-	        .append("  z-index: 1;\n")
-	        .append("}\n")
-	        .append(".dark-mode .accordion-content table.test-table td:hover {\n")
-	        .append("  background: #444;\n")
-	        .append("  color: #fff;\n")
-	        .append("}\n")
-	        .append("</style>\n</head>\n<body>\n")
-
-	        .append("<div class=\"container\">\n")
-
-	        // Header
-	        .append("<div class='report-header'>")
-	        .append("<h1>").append(projectName).append(" - Test Report</h1>")
-	        .append("<p>Generated on: ").append(dateFormat.format(new java.util.Date())).append("</p>")
-	        .append("</div>")
-
-	        // Summary cards
-	        .append("<div class=\"summary\">\n")
-	        .append("<div class=\"summary-cards total\" onclick=\"filterTests('all')\"><h3>").append(totalTests).append("</h3><p>Total</p></div>\n")
-	        .append("<div class=\"summary-cards passed\" onclick=\"filterTests('PASS')\"><h3>").append(passedTests).append("</h3><p>Passed</p></div>\n")
-	        .append("<div class=\"summary-cards failed\" onclick=\"filterTests('FAIL')\"><h3>").append(failedTests).append("</h3><p>Failed</p></div>\n")
-	        .append("<div class=\"summary-cards skipped\" onclick=\"filterTests('SKIPPED')\"><h3>").append(skippedTests).append("</h3><p>Skipped</p></div>\n")
+	    html.append("<div class=\"header\">\n")
+	        .append("<img alt=\"Company Logo\" src=\"https://www.resulticks.com/images/logos/resulticks-logo-blue.svg\"/>\n")
+	        .append("<h2>Detail Test Report</h2>\n")
+	        .append("<img alt=\"Product Logo\" src=\"https://run19.resul.io/assets/resulticks-logo-white-391eec89.svg\"/>\n")
 	        .append("</div>\n")
-
-	        // Filter controls
-	        .append("<div class=\"filter-controls\">\n")
-	        .append("<div class=\"filter-group\">\n")
-	        .append("<label for=\"searchInput\">Search:</label>\n")
-	        .append("<input type=\"text\" id=\"searchInput\" placeholder=\"Search...\" onkeyup=\"searchTests()\">\n")
+	        .append("<div class=\"environment-ribbon\">\n")
+	        .append("<span><strong>Environment:</strong> ").append(getSystemProperty("Environment", "Not Specified")).append("</span>\n")
+	        .append("<span><strong>Browser:</strong> ").append(getSystemProperty("Browser", "Not Specified")).append("</span>\n")
+	        .append("<span><strong>Release:</strong> ").append(getSystemProperty("ReleaseVersion", "Not Specified")).append("</span>\n")
+	        .append("<span><strong>Execution Date:</strong> ").append(localDateFormat.format(new java.util.Date())).append("</span>\n")
 	        .append("</div>\n")
-	        .append("<div class=\"filter-group\">\n")
-	        .append("<label for=\"moduleFilter\">Module:</label>\n")
-	        .append("<select id=\"moduleFilter\" onchange=\"filterByModule()\">\n")
-	        .append("<option value=\"\">All Modules</option>\n");
-	    
-	    // Add module options
-	    for (String module : modules) {
-	        html.append("<option value=\"").append(module).append("\">").append(module).append("</option>\n");
-	    }
-	    
-	    html.append("</select>\n")
+	        .append("<div style=\"text-align:right; padding:10px;\">\n")
+	        .append("<a class=\"back-btn\" onclick=\"showSummaryReport()\">⬅ Back to Summary Report</a>\n")
 	        .append("</div>\n")
-	        .append("<div class=\"filter-group\">\n")
-	        .append("<label for=\"statusFilter\">Status:</label>\n")
-	        .append("<select id=\"statusFilter\" onchange=\"filterByStatus()\">\n")
-	        .append("<option value=\"\">All Statuses</option>\n")
+	        .append("<div class=\"table-container\">\n")
+	        .append("<h3>Test Case Results</h3>\n")
+	        .append("<div class=\"toolbar\">\n")
+	        .append("<div style=\"display:flex; gap:15px; flex-wrap:wrap; margin:20px 0;\">\n")
+	        .append("<div>\n")
+	        .append("<label for=\"searchInput\"><b>Search:</b></label>\n")
+	        .append("<input id=\"searchInput\" placeholder=\"Search test cases...\" type=\"text\"/>\n")
+	        .append("</div>\n")
+	        .append("<div>\n")
+	        .append("<label for=\"statusFilter\"><b>Filter by Status:</b></label>\n")
+	        .append("<select id=\"statusFilter\">\n")
+	        .append("<option value=\"\">All</option>\n")
 	        .append("<option value=\"PASS\">Passed</option>\n")
 	        .append("<option value=\"FAIL\">Failed</option>\n")
 	        .append("<option value=\"SKIPPED\">Skipped</option>\n")
 	        .append("</select>\n")
 	        .append("</div>\n")
-	        .append("<button onclick=\"clearFilters()\">Clear Filters</button>\n")
+	        .append("<div>\n")
+	        .append("<button onclick=\"exportToCSV()\" title=\"Export CSV\"><span>📄</span></button>\n")
+	        .append("<button onclick=\"exportToJSON()\" title=\"Export JSON\"><span>🗂️</span></button>\n")
+	        .append("<button onclick=\"exportToPDF()\" title=\"Export PDF\"><span>📕</span></button>\n")
+	        .append("<button onclick=\"window.print()\" title=\"Print Report\"><span>🖨️</span></button>\n")
 	        .append("</div>\n")
-
-	        // Action buttons
-	        .append("<div class=\"action-buttons\">\n")
-	        .append("<button onclick=\"exportToCSV()\">Export to CSV</button>\n")
-	        .append("<button onclick=\"exportToJSON()\">Export to JSON</button>\n")
-	        .append("<button onclick=\"printReport()\">Print Report</button>\n")
-	        .append("<button onclick=\"toggleDarkMode()\">Toggle Dark Mode</button>\n")
 	        .append("</div>\n")
+	        .append("</div>\n")
+	        .append("<table id=\"testcaseTable\">\n")
+	        .append("<thead><tr><th></th><th>Module</th><th>Test Case ID</th><th>Description</th><th>Status</th><th>Duration</th></tr></thead>\n")
+	        .append("<tbody>\n");
 
-	        // Table start
-	        .append("<table class=\"test-table\">\n<thead><tr><th>Module</th><th>Scenario ID</th><th>Test Case ID</th><th>Description</th><th>Start</th><th>End</th><th>Duration (ms)</th><th>Status</th></tr></thead><tbody>\n");
-
+	    // Generate test case rows
+	    int testCaseCounter = 1;
 	    for (TestExecution exec : testExecutions) {
-	        long duration = exec.getEndTime().getTime() - exec.getStartTime().getTime();
-	        String statusClass = "status-" + exec.getStatus().toString().toLowerCase();
-	        String rowColorClass = exec.getStatus() == ExecutionStatus.PASS ? "row-pass" :
-	                               exec.getStatus() == ExecutionStatus.FAIL ? "row-fail" : "";
+	        String statusIcon = exec.getStatus() == ExecutionStatus.PASS ? "✅ Passed" :
+	                             exec.getStatus() == ExecutionStatus.FAIL ? "❌ Failed" : "⚠️ Skipped";
 
-	        html.append("<tr class=\"test-row ").append(rowColorClass)
-	            .append("\" data-status=\"").append(exec.getStatus())
-	            .append("\" data-module=\"").append(exec.getModule())
-	            .append("\" onclick=\"toggleAccordion(event, this)\">")
-	            .append("<td>").append(exec.getModule()).append("</td>")
-	            .append("<td>").append(exec.getScenarioId()).append("</td>")
-	            .append("<td>").append(exec.getTestCaseId()).append("</td>")
-	            .append("<td class='description-cell' title='").append(exec.getShortDescription()).append("'>").append(exec.getShortDescription()).append("</td>")
-	            .append("<td>").append(dateFormat.format(exec.getStartTime())).append("</td>")
-	            .append("<td>").append(dateFormat.format(exec.getEndTime())).append("</td>")
+	        String duration = "-";
+	        if (exec.getStartTime() != null && exec.getEndTime() != null && exec.getEndTime().after(exec.getStartTime())) {
+	            long durationMs = exec.getEndTime().getTime() - exec.getStartTime().getTime();
+	            long seconds = durationMs / 1000;
+	            duration = seconds + "s";
+	        }
+
+	        html.append("<tr data-test-id=\"tc").append(testCaseCounter).append("\" data-expanded=\"false\" onclick=\"toggleDetails(this)\" style=\"cursor:pointer;\">")
+	            .append("<td class=\"expand-icon\">+</td>")
+	            .append("<td>").append(escapeHtml(exec.getModule())).append("</td>")
+	            .append("<td>").append(escapeHtml(exec.getTestCaseId())).append("</td>")
+	            .append("<td>").append(escapeHtml(exec.getShortDescription())).append("</td>")
+	            .append("<td class=\"").append(getStatusClass(exec.getStatus())).append("\">").append(statusIcon).append("</td>")
 	            .append("<td>").append(duration).append("</td>")
-	            .append("<td class=\"").append(statusClass).append("\">").append(exec.getStatus()).append("</td>")
-	            .append("</tr>\n");
-
-	        html.append("<tr class=\"accordion-content\"><td colspan=\"8\"><table class=\"test-table\">")
-	            .append("<thead><tr><th>Step No</th><th>Action</th><th>Expected</th><th>Actual</th><th>Status</th><th>Screenshot</th></tr></thead><tbody>");
+	            .append("</tr>\n")
+	            .append("<tr class=\"details-row\" id=\"tc").append(testCaseCounter).append("-details\" style=\"display:none;\">")
+	            .append("<td colspan=\"6\">\n")
+	            .append("<table class=\"step-table\">\n")
+	            .append("<tr><th>Action</th><th>Expected Result</th><th>Actual Result</th><th>Status</th><th>Screenshot</th></tr>\n");
 
 	        for (TestStep step : exec.getSteps()) {
-	            String stepStatusClass = "status-" + step.getStatus().toString().toLowerCase();
-	            String stepRowColorClass = step.getStatus() == StepStatus.PASS ? "row-pass" :
-	                                       step.getStatus() == StepStatus.FAIL ? "row-fail" : "";
+	            String stepStatusIcon = step.getStatus() == StepStatus.PASS ? "✅" :
+	                                     step.getStatus() == StepStatus.FAIL ? "❌" : "⚠️";
 
-	            html.append("<tr class=\"").append(stepRowColorClass).append("\"><td>").append(step.getStepNo()).append("</td>")
-	                .append("<td>").append(step.getAction()).append("</td>")
-	                .append("<td>").append(step.getExpectedResult()).append("</td>")
-	                .append("<td>").append(step.getActualResult()).append("</td>")
-	                .append("<td class=\"").append(stepStatusClass).append("\">").append(step.getStatus()).append("</td>")
+	            html.append("<tr>")
+	                .append("<td>").append(escapeHtml(step.getAction())).append("</td>")
+	                .append("<td>").append(escapeHtml(step.getExpectedResult())).append("</td>")
+	                .append("<td>").append(escapeHtml(step.getActualResult())).append("</td>")
+	                .append("<td>").append(stepStatusIcon).append("</td>")
 	                .append("<td>").append((step.getScreenshotPath() != null && !step.getScreenshotPath().isEmpty())
-	                        ? "<img src='" + step.getScreenshotPath() + "' class='screenshot-thumb' onclick='openModal(this.src)'>"
-	                        : "-").append("</td></tr>");
+	                        ? "<img class=\"screenshot\" src=\"" + step.getScreenshotPath() + "\"/>"
+	                        : "-").append("</td></tr>\n");
 	        }
-	        html.append("</tbody></table></td></tr>\n");
+
+	        html.append("</table>\n")
+	            .append("</td></tr>\n");
+
+	        testCaseCounter++;
 	    }
 
-	    html.append("</tbody></table>\n</div>\n")
-	        .append("<div id=\"screenshotModal\" class=\"modal\">\n")
-	        .append("<span class=\"close\" onclick=\"closeModal()\">&times;</span>\n")
-	        .append("<img class=\"modal-content\" id=\"modalImage\">\n")
+	    html.append("</tbody>\n")
+	        .append("</table>\n")
 	        .append("</div>\n")
-
 	        .append("<script>\n")
-	        // Search function
-	        .append("function searchTests() {\n")
-	        .append("  var term = document.getElementById('searchInput').value.toLowerCase();\n")
-	        .append("  document.querySelectorAll('.test-row').forEach(r => {\n")
-	        .append("    r.style.display = r.textContent.toLowerCase().includes(term) ? '' : 'none';\n")
-	        .append("  });\n")
-	        .append("  document.querySelectorAll('.accordion-content').forEach(a => a.style.display = 'none');\n")
-	        .append("}\n")
-	        
-	        // Status filter function
-	        .append("function filterTests(status) {\n")
-	        .append("  document.querySelectorAll('.test-row').forEach((r, i) => {\n")
-	        .append("    if (status === 'all' || r.getAttribute('data-status') === status) {\n")
-	        .append("      r.style.display = '';\n")
-	        .append("      document.querySelectorAll('.accordion-content')[i].style.display = 'none';\n")
-	        .append("    } else {\n")
-	        .append("      r.style.display = 'none';\n")
-	        .append("      document.querySelectorAll('.accordion-content')[i].style.display = 'none';\n")
-	        .append("    }\n")
-	        .append("  });\n")
-	        .append("}\n")
-	        
-	        // Module filter
-	        .append("function filterByModule() {\n")
-	        .append("    const selectedModule = document.getElementById('moduleFilter').value;\n")
-	        .append("    const rows = document.querySelectorAll('.test-row');\n")
-	        .append("    \n")
-	        .append("    rows.forEach(row => {\n")
-	        .append("        const module = row.getAttribute('data-module');\n")
-	        .append("        if (!selectedModule || module === selectedModule) {\n")
-	        .append("            row.classList.remove('hidden');\n")
-	        .append("        } else {\n")
-	        .append("            row.classList.add('hidden');\n")
-	        .append("        }\n")
-	        .append("    });\n")
-	        .append("}\n")
-	        .append("        \n")
-	        // Status filter
-	        .append("function filterByStatus() {\n")
-	        .append("    const selectedStatus = document.getElementById('statusFilter').value;\n")
-	        .append("    const rows = document.querySelectorAll('.test-row');\n")
-	        .append("    \n")
-	        .append("    rows.forEach(row => {\n")
-	        .append("        const status = row.getAttribute('data-status');\n")
-	        .append("        if (!selectedStatus || status === selectedStatus) {\n")
-	        .append("            row.classList.remove('hidden');\n")
-	        .append("        } else {\n")
-	        .append("            row.classList.add('hidden');\n")
-	        .append("        }\n")
-	        .append("    });\n")
-	        .append("}\n")
-	        .append("        \n")
-	        // Clear all filters
-	        .append("function clearFilters() {\n")
-	        .append("    document.getElementById('searchInput').value = '';\n")
-	        .append("    document.getElementById('moduleFilter').value = '';\n")
-	        .append("    document.getElementById('statusFilter').value = '';\n")
-	        .append("    \n")
-	        .append("    const rows = document.querySelectorAll('.test-row');\n")
-	        .append("    rows.forEach(row => row.classList.remove('hidden'));\n")
-	        .append("}\n")
-	        .append("        \n")
-	        // Export functions
-	        .append("function exportToCSV() {\n")
-	        .append("    const rows = document.querySelectorAll('.test-row:not(.hidden)');\n")
-	        .append("    let csv = 'Module,Scenario ID,Test Case ID,Short Description,Start Time,End Time,Duration (ms),Execution Status\\n';\n")
-	        .append("    \n")
-	        .append("    rows.forEach(row => {\n")
-	        .append("        const cells = row.querySelectorAll('td');\n")
-	        .append("        const rowData = [];\n")
-	        .append("        for (let i = 0; i < 8; i++) {\n")
-	        .append("            rowData.push('\"' + cells[i].textContent.trim() + '\"');\n")
-	        .append("        }\n")
-	        .append("        csv += rowData.join(',') + '\\n';\n")
-	        .append("    });\n")
-	        .append("    \n")
-	        .append("    const blob = new Blob([csv], { type: 'text/csv' });\n")
-	        .append("    const url = window.URL.createObjectURL(blob);\n")
-	        .append("    const a = document.createElement('a');\n")
-	        .append("    a.href = url;\n")
-	        .append("    a.download = 'test-report.csv';\n")
-	        .append("    a.click();\n")
-	        .append("}\n")
-	        .append("        \n")
-	        .append("function exportToJSON() {\n")
-	        .append("    const rows = document.querySelectorAll('.test-row:not(.hidden)');\n")
-	        .append("    const data = [];\n")
-	        .append("    \n")
-	        .append("    rows.forEach(row => {\n")
-	        .append("        const cells = row.querySelectorAll('td');\n")
-	        .append("        data.push({\n")
-	        .append("            module: cells[0].textContent.trim(),\n")
-	        .append("            scenarioId: cells[1].textContent.trim(),\n")
-	        .append("            testCaseId: cells[2].textContent.trim(),\n")
-	        .append("            shortDescription: cells[3].textContent.trim(),\n")
-	        .append("            startTime: cells[4].textContent.trim(),\n")
-	        .append("            endTime: cells[5].textContent.trim(),\n")
-	        .append("            duration: cells[6].textContent.trim(),\n")
-	        .append("            executionStatus: cells[7].textContent.trim()\n")
-	        .append("        });\n")
-	        .append("    });\n")
-	        .append("    \n")
-	        .append("    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });\n")
-	        .append("    const url = window.URL.createObjectURL(blob);\n")
-	        .append("    const a = document.createElement('a');\n")
-	        .append("    a.href = url;\n")
-	        .append("    a.download = 'test-report.json';\n")
-	        .append("    a.click();\n")
-	        .append("}\n")
-	        .append("        \n")
-	        .append("function printReport() {\n")
-	        .append("    window.print();\n")
-	        .append("}\n")
-	        .append("        \n")
-	        // Accordion toggle
-	        .append("function toggleAccordion(e, row) {\n")
-	        .append("  if (e.target.tagName === 'A' || e.target.tagName === 'IMG') return;\n")
-	        .append("  var content = row.nextElementSibling;\n")
-	        .append("  document.querySelectorAll('.accordion-content').forEach(c => {\n")
-	        .append("    if (c !== content) { c.style.display = 'none'; }\n")
-	        .append("  });\n")
-	        .append("  content.style.display = (content.style.display === 'table-row') ? 'none' : 'table-row';\n")
-	        .append("}\n")
-	        
-	        // Screenshot modal functions
-	        .append("function openModal(src) {\n")
-	        .append("  var modal = document.getElementById('screenshotModal');\n")
-	        .append("  var modalImg = document.getElementById('modalImage');\n")
-	        .append("  modal.style.display = 'block';\n")
-	        .append("  modalImg.src = src;\n")
-	        .append("  modal.onclick = function(event) {\n")
-	        .append("    if (event.target === modal) {\n")
-	        .append("      closeModal();\n")
-	        .append("    }\n")
-	        .append("  };\n")
-	        .append("}\n")
-	        .append("function closeModal() {\n")
-	        .append("  document.getElementById('screenshotModal').style.display = 'none';\n")
-	        .append("}\n")
-	        
-	        // Dark mode toggle
-	        .append("function toggleDarkMode() {\n")
-	        .append("  document.body.classList.toggle('dark-mode');\n")
-	        .append("  localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));\n")
-	        .append("}\n")
-	        .append("window.onload = function() {\n")
-	        .append("  if (localStorage.getItem('darkMode') === 'true') {\n")
-	        .append("    document.body.classList.add('dark-mode');\n")
+
+	        // toggle expand/collapse
+	        .append("function toggleDetails(row) {\n")
+	        .append("  if (!row) return;\n")
+	        .append("  var testId = row.getAttribute('data-test-id');\n")
+	        .append("  var detailsRow = document.getElementById(testId + '-details');\n")
+	        .append("  if (!detailsRow) return;\n")
+	        .append("  var expanded = row.getAttribute('data-expanded') === 'true';\n")
+	        .append("  var expandIcon = row.querySelector('.expand-icon');\n")
+	        .append("  if (expanded) {\n")
+	        .append("    detailsRow.style.display = 'none';\n")
+	        .append("    row.setAttribute('data-expanded', 'false');\n")
+	        .append("    if (expandIcon) expandIcon.textContent = '+';\n")
+	        .append("  } else {\n")
+	        .append("    detailsRow.style.display = 'table-row';\n")
+	        .append("    row.setAttribute('data-expanded', 'true');\n")
+	        .append("    if (expandIcon) expandIcon.textContent = '-';\n")
 	        .append("  }\n")
-	        .append("};\n")
-	        .append("</script>\n</body></html>");
+	        .append("}\n")
+
+	        // FIXED: applySearchAndFilter ensures details rows follow main rows
+	        .append("function applySearchAndFilter() {\n")
+	        .append("  var searchText = document.getElementById('searchInput').value.toLowerCase().trim();\n")
+	        .append("  var filterValue = document.getElementById('statusFilter').value;\n")
+	        .append("  var mainRows = document.querySelectorAll('#testcaseTable tbody tr:not(.details-row)');\n")
+	        .append("  mainRows.forEach(function(row) {\n")
+	        .append("    var rowText = row.textContent.toLowerCase();\n")
+	        .append("    var statusText = row.cells[4] ? row.cells[4].textContent.toLowerCase() : '';\n")
+	        .append("    var rowStatus = statusText.includes('pass') ? 'PASS' : statusText.includes('fail') ? 'FAIL' : statusText.includes('skip') ? 'SKIPPED' : '';\n")
+	        .append("    var matchesSearch = !searchText || rowText.includes(searchText);\n")
+	        .append("    var matchesFilter = !filterValue || rowStatus === filterValue;\n")
+	        .append("    var shouldShow = matchesSearch && matchesFilter;\n")
+	        .append("    var testId = row.getAttribute('data-test-id');\n")
+	        .append("    var detailsRow = document.getElementById(testId + '-details');\n")
+	        .append("    if (shouldShow) {\n")
+	        .append("      row.style.display = '';\n")
+	        .append("      if (detailsRow) {\n")
+	        .append("        var expanded = row.getAttribute('data-expanded') === 'true';\n")
+	        .append("        detailsRow.style.display = expanded ? 'table-row' : 'none';\n")
+	        .append("      }\n")
+	        .append("    } else {\n")
+	        .append("      row.style.display = 'none';\n")
+	        .append("      if (detailsRow) detailsRow.style.display = 'none';\n")
+	        .append("      if (row.querySelector('.expand-icon')) {\n")
+	        .append("        row.querySelector('.expand-icon').textContent = '+';\n")
+	        .append("        row.setAttribute('data-expanded', 'false');\n")
+	        .append("      }\n")
+	        .append("    }\n")
+	        .append("  });\n")
+	        .append("}\n")
+
+	        // event listeners
+	        .append("document.addEventListener('DOMContentLoaded', function() {\n")
+	        .append("  var searchInput = document.getElementById('searchInput');\n")
+	        .append("  var statusFilter = document.getElementById('statusFilter');\n")
+	        .append("  if (searchInput) searchInput.addEventListener('input', applySearchAndFilter);\n")
+	        .append("  if (statusFilter) statusFilter.addEventListener('change', applySearchAndFilter);\n")
+	        .append("});\n")
+
+	        .append("</script>\n");
 
 	    return html.toString();
 	}
 
+
+
+
+	
+	// Helper method to get status class
+	private static String getStatusClass(ExecutionStatus status) {
+	    switch (status) {
+	        case PASS: return "status-pass";
+	        case FAIL: return "status-fail";
+	        case SKIPPED: return "status-skipped";
+	        default: return "";
+	    }
+	}
+
+	// Helper method to escape HTML
+	private static String escapeHtml(String text) {
+	    if (text == null) return "";
+	    return text.replace("&", "&amp;")
+	              .replace("<", "&lt;")
+	              .replace(">", "&gt;")
+	              .replace("\"", "&quot;")
+	              .replace("'", "&#39;");
+	}
+
+	// Helper method to get system property with fallback
+	private static String getSystemProperty(String key, String defaultValue) {
+	    try {
+	        return System.getProperty(key, defaultValue);
+	    } catch (Exception e) {
+	        return defaultValue;
+	    }
+	}
+
+	// Utility to safely compare strings (null-safe)
+	private static boolean safeEquals(String a, String b) {
+	    if (a == null && b == null) return true;
+	    if (a == null || b == null) return false;
+	    return a.equals(b);
+	}
 
 	// Performance Metrics class
 	public static class PerformanceMetrics
@@ -786,6 +708,8 @@ public class DetailedTestReporter
 		private String actualResult;
 		private StepStatus status;
 		private String screenshotPath;
+		private String logFilePath;
+		private File harFilePath;
 
 		// Getters and setters
 		public int getStepNo()
@@ -846,6 +770,22 @@ public class DetailedTestReporter
 		public void setScreenshotPath(String screenshotPath)
 		{
 			this.screenshotPath = screenshotPath;
+		}
+		
+		public String getLogFilePath() {
+			return logFilePath;
+		}
+		
+		public void setLogFilePath(String logFilePath) {
+			this.logFilePath = logFilePath;
+		}
+		
+		public File getHarFilePath() {
+			return harFilePath;
+		}
+		
+		public void setHarFilePath(File harFilePath) {
+			this.harFilePath = harFilePath;
 		}
 	}
 

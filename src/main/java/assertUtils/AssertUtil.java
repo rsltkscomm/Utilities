@@ -65,7 +65,7 @@ public class AssertUtil extends ElementUtil
 	
 	public boolean placeholderValueCheck(String locator, String placeHolderText)
 	{
-		String uiPlaceholderText = getStrText(locator);
+		String uiPlaceholderText = getText(locator);
 		boolean status = uiPlaceholderText.equals(placeHolderText);
 		if (status)
 		{
@@ -129,6 +129,22 @@ public class AssertUtil extends ElementUtil
 	        }
 	    }
 	    return allMatch;
+	}
+	
+	public boolean uiPageEqualswithInputValue(String txt, String actualText)
+	{
+		boolean flag = false;
+
+		if (txt.trim().equals(actualText.trim()))
+		{
+			ExtentManager.infoTest("UI text <b>'" + txt + "'</b> is displayed, As expected.");
+			flag = true;
+		} else
+		{
+			ExtentManager.warningTest("UI text <b>" + txt + "</b> is not displayed, As expected text <b>" + actualText + "</b>");
+			flag = false;
+		}
+		return flag;
 	}
 	
 	public static String decodeBase64ToText(String base64Text)

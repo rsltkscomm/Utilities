@@ -19,14 +19,14 @@ public class BrowserUtil extends ScreenshotUtil
 	public void openUrl(String url)
 	{
 		driver.get(url);
-		ExtentManager.infoTest("Url launched : "+url);
+		ExtentManager.infoTest("Url launched : " + url);
 	}
 
 	// Navigate to a URL
 	public void navigateTo(String url)
 	{
 		driver.navigate().to(url);
-		ExtentManager.infoTest("Navigated to: "+url);
+		ExtentManager.infoTest("Navigated to: " + url);
 	}
 
 	// Browser navigation
@@ -78,6 +78,11 @@ public class BrowserUtil extends ScreenshotUtil
 	public String getPageSource()
 	{
 		return driver.getPageSource();
+	}
+
+	public void deleteAllCookies()
+	{
+		driver.manage().deleteAllCookies();
 	}
 
 }

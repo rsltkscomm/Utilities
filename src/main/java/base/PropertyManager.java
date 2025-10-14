@@ -1,5 +1,6 @@
 package base;
 
+import config.ConfigurationManager;
 import reporting.ExtentManager;
 import reporting.TestLogManager;
 
@@ -14,21 +15,27 @@ public class PropertyManager {
 
     private static final Properties properties = new Properties();
     private static boolean initialized = false;
+    private static ConfigurationManager configManager;
 
     private PropertyManager() {
         // prevent instantiation
     }
     /**
      * Initialize once (Singleton).
+     * Now integrates with ConfigurationManager for backward compatibility
      */
     public static synchronized void init(String folderPath) {
         if (initialized) return;
 
+        // Initialize ConfigurationManager first
+        configManager = ConfigurationManager.getInstance();
+        
         if (folderPath != null) {
             readAllProperties(folderPath);
         }
         setDefaultProperties();
         initialized = true;
+        TestLogManager.info("PropertyManager initialized with ConfigurationManager integration");
     }
 
     /**
@@ -71,13 +78,61 @@ public class PropertyManager {
 
     /**
      * Get property with default fallback.
+     * Now uses ConfigurationManager for enhanced functionality while maintaining backward compatibility
      */
     public static String get(String key, String defaultValue) {
+        // Try ConfigurationManager first if available
+        if (configManager != null) {
+            String value = configManager.getString(key, defaultValue);
+            if (value != null) {
+                return value;
+            }
+        }
+        
+        // Fallback to legacy properties
         return properties.getProperty(key, defaultValue);
     }
 
     public static String get(String key) {
+        // Try ConfigurationManager first if available
+        if (configManager != null) {
+            String value = configManager.getString(key);
+            if (value != null) {
+                return value;
+            }
+        }
+        
+        // Fallback to legacy properties
         return properties.getProperty(key);
+    }
+    
+    /**
+     * Get boolean property
+     */
+    public static boolean getBoolean(String key, boolean defaultValue) {
+        if (configManager != null) {
+            return configManager.getBoolean(key, defaultValue);
+        }
+        
+        String value = properties.getProperty(key);
+        return value != null ? Boolean.parseBoolean(value) : defaultValue;
+    }
+    
+    /**
+     * Get integer property
+     */
+    public static int getInt(String key, int defaultValue) {
+        if (configManager != null) {
+            return configManager.getInt(key, defaultValue);
+        }
+        
+        String value = properties.getProperty(key);
+        try {
+            return value != null ? Integer.parseInt(value) : defaultValue;
+        } catch (NumberFormatException e) {
+            TestLogManager.warning("Invalid integer value for " + key + ": " + value + ", using default: " + defaultValue);
+            return defaultValue;
+        }
     }
 
     /**

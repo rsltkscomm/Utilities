@@ -67,7 +67,7 @@ public class ChromeDriverStrategy implements DriverStrategy {
         
         // Set headless mode if required
         if (headless) {
-            options.addArguments("--headless=new");
+            options.addArguments("--headless");
         }
         
         return options;
@@ -84,7 +84,7 @@ public class ChromeDriverStrategy implements DriverStrategy {
         prefs.put("credentials_enable_service", false);
         prefs.put("profile.password_manager_enabled", false);
         
-        options.addArguments("--enable-geolocation","--disable-notifications", "--no-sandbox", "--disable-gpu", "--incognito");
+        options.addArguments("--enable-geolocation","--disable-notifications", "--no-sandbox", "--disable-gpu");
         options.setExperimentalOption("prefs", prefs);
         options.setExperimentalOption("excludeSwitches", Collections.singletonList("enable-automation"));
         options.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);

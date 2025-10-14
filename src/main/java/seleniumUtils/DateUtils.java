@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.TimeZone;
 
 import org.openqa.selenium.WebDriver;
 
@@ -34,6 +35,24 @@ public class DateUtils extends LocatorUtil {
         "dd/MM/yyyy", 
         "MM/dd/yyyy"
     );
+	
+	public static Date parseUnknownFormat(String dateStr)
+	{
+		String[] possibleFormats = { "MM-dd-yyyy", "dd-MM-yyyy", "yyyy-MM-dd", "dd/MM/yyyy", "MM/dd/yyyy", "yyyy/MM/dd" };
+
+		for (String format : possibleFormats)
+		{
+			try
+			{
+				SimpleDateFormat sdf = new SimpleDateFormat(format);
+				sdf.setLenient(false);
+				return sdf.parse(dateStr);
+			} catch (ParseException ignored)
+			{
+			}
+		}
+		throw new IllegalArgumentException("Unsupported date format: " + dateStr);
+	}
     
     /**
      * Get current date in specified format
@@ -206,6 +225,20 @@ public class DateUtils extends LocatorUtil {
             throw e;
         }
     }
+    
+    public static String addTimeToValueShort()
+	{
+		try
+		{
+			SimpleDateFormat sdf = new SimpleDateFormat("M-d-HHmmSS");
+			sdf.setTimeZone(TimeZone.getTimeZone("IST"));
+			return sdf.format(new Date());
+		} catch (Exception e)
+		{
+			e.printStackTrace();
+			return "ErrorGeneratingTime";
+		}
+	}
     
     /**
      * Parse date string with multiple patterns
@@ -424,4 +457,21 @@ public class DateUtils extends LocatorUtil {
 		String storedDateTime = formatter.format(new Date());
 		return storedDateTime;
 	}
+    
+ // Remove time part from Date
+ 	public static Date removeTime(Date date)
+ 	{
+ 		if (date == null)
+ 		{
+ 			return null;
+ 		}
+ 		Calendar cal = Calendar.getInstance();
+ 		cal.setTime(date);
+ 		cal.set(Calendar.HOUR_OF_DAY, 0);
+ 		cal.set(Calendar.MINUTE, 0);
+ 		cal.set(Calendar.SECOND, 0);
+ 		cal.set(Calendar.MILLISECOND, 0);
+ 		return cal.getTime();
+ 	}
+    
 } 
