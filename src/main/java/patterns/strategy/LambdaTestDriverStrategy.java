@@ -7,6 +7,8 @@ import org.openqa.selenium.edge.EdgeOptions;
 import org.openqa.selenium.firefox.FirefoxOptions;
 import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.remote.RemoteWebDriver;
+import org.openqa.selenium.safari.SafariOptions;
+
 import reporting.TestLogManager;
 
 import java.net.URL;
@@ -31,39 +33,39 @@ public class LambdaTestDriverStrategy implements DriverStrategy
 	{
 		try
 		{
-			String username = getEnvOrProperty("LT_USERNAME", "lt.username");
-			String accessKey = getEnvOrProperty("LT_ACCESS_KEY", "lt.accessKey");
+			String username = System.getProperty("LT_USERNAME", "lt.username");
+			String accessKey = System.getProperty("LT_ACCESS_KEY", "lt.accessKey");
 			if (isNullOrEmpty(username) || isNullOrEmpty(accessKey))
 			{
 				throw new IllegalArgumentException("LambdaTest credentials not provided. Set LT_USERNAME and LT_ACCESS_KEY");
 			}
 
-			String gridUrl = getEnvOrProperty("LT_GRID_URL", "lt.gridUrl");
+			String gridUrl = System.getProperty("LT_GRID_URL", "lt.gridUrl");
 			if (isNullOrEmpty(gridUrl))
 			{
 				gridUrl = "https://" + username + ":" + accessKey + "@hub.lambdatest.com/wd/hub";
 			}
 			URL remoteUrl = new URL(gridUrl);
 
-			String browserName = getEnvOrProperty("LT_BROWSER", "lt.browser", System.getProperty("browserName", "chrome"));
-			String browserVersion = getEnvOrProperty("LT_BROWSER_VERSION", "lt.browserVersion", System.getProperty("browserVersion", "latest"));
-			String platformName = getEnvOrProperty("LT_PLATFORM", "lt.platform", System.getProperty("platformName", "Windows 11"));
+			String browserName = System.getProperty("LT_BROWSER", System.getProperty("browserName", "chrome"));
+			String browserVersion = System.getProperty("LT_BROWSER_VERSION",  System.getProperty("browserVersion", "latest"));
+			String platformName = System.getProperty("LT_PLATFORM",  System.getProperty("platformName", "Windows 11"));
 
 			MutableCapabilities options = buildOptions(browserName, capabilities);
 
 			Map<String, Object> ltOptions = new HashMap<>();
 			ltOptions.put("user", username);
 			ltOptions.put("accessKey", accessKey);
-			ltOptions.put("build", getEnvOrProperty("LT_BUILD", "lt.build", "UtilityFramework-Build"));
-			ltOptions.put("name", getEnvOrProperty("LT_NAME", "lt.name", "LambdaTest Example"));
+			ltOptions.put("build", System.getProperty("LT_BUILD", "RESUL Build"));
+			ltOptions.put("name", System.getProperty("LT_NAME", "LambdaTest Example"));
 			ltOptions.put("platformName", platformName);
-			ltOptions.put("selenium_version", getEnvOrProperty("LT_SELENIUM_VERSION", "lt.seleniumVersion", "4.20.0"));
-			putIfPresent(ltOptions, "resolution", getEnvOrProperty("LT_RESOLUTION", "lt.resolution", null));
-			putIfPresent(ltOptions, "network", getBooleanFlag("LT_NETWORK", "lt.network"));
-			putIfPresent(ltOptions, "video", getBooleanFlag("LT_VIDEO", "lt.video"));
-			putIfPresent(ltOptions, "console", getEnvOrProperty("LT_CONSOLE", "lt.console", null));
-			putIfPresent(ltOptions, "visual", getBooleanFlag("LT_VISUAL", "lt.visual"));
-			putIfPresent(ltOptions, "geoLocation", getEnvOrProperty("LT_GEO_LOCATION", "lt.geoLocation", null));
+			ltOptions.put("selenium_version", System.getProperty("LT_SELENIUM_VERSION", "4.20.0"));
+			putIfPresent(ltOptions, "resolution", System.getProperty("LT_RESOLUTION", "1920x1080"));
+			putIfPresent(ltOptions, "network", System.getProperty("LT_NETWORK", "true"));
+			putIfPresent(ltOptions, "video", System.getProperty("LT_VIDEO", "true"));
+			putIfPresent(ltOptions, "console", System.getProperty("LT_CONSOLE", "true"));
+			putIfPresent(ltOptions, "visual", System.getProperty("LT_VISUAL", "true"));
+			putIfPresent(ltOptions, "geoLocation", System.getProperty("LT_GEO_LOCATION", "IN"));
 
 			// Attach LambdaTest options based on browser type
 			if (options instanceof ChromeOptions chrom)
@@ -110,7 +112,7 @@ public class LambdaTestDriverStrategy implements DriverStrategy
 
 	private MutableCapabilities buildOptions(String browserName, DesiredCapabilities extra)
 	{
-		String headlessFlag = getEnvOrProperty("LT_HEADLESS", "lt.headless", System.getProperty("headless", "false"));
+		String headlessFlag = System.getProperty("LT_HEADLESS", System.getProperty("headless", "false"));
 		boolean headless = Boolean.parseBoolean(headlessFlag);
 		switch (browserName.toLowerCase())
 		{
@@ -129,6 +131,11 @@ public class LambdaTestDriverStrategy implements DriverStrategy
 			case "edge" -> {
 				EdgeOptions opts = new EdgeOptions();
 				if (headless) opts.addArguments("--headless=new");
+				if (extra != null) opts.merge(extra);
+				return opts;
+			}
+			case "safari" -> {
+				SafariOptions opts = new SafariOptions();
 				if (extra != null) opts.merge(extra);
 				return opts;
 			}
