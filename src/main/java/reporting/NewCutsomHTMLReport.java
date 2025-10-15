@@ -101,12 +101,12 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener
 			agg.totalSkip,
 			String.valueOf(agg.totalDurationMillis),
 			dateTime);
-		if ("yes".toLowerCase().contains(System.getProperty("UPDATE_ZEPHYR_EXECUTION")))
+		if ("yes".toLowerCase().contains(System.getProperty("REPORT_BUG")))
 		{
 			new DefectReportingDemo().defectReporting();
 		}
 		
-		if ("yes".toLowerCase().contains(System.getProperty("REPORT_BUG")))
+		if ("yes".toLowerCase().contains(System.getProperty("UPDATE_ZEPHYR_EXECUTION")))
 		{
 			new JiraZephyrClient().zephyrUpdater();
 		}
