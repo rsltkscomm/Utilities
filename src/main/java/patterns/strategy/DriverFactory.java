@@ -34,6 +34,8 @@ public class DriverFactory {
 
         // Register LambdaTest remote strategy
         registerStrategy(new LambdaTestDriverStrategy());
+        registerStrategy(new BrowserStackDriverStrategy());
+        registerStrategy(new SauceLabsDriverStrategy());
         
         // Register cloud strategies if cloud is enabled
         registerCloudStrategies();
