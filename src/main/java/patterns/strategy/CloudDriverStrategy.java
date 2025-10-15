@@ -1,8 +1,6 @@
 package patterns.strategy;
 
 import cloud.CloudConfiguration;
-import cloud.providers.CloudProvider;
-import cloud.providers.CloudProviderFactory;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.remote.RemoteWebDriver;
@@ -20,19 +18,13 @@ public class CloudDriverStrategy implements DriverStrategy {
     
     private final String browserName;
     private final CloudConfiguration cloudConfig;
-    private final CloudProvider cloudProvider;
     
     public CloudDriverStrategy(String browserName) {
         this.browserName = browserName.toLowerCase();
         this.cloudConfig = new CloudConfiguration();
-        this.cloudProvider = CloudProviderFactory.createActiveProvider(cloudConfig);
         
         if (!cloudConfig.isCloudEnabled()) {
             throw new IllegalStateException("Cloud testing is not enabled. Please enable cloud testing in configuration.");
-        }
-        
-        if (!cloudProvider.isConfigured()) {
-            throw new IllegalStateException("Cloud provider is not properly configured");
         }
     }
     
@@ -63,7 +55,6 @@ public class CloudDriverStrategy implements DriverStrategy {
             URL hubUrl = URI.create(cloudConfig.getHubUrl()).toURL();
             WebDriver driver = new RemoteWebDriver(hubUrl, cloudCapabilities);
             
-            TestLogManager.success("Cloud driver created successfully: " + browserName + " on " + cloudProvider.getDisplayName());
             return driver;
             
         } catch (MalformedURLException e) {
@@ -244,10 +235,4 @@ public class CloudDriverStrategy implements DriverStrategy {
         return cloudConfig;
     }
     
-    /**
-     * Get cloud provider
-     */
-    public CloudProvider getCloudProvider() {
-        return cloudProvider;
-    }
 }
