@@ -18,6 +18,7 @@ import org.testng.ITestListener;
 import org.testng.ITestResult;
 
 import zephyrIntegration.DefectReportingDemo;
+import zephyrIntegration.JiraZephyrClient;
 
 /**
  * Custom TestNG Listener for generating an HTML report. Tracks test execution results and duration.
@@ -100,9 +101,14 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener
 			agg.totalSkip,
 			String.valueOf(agg.totalDurationMillis),
 			dateTime);
-		if ("yes".toLowerCase().contains(System.getProperty("isJiraZephyrUpdate")))
+		if ("yes".toLowerCase().contains(System.getProperty("UPDATE_ZEPHYR_EXECUTION")))
 		{
 			new DefectReportingDemo().defectReporting();
+		}
+		
+		if ("yes".toLowerCase().contains(System.getProperty("REPORT_BUG")))
+		{
+			new JiraZephyrClient().zephyrUpdater();
 		}
 	}
 
