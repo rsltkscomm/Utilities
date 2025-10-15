@@ -17,8 +17,8 @@ import org.testng.ISuiteListener;
 import org.testng.ITestListener;
 import org.testng.ITestResult;
 
+import testManagement.JiraZephyrClient;
 import zephyrIntegration.DefectReportingDemo;
-import zephyrIntegration.JiraZephyrClient;
 
 /**
  * Custom TestNG Listener for generating an HTML report. Tracks test execution results and duration.
