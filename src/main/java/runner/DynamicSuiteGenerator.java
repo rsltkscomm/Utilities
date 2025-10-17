@@ -59,8 +59,6 @@ public class DynamicSuiteGenerator {
             TestNG testng = new TestNG();
             testng.setXmlSuites(List.of(suite));
             testng.setVerbose(10);
-            testng.run();
-
             try {
                 String filePath = "testng-dynamic.xml";
                 Files.write(Paths.get(filePath), suite.toXml().getBytes());
@@ -68,6 +66,9 @@ public class DynamicSuiteGenerator {
             } catch (IOException e) {
                 TestLogManager.error("Failed to save TestNG XML", e);
             }
+            testng.run();
+
+           
         } else {
             TestNG testng = new TestNG();
             String xmlPath = getXml();
@@ -164,7 +165,6 @@ public class DynamicSuiteGenerator {
                         test.setXmlClasses(List.of(cls));
 
                         Map<String, String> params = new HashMap<>();
-                        params.put("browser", System.getProperty("Browser", "chrome"));
 
                         for (int k = 2; k <= sheet.getLastRowNum(); k++) {
                             XSSFRow row = sheet.getRow(k);

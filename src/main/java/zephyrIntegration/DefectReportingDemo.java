@@ -10,6 +10,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.Base64;
 import java.util.List;
 
@@ -26,57 +28,67 @@ public class DefectReportingDemo {
      * Test case that demonstrates successful defect reporting when a test fails
      */
     public void defectReporting() {
-        String failureReason = "Fail occured.";
-        String screenshot = "";
-        String logFilePath = "";
-        File harFilePath = null;
-        
-        defectReporter = new DefectReporter();
-        List<TestExecution> testExecutions = DetailedTestReporter.getTestExecutions();
-       
-        for (int i = 0; i < testExecutions.size(); i++)
+    	try
 		{
-        	ExecutionStatus executionStatus = testExecutions.get(i).getStatus();
-        	if (executionStatus == ExecutionStatus.FAIL)
-			{
-        		String testCaseKey = testExecutions.get(i).getTestCaseId();
-            	String testCaseName = testExecutions.get(i).getShortDescription();
-            	
-            	List<TestStep> stepResults = testExecutions.get(i).getSteps();
-            	
-            	for (int j = 0; j < stepResults.size(); j++)
+    		String failureReason = "Fail occured.";
+            String screenshot = "";
+            String logFilePath = "";
+            File harFilePath = null;
+            
+            defectReporter = new DefectReporter();
+            List<TestExecution> testExecutions = DetailedTestReporter.getTestExecutions();
+           
+            for (int i = 0; i < testExecutions.size(); i++)
+    		{
+            	ExecutionStatus executionStatus = testExecutions.get(i).getStatus();
+            	if (executionStatus == ExecutionStatus.FAIL)
     			{
-            		StepStatus status = stepResults.get(j).getStatus();
-            		if (status == StepStatus.FAIL)
-    				{
-            			failureReason = stepResults.get(j).getActualResult();
-            			screenshot = stepResults.get(j).getScreenshotPath();
-            			logFilePath = stepResults.get(j).getLogFilePath();
-            			harFilePath = stepResults.get(j).getHarFilePath();
-    					break;
-    				}
+            		String testCaseKey = testExecutions.get(i).getTestCaseId();
+                	String testCaseName = testExecutions.get(i).getShortDescription();
+                	
+                	List<TestStep> stepResults = testExecutions.get(i).getSteps();
+                	
+                	for (int j = 0; j < stepResults.size(); j++)
+        			{
+                		StepStatus status = stepResults.get(j).getStatus();
+                		if (status == StepStatus.FAIL)
+        				{
+                			failureReason = stepResults.get(j).getActualResult();
+                			screenshot = stepResults.get(j).getScreenshotPath();
+                			logFilePath = stepResults.get(j).getLogFilePath();
+                			harFilePath = stepResults.get(j).getHarFilePath();
+        					break;
+        				}
+        			}
+                	
+                    File logFile = createDynamicLogFile(testCaseKey,testCaseName,stepResults);
+                    File screenshotFile = base64ToFile(screenshot, new File(System.getProperty("user.dir")+"/logs/test_image.png").getAbsolutePath());
+                    // Report the defect
+                    String bugKey = defectReporter.reportDefect(
+                        testCaseKey, 
+                        testCaseName, 
+                        failureReason, 
+                        stepResults, 
+                        screenshotFile, 
+                        logFile,
+                        new File(logFilePath),
+                        harFilePath
+                    );
+                    if (bugKey != null) {
+                        System.out.println("✅ Defect reported successfully with key: " + bugKey);
+                    } else {
+                        System.out.println("❌ Failed to report defect");
+                    }
     			}
-            	
-                File logFile = createDynamicLogFile(testCaseKey,testCaseName,stepResults);
-                File screenshotFile = base64ToFile(screenshot, new File(System.getProperty("user.dir")+"/logs/test_image.png").getAbsolutePath());
-                // Report the defect
-                String bugKey = defectReporter.reportDefect(
-                    testCaseKey, 
-                    testCaseName, 
-                    failureReason, 
-                    stepResults, 
-                    screenshotFile, 
-                    logFile,
-                    new File(logFilePath),
-                    harFilePath
-                );
-                if (bugKey != null) {
-                    System.out.println("✅ Defect reported successfully with key: " + bugKey);
-                } else {
-                    System.out.println("❌ Failed to report defect");
-                }
-			}
+    		}
+		} catch (Exception e)
+		{
+			StringWriter sw = new StringWriter();
+		    e.printStackTrace(new PrintWriter(sw));
+		    String exceptionAsString = sw.toString();
+		    System.out.println("Unable to create the bug in jira -> " + exceptionAsString);
 		}
+        
     }
     
     
