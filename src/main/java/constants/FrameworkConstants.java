@@ -28,6 +28,7 @@ public class FrameworkConstants
 	public static final String TEAM_DATA_FILE = getTeamDataFile();
 	public static final String DYNAMIC_PATH = getDynamicPath();
 	public static final String DYNAMIC_CSV_PREFIX = getDynamicCsvPrefix();
+	public static final String DOWNLOADED_FILE_PATH = getDownloadedFilePath();
 	
 	private FrameworkConstants() {
 		// Private constructor to prevent instantiation
@@ -161,6 +162,14 @@ public class FrameworkConstants
 			return Paths.get(System.getProperty("user.dir"), "src", "main", "resources", "dynamicFile").toString();
 		} catch (Exception e) {
 			return Paths.get(System.getProperty("user.dir"), "src", "main", "resources", "dynamicFile").toString();
+		}
+	}
+	
+	private static String getDownloadedFilePath() {
+		try {
+			return Paths.get(System.getProperty("user.dir"), "src", "main", "resources", "data","downloadedFile").toString();
+		} catch (Exception e) {
+			return Paths.get(System.getProperty("user.dir"), "src", "main", "resources", "data","downloadedFile").toString();
 		}
 	}
 	

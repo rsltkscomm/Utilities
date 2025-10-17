@@ -4,6 +4,7 @@ package testManagement;
 import reporting.DetailedTestReporter;
 import reporting.DetailedTestReporter.ExecutionStatus;
 import reporting.DetailedTestReporter.TestExecution;
+import reporting.ExtentManager;
 
 import javax.net.ssl.HttpsURLConnection;
 
@@ -202,21 +203,30 @@ public class JiraZephyrClient {
     
     
     public static void zephyrUpdater() {
-    	List<TestExecution> executions = DetailedTestReporter.getTestExecutions();
-        JiraZephyrClient client = new JiraZephyrClient();
-        ArrayList<TestResult> TestResults = new ArrayList<>();
-        for (TestExecution t : executions) {
-        	String testcaseID = t.getTestCaseId();
-            if (t.getStatus() == ExecutionStatus.FAIL) {
-//            	TestResult tr1 = new TestResult(testcaseID, false, null);
-            	TestResults.add(new TestResult(testcaseID, "false", null));
-            }else if (t.getStatus() == ExecutionStatus.PASS) {
-            	TestResults.add(new TestResult(testcaseID, "true", null));
-            }else {
-            	TestResults.add(new TestResult(testcaseID, "Skipped", null));
+    	try
+		{
+    		List<TestExecution> executions = DetailedTestReporter.getTestExecutions();
+            JiraZephyrClient client = new JiraZephyrClient();
+            ArrayList<TestResult> TestResults = new ArrayList<>();
+            for (TestExecution t : executions) {
+            	String testcaseID = t.getTestCaseId();
+                if (t.getStatus() == ExecutionStatus.FAIL) {
+//                	TestResult tr1 = new TestResult(testcaseID, false, null);
+                	TestResults.add(new TestResult(testcaseID, "false", null));
+                }else if (t.getStatus() == ExecutionStatus.PASS) {
+                	TestResults.add(new TestResult(testcaseID, "true", null));
+                }else {
+                	TestResults.add(new TestResult(testcaseID, "Skipped", null));
+                }
             }
             client.updateTestResults(TestResults);
-        }
+		} catch (Exception e)
+		{
+			StringWriter sw = new StringWriter();
+		    e.printStackTrace(new PrintWriter(sw));
+		    String exceptionAsString = sw.toString();
+		    System.out.println("Testcase is not updated in Zephyr -> " + exceptionAsString);
+		}
     }
 }
     
