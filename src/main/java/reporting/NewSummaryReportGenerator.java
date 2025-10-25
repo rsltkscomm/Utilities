@@ -378,6 +378,7 @@ public class NewSummaryReportGenerator
 	            
 	            /* Detailed Report Styles */
 	            .detailed-section { display: none; }
+	            #smartui-section { display: none; }
 	            .step-table { width:90%%; margin:10px auto; border-collapse:collapse; font-size:0.85em; }
 	            .step-table th, .step-table td { border:1px solid #ccc; padding:5px; text-align:left; }
 	            .step-table th { background:#f1f1f1; color:black; }
