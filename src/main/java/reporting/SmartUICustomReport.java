@@ -61,6 +61,9 @@ public class SmartUICustomReport {
             new File(dir).mkdirs();
             String timestamp = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").format(new Date());
             String out = dir + "/SmartUI_Report_" + timestamp + ".html";
+            
+            System.setProperty("smartUIComparisonReportPath", out);
+
 
             List<Entry> snapshot = new ArrayList<>(ENTRIES);
             Collections.sort(snapshot, (a, b) -> Long.compare(a.timestamp, b.timestamp));
