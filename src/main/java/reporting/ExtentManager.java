@@ -73,8 +73,10 @@ public class ExtentManager
 			spark.config().setTheme(Theme.STANDARD);
 			spark.config().setReportName("<img src='" + currDir + "/src/main/resources/data/uploadfiles/RESUL_5.0_logo.png'");
 			extent.attachReporter(spark);
+			extent.setSystemInfo("Tolerance", String.valueOf(Double.parseDouble(System.getProperty("smartui.tolerance"))));
+			extent.setSystemInfo("Screenshot Strategy", System.getProperty("smartui.screenshot.strategy"));
+			extent.setSystemInfo("Comparison Method", System.getProperty("smartui.comparison.method"));
 		}
-
 		extent.setAnalysisStrategy(AnalysisStrategy.CLASS);
 		return extent;
 	}

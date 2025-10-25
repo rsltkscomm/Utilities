@@ -28,11 +28,9 @@ public class BaseTest
 	public static ThreadLocal<String> sheet_name = new ThreadLocal<>();
 	public static ThreadLocal<XLSReader> datatable = new ThreadLocal<>();
 	public static ThreadLocal<Integer> currentRow = new ThreadLocal<Integer>();
-	
+
 	public static String currentDate;
-    public static String EndDateTime;
-
-
+	public static String EndDateTime;
 
 	@BeforeSuite(alwaysRun = true)
 	@Parameters({ "runner" })
@@ -67,6 +65,9 @@ public class BaseTest
 		// 3. Initialize driver
 		DriverManager.createDriver(browser);
 
+		driver = DriverManager.getDriver();
+		System.out.println(driver);
+
 		// Start reporting
 		String testName = method.getAnnotation(Test.class).testName();
 		ExtentManager.startTest(method.getAnnotation(Test.class).description(), testName, browserName.get());
@@ -87,8 +88,11 @@ public class BaseTest
 		TestDataUtil testDataUtil = new TestDataUtil();
 		if (!testDataUtil.isTCIDFound(this))
 		{
+			ExtentManager.infoTest("METHOD NAME NOT FOUND -> " + method_name.get());
 			throw new RuntimeException("TestMethodName not found in Excel sheet: " + method_name.get());
-		}else {
+		} else
+		{
+			ExtentManager.infoTest("METHOD NAME FOUND -> " + method_name.get());
 			System.out.println(method_name.get());
 		}
 		TestDataUtil.createDataRef();

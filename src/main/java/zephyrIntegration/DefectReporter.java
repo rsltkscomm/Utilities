@@ -69,6 +69,7 @@ public class DefectReporter
 			SCREENSHOT_PATH = System.getProperty("SCREENSHOT_PATH", "./screenshots/");
 			LOG_PATH = System.getProperty("LOG_PATH", "./logs/");
 			TEST_CASE_ID_FIELD = System.getProperty("TEST_CASE_ID_FIELD", "customfield_10001");
+			String val = System.getProperty("CHECK_DUPLICATES", "true");
 			CHECK_DUPLICATES = "true".equalsIgnoreCase(System.getProperty("CHECK_DUPLICATES", "true"));
 			DUPLICATE_STRATEGY = System.getProperty("DUPLICATE_STRATEGY", "HYBRID");
 		} catch (Exception e)
