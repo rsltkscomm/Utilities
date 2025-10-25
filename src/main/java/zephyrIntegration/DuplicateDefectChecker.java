@@ -259,43 +259,61 @@ public class DuplicateDefectChecker {
     }
     
     /**
-     * Execute Jira search with JQL
+     * Execute Jira search with JQL (updated for API v3 POST request)
      */
     private List<JiraIssue> searchJira(String jql) throws IOException {
-        String encodedJql = URLEncoder.encode(jql, StandardCharsets.UTF_8.toString());
-        String apiUrl = JIRA_BASE_URL + "/rest/api/3/search?jql=" + encodedJql + 
-                       "&fields=key,summary,description,status,created";
-        
-        HttpsURLConnection conn = createJiraConnection(apiUrl, "GET");
-        
+        String apiUrl = JIRA_BASE_URL + "/rest/api/3/search/jql";
+
+        // Build JSON payload for POST request
+        JSONObject payload = new JSONObject();
+        payload.put("jql", jql);
+        payload.put("maxResults", 50); // adjust as needed
+        payload.put("fields", new JSONArray()
+                .put("key")
+                .put("summary")
+                .put("description")
+                .put("status")
+                .put("created"));
+
+        // Open connection
+        HttpsURLConnection conn = createJiraConnection(apiUrl, "POST"); // your existing method
+        conn.setRequestProperty("Content-Type", "application/json");
+
+        try (OutputStream os = conn.getOutputStream()) {
+            os.write(payload.toString().getBytes(StandardCharsets.UTF_8));
+        }
+
         int responseCode = conn.getResponseCode();
         String response = readResponse(conn);
-        
+
         List<JiraIssue> issues = new ArrayList<>();
-        
+
         if (responseCode == 200) {
             JSONObject jsonResponse = new JSONObject(response);
             JSONArray issuesArray = jsonResponse.getJSONArray("issues");
-            
+
             for (int i = 0; i < issuesArray.length(); i++) {
                 JSONObject issue = issuesArray.getJSONObject(i);
                 JSONObject fields = issue.getJSONObject("fields");
-                
+
                 JiraIssue jiraIssue = new JiraIssue();
                 jiraIssue.key = issue.getString("key");
                 jiraIssue.summary = fields.optString("summary", "");
                 jiraIssue.description = fields.optString("description", "");
                 jiraIssue.status = fields.getJSONObject("status").getString("name");
                 jiraIssue.created = fields.getString("created");
-                
+
                 issues.add(jiraIssue);
             }
-            
+
             System.out.println("   📊 Found " + issues.size() + " existing bug(s)");
+        } else {
+            System.err.println("❌ Jira search API failed: " + responseCode + " Response: " + response);
         }
-        
+
         return issues;
     }
+
     
     /**
      * Check if two failures are similar
