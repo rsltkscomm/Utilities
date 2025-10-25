@@ -6,6 +6,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
@@ -318,6 +320,23 @@ public class NewSummaryReportGenerator
 
 	public static String getReportHtml(String productName, int pass, int fail, int noRun, int total, String duration, String startTime) {
 	    String detailedReportContent = DetailedTestReporter.generateHTMLContent();
+	    String smartUIHtmlString = "";
+	    String property = System.getProperty("smartUIComparisonReportPath");
+	    try {
+	        byte[] bytes = Files.readAllBytes(Paths.get(property));
+	        smartUIHtmlString = new String(bytes, StandardCharsets.UTF_8);
+
+	        // Add "Back to Summary Report" button right after </header>
+	        String backLink = "<div style='text-align:right; padding:10px;'>"
+	                + "<a class='back-btn' href='#' onclick='showSummaryReport()'>⬅ Back to Summary Report</a>"
+	                + "</div>";
+
+	        smartUIHtmlString = smartUIHtmlString.replace("</header>", "</header>" + backLink);
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	    }
+	    
+	    
 	    String moduleDataJson = getModuleDataJson();
 	    String overallDurationFormatted = formatMillisAsHMS(duration);
 	    String reportTitle = System.getProperty("reportTitle");
@@ -418,8 +437,24 @@ public class NewSummaryReportGenerator
 	                text-decoration: none;
 	                font-weight: 600;
 	                cursor: pointer;
+	                padding-right: 3px;
 	            }
 	            .detailed-report-link a:hover {
+	                text-decoration: underline;
+	            }
+	            
+	            .smartui-report-link {
+	                text-align:right; 
+	                padding:10px;
+	                display: block;
+	            }
+	            .smartui-report-link a {
+	                color: #0052cc;
+	                text-decoration: none;
+	                font-weight: 600;
+	                cursor: pointer;
+	            }
+	            .smartui-report-link a:hover {
 	                text-decoration: underline;
 	            }
 	            
@@ -459,6 +494,9 @@ public class NewSummaryReportGenerator
 	                <div class="detailed-report-link">
 	                <a onclick="showDetailedReport()">📑 Open Detailed Report</a>
 	                </div>
+	                <div class="smartui-report-link">
+	                <a onclick="smartuiReport()">📑 UI Comparison Report</a>
+	                </div>
 	                <div class="main">
 	                <div class="chart-container">
 	                    <canvas id="chart1"></canvas>
@@ -479,6 +517,10 @@ public class NewSummaryReportGenerator
 	                %s
 	            </div>
 	            
+	             <div id="smartui-section" class="smartui-section">
+	                %s
+	            </div>
+	            
 	            <!-- Lightbox Modal -->
 	            <div class="modal" id="lightboxModal">
 	                <span id="closeModal">✖</span>
@@ -490,12 +532,21 @@ public class NewSummaryReportGenerator
 	            function showDetailedReport() {
 	                document.getElementById("summary-section").style.display = "none";
 	                document.getElementById("detailed-section").style.display = "block";
+	                 document.getElementById("smartui-section").style.display = "none";
+	                window.scrollTo(0,0);
+	            }
+	            
+	            function smartuiReport() {
+	                document.getElementById("summary-section").style.display = "none";
+	                 document.getElementById("detailed-section").style.display = "none";
+	                document.getElementById("smartui-section").style.display = "block";
 	                window.scrollTo(0,0);
 	            }
 	            
 	            function showSummaryReport() {
 	                document.getElementById("detailed-section").style.display = "none";
 	                document.getElementById("summary-section").style.display = "block";
+	                 document.getElementById("smartui-section").style.display = "none";
 	                window.scrollTo(0,0);
 	            }
 	            
@@ -554,7 +605,7 @@ public class NewSummaryReportGenerator
 	            </html>
 	            """,
 	            reportTitle,pass, fail, noRun, total, overallDurationFormatted, slaFormatted,
-	            startTime, detailedReportContent, pass, fail, noRun, moduleDataJson);
+	            startTime, detailedReportContent,smartUIHtmlString, pass, fail, noRun, moduleDataJson);
 	}
 
 	// Helper method to safely get system properties with fallback
