@@ -64,6 +64,7 @@ public class SmartUICustomReport {
             
             System.setProperty("smartUIComparisonReportPath", out);
 
+
             List<Entry> snapshot = new ArrayList<>(ENTRIES);
             Collections.sort(snapshot, (a, b) -> Long.compare(a.timestamp, b.timestamp));
 
