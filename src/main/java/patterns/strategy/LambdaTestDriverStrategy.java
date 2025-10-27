@@ -6,6 +6,7 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.edge.EdgeOptions;
 import org.openqa.selenium.firefox.FirefoxOptions;
 import org.openqa.selenium.remote.DesiredCapabilities;
+import org.openqa.selenium.remote.LocalFileDetector;
 import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.safari.SafariOptions;
 
@@ -89,7 +90,9 @@ public class LambdaTestDriverStrategy implements DriverStrategy
 			}
 
 			TestLogManager.info("Connecting to LambdaTest Grid: " + remoteUrl);
-			return new RemoteWebDriver(remoteUrl, options);
+			RemoteWebDriver remoteWebDriver = new RemoteWebDriver(remoteUrl, options);
+			remoteWebDriver.setFileDetector(new LocalFileDetector());
+			return remoteWebDriver;
 		}
 		catch (Exception e)
 		{
