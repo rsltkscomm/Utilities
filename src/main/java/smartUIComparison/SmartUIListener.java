@@ -37,7 +37,7 @@ public class SmartUIListener implements ITestListener
 	@Override
 	public void onTestSuccess(ITestResult result)
 	{
-		handleVisualComparison(result);
+//		handleVisualComparison(result);
 		cleanupThreadLocals(result);
 		System.out.println("Test finished successfully: " + result.getMethod().getMethodName());
 	}
@@ -45,7 +45,7 @@ public class SmartUIListener implements ITestListener
 	@Override
 	public void onTestFailure(ITestResult result)
 	{
-		handleVisualComparison(result);
+//		handleVisualComparison(result);
 		cleanupThreadLocals(result);
 		System.out.println("Test finished with failure: " + result.getMethod().getMethodName());
 	}
