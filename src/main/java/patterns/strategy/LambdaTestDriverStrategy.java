@@ -10,6 +10,7 @@ import org.openqa.selenium.remote.LocalFileDetector;
 import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.safari.SafariOptions;
 
+import base.BaseTest;
 import reporting.TestLogManager;
 
 import java.net.URL;
@@ -30,79 +31,107 @@ public class LambdaTestDriverStrategy implements DriverStrategy
 	}
 
 	@Override
-	public WebDriver createDriver(DesiredCapabilities capabilities)
-	{
-		try
-		{
-			String username = System.getProperty("LT_USERNAME", "lt.username");
-			String accessKey = System.getProperty("LT_ACCESS_KEY", "lt.accessKey");
-			if (isNullOrEmpty(username) || isNullOrEmpty(accessKey))
-			{
-				throw new IllegalArgumentException("LambdaTest credentials not provided. Set LT_USERNAME and LT_ACCESS_KEY");
-			}
+	public WebDriver createDriver(DesiredCapabilities capabilities) {
+	    try {
+	        String username = System.getProperty("LT_USERNAME", "lt.username");
+	        String accessKey = System.getProperty("LT_ACCESS_KEY", "lt.accessKey");
 
-			String gridUrl = System.getProperty("LT_GRID_URL", "lt.gridUrl");
-			if (isNullOrEmpty(gridUrl))
-			{
-				gridUrl = "https://" + username + ":" + accessKey + "@hub.lambdatest.com/wd/hub";
-			}
-			URL remoteUrl = new URL(gridUrl);
+	        if (isNullOrEmpty(username) || isNullOrEmpty(accessKey)) {
+	            throw new IllegalArgumentException("LambdaTest credentials not provided. Set LT_USERNAME and LT_ACCESS_KEY");
+	        }
 
-			String browserName = System.getProperty("LT_BROWSER", System.getProperty("browserName", "chrome"));
-			String browserVersion = System.getProperty("LT_BROWSER_VERSION",  System.getProperty("browserVersion", "latest"));
-			String platformName = System.getProperty("LT_PLATFORM",  System.getProperty("platformName", "Windows 11"));
+	        String gridUrl = System.getProperty("LT_GRID_URL", "lt.gridUrl");
+	        if (isNullOrEmpty(gridUrl)) {
+	            gridUrl = "https://" + username + ":" + accessKey + "@hub.lambdatest.com/wd/hub";
+	        }
 
-			MutableCapabilities options = buildOptions(browserName, capabilities);
+	        URL remoteUrl = new URL(gridUrl);
 
-			Map<String, Object> ltOptions = new HashMap<>();
-			ltOptions.put("user", username);
-			ltOptions.put("accessKey", accessKey);
-			ltOptions.put("build", System.getProperty("LT_BUILD", "RESUL Build"));
-			ltOptions.put("name", System.getProperty("LT_NAME", "LambdaTest Example"));
-			ltOptions.put("platformName", platformName);
-			ltOptions.put("selenium_version", System.getProperty("LT_SELENIUM_VERSION", "4.20.0"));
-			putIfPresent(ltOptions, "resolution", System.getProperty("LT_RESOLUTION", "1920x1080"));
-			putIfPresent(ltOptions, "network", System.getProperty("LT_NETWORK", "true"));
-			putIfPresent(ltOptions, "video", System.getProperty("LT_VIDEO", "true"));
-			putIfPresent(ltOptions, "console", System.getProperty("LT_CONSOLE", "true"));
-			putIfPresent(ltOptions, "visual", System.getProperty("LT_VISUAL", "true"));
-			putIfPresent(ltOptions, "geoLocation", System.getProperty("LT_GEO_LOCATION", "IN"));
+	        // ✅ Randomization toggle
+	        boolean randomize = "yes".equalsIgnoreCase(System.getProperty("LT_RANDOM", "no"));
 
-			// Attach LambdaTest options based on browser type
-			if (options instanceof ChromeOptions chrom)
-			{
-				chrom.setBrowserVersion(browserVersion);
-				chrom.setCapability("LT:Options", ltOptions);
-				HashMap<String, Object> prefs = new HashMap<String, Object>();
-				prefs.put("download.prompt_for_download", false);
-				chrom.setExperimentalOption("prefs", prefs);
-			}
-			else if (options instanceof FirefoxOptions fox)
-			{
-				fox.setBrowserVersion(browserVersion);
-				fox.setCapability("LT:Options", ltOptions);
-			}
-			else if (options instanceof EdgeOptions edge)
-			{
-				edge.setBrowserVersion(browserVersion);
-				edge.setCapability("LT:Options", ltOptions);
-			}
-			else
-			{
-				options.setCapability("LT:Options", ltOptions);
-			}
+	        String browserName;
+	        String browserVersion;
+	        String platformName;
 
-			TestLogManager.info("Connecting to LambdaTest Grid: " + remoteUrl);
-			RemoteWebDriver remoteWebDriver = new RemoteWebDriver(remoteUrl, options);
-			remoteWebDriver.setFileDetector(new LocalFileDetector());
-			return remoteWebDriver;
-		}
-		catch (Exception e)
-		{
-			TestLogManager.error("Failed to create LambdaTest RemoteWebDriver", e);
-			throw new RuntimeException("LambdaTest driver creation failed", e);
-		}
+	        if (randomize) {
+	            // ✅ Valid random combinations
+	            String[][] combos = {
+	                {"chrome", "Windows 11"},
+	                {"chrome", "Windows 10"},
+	                {"chrome", "macOS Sonoma"},
+	                {"firefox", "Windows 11"},
+	                {"firefox", "macOS Ventura"},
+	                {"edge", "Windows 11"},
+	                {"safari", "macOS Sonoma"},
+	                {"safari", "macOS Ventura"}
+	            };
+	            String[] versions = {"latest", "latest-1"};
+	            java.util.Random rand = new java.util.Random();
+
+	            String[] pick = combos[rand.nextInt(combos.length)];
+	            browserName = pick[0];
+	            platformName = pick[1];
+	            browserVersion = versions[rand.nextInt(versions.length)];
+
+	            TestLogManager.info("🔀 Randomized valid combo selected: " + browserName + " | " + platformName + " | " + browserVersion);
+	        } else {
+	            // ✅ Deterministic (from property file)
+	            browserName = System.getProperty("LT_BROWSER", "chrome");
+	            browserVersion = System.getProperty("LT_BROWSER_VERSION", "latest");
+	            platformName = System.getProperty("LT_PLATFORM", "Windows 11");
+
+	            TestLogManager.info("⚙️ Fixed configuration run: " + browserName + " | " + platformName + " | " + browserVersion);
+	        }
+
+	        MutableCapabilities options = buildOptions(browserName, capabilities);
+
+	        Map<String, Object> ltOptions = new HashMap<>();
+	        ltOptions.put("user", username);
+	        ltOptions.put("accessKey", accessKey);
+	        ltOptions.put("build", System.getProperty("LT_BUILD", "RESUL Build"));
+//	        ltOptions.put("name", System.getProperty("LT_NAME", "LambdaTest Example"));
+	        ltOptions.put("name", BaseTest.method_name.get());
+	        ltOptions.put("platformName", platformName);
+	        ltOptions.put("selenium_version", System.getProperty("LT_SELENIUM_VERSION", "4.22.0"));
+
+	        putIfPresent(ltOptions, "resolution", System.getProperty("LT_RESOLUTION", "1920x1080"));
+	        putIfPresent(ltOptions, "network", System.getProperty("LT_NETWORK", "true"));
+	        putIfPresent(ltOptions, "video", System.getProperty("LT_VIDEO", "true"));
+	        putIfPresent(ltOptions, "console", System.getProperty("LT_CONSOLE", "true"));
+	        putIfPresent(ltOptions, "visual", System.getProperty("LT_VISUAL", "true"));
+	        putIfPresent(ltOptions, "geoLocation", System.getProperty("LT_GEO_LOCATION", "IN"));
+
+	        // ✅ Attach LT options to the browser-specific capabilities
+	        if (options instanceof ChromeOptions chrom) {
+	            chrom.setBrowserVersion(browserVersion);
+	            chrom.setCapability("LT:Options", ltOptions);
+	            HashMap<String, Object> prefs = new HashMap<>();
+	            prefs.put("download.prompt_for_download", false);
+	            chrom.setExperimentalOption("prefs", prefs);
+	        } else if (options instanceof FirefoxOptions fox) {
+	            fox.setBrowserVersion(browserVersion);
+	            fox.setCapability("LT:Options", ltOptions);
+	        } else if (options instanceof EdgeOptions edge) {
+	            edge.setBrowserVersion(browserVersion);
+	            edge.setCapability("LT:Options", ltOptions);
+	        } else if (options instanceof SafariOptions safari) {
+	            safari.setBrowserVersion(browserVersion);
+	            safari.setCapability("LT:Options", ltOptions);
+	        } else {
+	            options.setCapability("LT:Options", ltOptions);
+	        }
+
+	        TestLogManager.info("Connecting to LambdaTest Grid: " + remoteUrl);
+	        RemoteWebDriver remoteWebDriver = new RemoteWebDriver(remoteUrl, options);
+	        remoteWebDriver.setFileDetector(new LocalFileDetector());
+	        return remoteWebDriver;
+	    } catch (Exception e) {
+	        TestLogManager.error("Failed to create LambdaTest RemoteWebDriver", e);
+	        throw new RuntimeException("LambdaTest driver creation failed", e);
+	    }
 	}
+
 
 	@Override
 	public String getBrowserName()
