@@ -42,7 +42,8 @@ public class DynamicSuiteGenerator {
             }
             listeners.add("listeners.TestListener");
             listeners.add("reporting.NewCutsomHTMLReport");
-            listeners.add("listeners.NoProdMethodSkipper");
+            listeners.add("smartUIComparison.SmartUIListener");
+//            listeners.add("listeners.NoProdMethodSkipper");
             suite.setListeners(listeners);
 
             Map<String, String> parameters = new LinkedHashMap<>();

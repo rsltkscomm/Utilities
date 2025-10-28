@@ -17,9 +17,9 @@ public class NoProdMethodSkipper implements IInvokedMethodListener {
         boolean isRun19 = url.contains("run19");
 
         // ✅ Block fully live environments always
-        if (isLiveEnv) {
-            throw new SkipException("Execution is restricted in 'live' environment for @NoProd methods");
-        }
+//        if (isLiveEnv) {
+//            throw new SkipException("Execution is restricted in 'live' environment for @NoProd methods");
+//        }
 
         // ✅ Block RUN19 unless explicitly allowed
         if (isRun19 && !"no".equals(restrictRun)) {
