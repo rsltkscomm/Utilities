@@ -212,73 +212,84 @@ public class DefectReporter
 	private String createJiraBug(String testCaseKey, String testCaseName, String failureReason, java.util.List<DetailedTestReporter.TestStep> stepResults) throws IOException
 	{
 
-		String apiUrl = JIRA_BASE_URL + "/rest/api/3/issue";
+	    String apiUrl = JIRA_BASE_URL + "/rest/api/3/issue";
 
-		JSONObject fields = new JSONObject();
-		fields.put("summary", "AUTOMATION BUG: " + testCaseKey + " - " + testCaseName);
-		fields.put("description", createBugDescription(testCaseKey, testCaseName, failureReason, stepResults));
-		fields.put("project", new JSONObject().put("key", PROJECT_KEY));
-		fields.put("issuetype", new JSONObject().put("name", "Bug"));
+	    JSONObject fields = new JSONObject();
+	    fields.put("summary", "AUTOMATION BUG: " + testCaseKey + " - " + testCaseName);
+	    fields.put("description", createBugDescription(testCaseKey, testCaseName, failureReason, stepResults));
+	    fields.put("project", new JSONObject().put("key", PROJECT_KEY));
+	    fields.put("issuetype", new JSONObject().put("name", "Bug"));
 
-		// Set Test Case ID field (URL field)
-		// Pass the full URL to the test case in Jira
-		String testCaseUrl = createTestCaseUrl(testCaseKey);
-		fields.put(TEST_CASE_ID_FIELD, testCaseUrl);
+	    // Set Test Case ID field (URL field)
+	    // Pass the full URL to the test case in Jira
+	    String testCaseUrl = createTestCaseUrl(testCaseKey);
+	    fields.put(TEST_CASE_ID_FIELD, testCaseUrl);
 
-		// Set priority
-		JSONObject priority = new JSONObject();
-		priority.put("name", BUG_PRIORITY);
-		fields.put("priority", priority);
+	    // Set priority
+	    JSONObject priority = new JSONObject();
+	    priority.put("name", BUG_PRIORITY);
+	    fields.put("priority", priority);
 
-		// Set component if specified
-		if (BUG_COMPONENT != null && !BUG_COMPONENT.isEmpty())
-		{
-			JSONObject component = new JSONObject();
-			component.put("name", BUG_COMPONENT);
-			fields.put("components", new org.json.JSONArray().put(component));
-		}
+	    // Set component if specified
+	    if (BUG_COMPONENT != null && !BUG_COMPONENT.isEmpty())
+	    {
+	        JSONObject component = new JSONObject();
+	        component.put("name", BUG_COMPONENT);
+	        fields.put("components", new org.json.JSONArray().put(component));
+	    }
 
-		// Set assignee if specified
-		if (BUG_ASSIGNEE != null && !BUG_ASSIGNEE.isEmpty())
-		{
-			JSONObject assignee = new JSONObject();
-			assignee.put("emailAddress", BUG_ASSIGNEE);
-			fields.put("assignee", assignee);
-		}
+	    // Set assignee if specified
+	    if (BUG_ASSIGNEE != null && !BUG_ASSIGNEE.isEmpty())
+	    {
+	        JSONObject assignee = new JSONObject();
+	        assignee.put("emailAddress", BUG_ASSIGNEE);
+	        fields.put("assignee", assignee);
+	    }
 
-		// Set labels for easy identification
-		fields.put("labels", new org.json.JSONArray().put("automation-bug").put("test-failure").put("auto-generated"));
+	    // Set labels for easy identification
+	    fields.put("labels", new org.json.JSONArray().put("automation-bug").put("test-failure").put("auto-generated"));
+	    
+	    // ⭐ CHANGE 1: Use the correct custom field ID (customfield_10375)
+	    // ⭐ CHANGE 2: Use the required format: {"value": "Version Name"}
+	    String releaseVersion = System.getProperty("ReportVersion", "v1.0"); // fallback default
+	    
+	    JSONObject reportedVersion = new JSONObject();
+	    reportedVersion.put("value", releaseVersion); // Use "value" key for single-select custom field
+	    
+	    fields.put("customfield_10375", reportedVersion); // Use the correct Custom Field ID
+	    // Note: The previous lines using 'versions' and 'JSONArray' are removed/replaced.
 
-		JSONObject payload = new JSONObject();
-		payload.put("fields", fields);
 
-		System.out.println("🔧 Creating Jira Bug...");
-		System.out.println("   📋 Summary: " + fields.getString("summary"));
-		System.out.println("   🎯 Project: " + PROJECT_KEY);
-		System.out.println("   ⚡ Priority: " + BUG_PRIORITY);
+	    JSONObject payload = new JSONObject();
+	    payload.put("fields", fields);
 
-		HttpsURLConnection conn = createJiraConnection(apiUrl, "POST");
+	    System.out.println("🔧 Creating Jira Bug...");
+	    System.out.println("   📋 Summary: " + fields.getString("summary"));
+	    System.out.println("   🎯 Project: " + PROJECT_KEY);
+	    System.out.println("   ⚡ Priority: " + BUG_PRIORITY);
 
-		try (OutputStream os = conn.getOutputStream())
-		{
-			os.write(payload.toString().getBytes(StandardCharsets.UTF_8));
-		}
+	    HttpsURLConnection conn = createJiraConnection(apiUrl, "POST");
 
-		int responseCode = conn.getResponseCode();
-		String response = readResponse(conn);
+	    try (OutputStream os = conn.getOutputStream())
+	    {
+	        os.write(payload.toString().getBytes(StandardCharsets.UTF_8));
+	    }
 
-		if (responseCode == 201)
-		{
-			JSONObject json = new JSONObject(response);
-			String bugKey = json.getString("key");
-			System.out.println("✅ Jira bug created successfully: " + bugKey);
-			return bugKey;
-		} else
-		{
-			System.err.println("❌ Failed to create Jira bug. Response Code: " + responseCode);
-			System.err.println("❌ Response: " + response);
-			return null;
-		}
+	    int responseCode = conn.getResponseCode();
+	    String response = readResponse(conn);
+
+	    if (responseCode == 201)
+	    {
+	        JSONObject json = new JSONObject(response);
+	        String bugKey = json.getString("key");
+	        System.out.println("✅ Jira bug created successfully: " + bugKey);
+	        return bugKey;
+	    } else
+	    {
+	        System.err.println("❌ Failed to create Jira bug. Response Code: " + responseCode);
+	        System.err.println("❌ Response: " + response);
+	        return null;
+	    }
 	}
 
 	/**
