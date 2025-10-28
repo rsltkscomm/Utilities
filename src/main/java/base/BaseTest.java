@@ -17,6 +17,7 @@ import java.util.Map;
 
 import org.openqa.selenium.WebDriver;
 import org.testng.ISuite;
+import org.testng.ITestContext;
 import org.testng.ITestResult;
 
 public class BaseTest
@@ -35,7 +36,7 @@ public class BaseTest
 
 	@BeforeSuite(alwaysRun = true)
 	@Parameters({ "runner" })
-	public void beforeSuite(String runner,ISuite suite)
+	public void beforeSuite(String runner)
 	{
 
 		ExtentManager.initReports();
@@ -44,18 +45,18 @@ public class BaseTest
 		{
 			DockerManager.dockerContainterUp();
 		}
-		
-		 // Current suite name & timestamp
-	    String suiteName = suite.getName();
-	    String timestamp = DateUtils.getCurrentDate("dd-MMM-yyyy_HH-mm-ss");
-
-	    // ✅ Set LambdaTest Build name dynamically
-	    String ltBuildName = suiteName + "_Build_" + timestamp;
-	    System.setProperty("LT_BUILD", ltBuildName);
-		
 		currentDate = DateUtils.getCurrentDate("dd-MMM-yyyy HH:mm");
 		TestLogManager.info("==== Test Suite Started ====");
-		TestLogManager.info("LambdaTest Build: " + ltBuildName);
+	}
+	
+	@BeforeTest(alwaysRun = true)
+	public void captureSuiteInfo(ITestContext context) {
+	    String suiteName = context.getSuite().getName();
+	    String timestamp = DateUtils.getCurrentDate("dd-MMM-yyyy_HH-mm-ss");
+	    String ltBuildName = suiteName + "_Build_" + timestamp;
+	    System.setProperty("LT_BUILD", ltBuildName);
+
+	    TestLogManager.info("LambdaTest Build: " + ltBuildName);
 	}
 
 	@BeforeMethod(alwaysRun = true)
