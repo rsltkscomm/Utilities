@@ -169,6 +169,10 @@ public class EmailSender {
             zipPath = zipHtmlWithTimestamp(paths[0], FrameworkConstants.ONEDRIVE_BASE_PATH + "\\DeploymentCheckListResults\\");
             FilePath = "https://azureresulticks-my.sharepoint.com/:f:/g/personal/qaautomation_resulticks_com/ElTgyT1WS9lDvvhRMHlnL4ABWvmHGIYvYUu4QR0GkDQTmw?e=fkj5xP";
             LogsLink = "https://azureresulticks-my.sharepoint.com/:f:/g/personal/a_maheshanand_resulticks_com/Eq7fuRascUlEk9jufCwOBeYByg5PbIo-dOjEf3mfTbKBJg?e=4e7gMT";
+        }else if (ReportName.contains("Regression")) {
+            zipPath = zipHtmlWithTimestamp(paths[0], FrameworkConstants.ONEDRIVE_BASE_PATH + "\\RegressionExecution\\");
+            FilePath = "https://azureresulticks-my.sharepoint.com/:f:/g/personal/qaautomation_resulticks_com/EoEqGZpYUctMicgHzIN5KBEBZGrLh79kpJq2Bm-bmXyvog?e=ZWcZ9W";
+            LogsLink = "https://azureresulticks-my.sharepoint.com/:f:/g/personal/a_maheshanand_resulticks_com/Eqc9Vj5D0sNMr_rEREbfQgIB1CDqSqq6M-5noPgNHXaTOA?e=dwAkeT";
         }
         boolean useCustomName = "yes".equalsIgnoreCase(System.getProperty("AttachMailFile", "no"));
         if (useCustomName)
@@ -202,8 +206,15 @@ public class EmailSender {
     // ──────────────────────────────
     public static String zipHtmlWithTimestamp(String sourceFile, String oneDriveFolder) {
         ZipSecureFile.setMinInflateRatio(0.001);
+        String zipFileName =null;
         String timeStamp = new SimpleDateFormat("ddMMMyyyy_HHmmss").format(new Date());
-        String zipFileName = "DailyCheckList_" + timeStamp + ".zip";
+        if (ReportName.contains("Daily")) {
+        	 zipFileName = "DailyCheckList_" + timeStamp + ".zip";
+        	} else if (ReportName.contains("Deploy")) {
+        		 zipFileName = "DeploymentCheckList_" + timeStamp + ".zip";
+        		}else if (ReportName.contains("Regression")) {
+        			 zipFileName = ReportName+"_" + timeStamp + ".zip";
+        			}
         String destZipFile = oneDriveFolder + File.separator + zipFileName;
 
         try (FileOutputStream fos = new FileOutputStream(destZipFile);
