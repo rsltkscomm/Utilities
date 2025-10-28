@@ -73,6 +73,9 @@ public class LambdaTestDriverStrategy implements DriverStrategy
 			{
 				chrom.setBrowserVersion(browserVersion);
 				chrom.setCapability("LT:Options", ltOptions);
+				HashMap<String, Object> prefs = new HashMap<String, Object>();
+				prefs.put("download.prompt_for_download", false);
+				chrom.setExperimentalOption("prefs", prefs);
 			}
 			else if (options instanceof FirefoxOptions fox)
 			{
