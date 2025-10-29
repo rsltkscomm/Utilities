@@ -76,6 +76,7 @@ public class DefectReportingDemo {
                     );
                     if (bugKey != null) {
                         System.out.println("✅ Defect reported successfully with key: " + bugKey);
+                        System.setProperty(testCaseName, bugKey);
                     } else {
                         System.out.println("❌ Failed to report defect");
                     }

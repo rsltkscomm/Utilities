@@ -386,8 +386,15 @@ public class EmailSender {
     // 🔹 EMAIL HTML TEMPLATE
     // ──────────────────────────────
     private static String getMailHtml() {
+
+        // Append Bug IDs if available as System properties
+        Failure1 = Failure1 + " - Bug ID : <b>" + System.getProperty(Failure1.split("Test:")[1].trim(), "NA") + "</b>";
+        Failure2 = Failure2 + " - Bug ID : <b>" + System.getProperty(Failure2.split("Test:")[1].trim(), "NA") + "</b>";
+        Failure3 = Failure3 + " - Bug ID : <b>" + System.getProperty(Failure3.split("Test:")[1].trim(), "NA") + "</b>";
+
         List<String> validFails = Arrays.asList(Failure1, Failure2, Failure3)
-                .stream().filter(f -> f != null && !"N/A".equals(f) && !f.isEmpty())
+                .stream()
+                .filter(f -> f != null && !"N/A".equals(f) && !f.isEmpty())
                 .toList();
 
         String failuresSection = validFails.isEmpty() ? "" :
@@ -400,59 +407,60 @@ public class EmailSender {
                             "Regression";
 
         // Main email HTML
-	    return "<!DOCTYPE html>" +
-	            "<html>" +
-	            "<body style='font-family: Arial, sans-serif; background-color: #f7f7f7; margin: 0; padding: 0;'>" +
-	            "  <table width='100%' cellspacing='0' cellpadding='0' border='0' style='background-color: #f7f7f7; padding: 20px;'>" +
-	            "    <tr>" +
-	            "      <td align='center'>" +
-	            "        <div style='background-color: #ffffff; max-width: 700px; border-radius: 10px; padding: 30px; " +
-	            "box-shadow: 0 0 10px rgba(0,0,0,0.1); text-align: left;'>" +
+        return "<!DOCTYPE html>" +
+                "<html>" +
+                "<body style='font-family: Arial, sans-serif; background-color: #f7f7f7; margin: 0; padding: 0;'>" +
+                "  <table width='100%' cellspacing='0' cellpadding='0' border='0' style='background-color: #f7f7f7; padding: 20px;'>" +
+                "    <tr>" +
+                "      <td align='center'>" +
+                "        <div style='background-color: #ffffff; max-width: 700px; border-radius: 10px; padding: 30px; " +
+                "box-shadow: 0 0 10px rgba(0,0,0,0.1); text-align: left;'>" +
 
-	            "          <div style='font-size: 20px; font-weight: bold; color: #2c3e50; margin-bottom: 20px; " +
-	            "text-align: center;'>"+reportName+" Automation Report</div>" +
+                "          <div style='font-size: 20px; font-weight: bold; color: #2c3e50; margin-bottom: 20px; " +
+                "text-align: center;'>"+reportName+" Automation Report</div>" +
 
-	            "          <p>Hi All,</p>" +
-	            "          <p>"+reportName+" has been successfully completed on <b>" + Environment + "</b> " +
-	            "Environment for <b>" + Project + "</b> (Build: <b>" + Build + "</b>) on <b>" + Date + " " + Time + " IST</b>.</p>" +
+                "          <p>Hi All,</p>" +
+                "          <p>"+reportName+" has been successfully completed on <b>" + Environment + "</b> " +
+                "Environment for <b>" + Project + "</b> (Build: <b>" + Build + "</b>) on <b>" + Date + " " + Time + " IST</b>.</p>" +
 
-	            "          <h4 style='color: #34495e; margin-top: 25px;'>Key Results</h4>" +
-	            "          <ul style='list-style-type: disc; margin-left: 25px;'>" +
-	            "            <li>Total test cases executed: <b>" + Total + "</b></li>" +
-	            "            <li>Passed: <b>" + Passed + "</b></li>" +
-	            "            <li>Failed: <b>" + Failed + "</b></li>" +
-	            "            <li>Skipped/Blocked: <b>" + Skipped + "</b></li>" +
-	            "            <li>Pass rate: <b>" + PassRate + "%</b></li>" +
-	            "            <li>Execution window: <b>" + StartTime + " : " + EndTime + " IST</b></li>" +
-	            "            <li>Trigger type: <b>" + TriggerType + "</b> | Branch: <b>" + Branch + "</b> | Commit: <b>" + ShortSHA + "</b></li>" +
-	            "          </ul>" +
+                "          <h4 style='color: #34495e; margin-top: 25px;'>Key Results</h4>" +
+                "          <ul style='list-style-type: disc; margin-left: 25px;'>" +
+                "            <li>Total test cases executed: <b>" + Total + "</b></li>" +
+                "            <li>Passed: <b>" + Passed + "</b></li>" +
+                "            <li>Failed: <b>" + Failed + "</b></li>" +
+                "            <li>Skipped/Blocked: <b>" + Skipped + "</b></li>" +
+                "            <li>Pass rate: <b>" + PassRate + "%</b></li>" +
+                "            <li>Execution window: <b>" + StartTime + " : " + EndTime + " IST</b></li>" +
+                "            <li>Trigger type: <b>" + TriggerType + "</b> | Branch: <b>" + Branch + "</b> | Commit: <b>" + ShortSHA + "</b></li>" +
+                "          </ul>" +
 
-	            "          <h4 style='color: #34495e; margin-top: 25px;'>Quick Links</h4>" +
-	            "          <ul style='list-style-type: disc; margin-left: 25px;'>" +
-	            "            <li>Execution report: <a href='" + FilePath + "' style='color: #007bff;'>[OneDrive Report Link]</a></li>" +
-	            "            <li>Logs / screenshots (if any): <a href='" + LogsLink + "' style='color: #007bff;'>[OneDrive Evidence Link]</a></li>" +
-	            "          </ul>" +
+                "          <h4 style='color: #34495e; margin-top: 25px;'>Quick Links</h4>" +
+                "          <ul style='list-style-type: disc; margin-left: 25px;'>" +
+                "            <li>Execution report: <a href='" + FilePath + "' style='color: #007bff;'>[OneDrive Report Link]</a></li>" +
+                "            <li>Logs / screenshots (if any): <a href='" + LogsLink + "' style='color: #007bff;'>[OneDrive Evidence Link]</a></li>" +
+                "          </ul>" +
 
-	            failuresSection.toString() + // Only included if failures exist
+                failuresSection +
 
-	            "          <h4 style='color: #34495e; margin-top: 25px;'>Environment & Run Details</h4>" +
-	            "          <ul style='list-style-type: disc; margin-left: 25px;'>" +
-	            "            <li>Browser: <b>" + Browser + "</b></li>" +
-	            "            <li>Infrastructure: <b>" + Infrastructure + "</b> | OS: <b>" + OS + "</b></li>" +
-	            "          </ul>" +
+                "          <h4 style='color: #34495e; margin-top: 25px;'>Environment & Run Details</h4>" +
+                "          <ul style='list-style-type: disc; margin-left: 25px;'>" +
+                "            <li>Browser: <b>" + Browser + "</b></li>" +
+                "            <li>Infrastructure: <b>" + Infrastructure + "</b> | OS: <b>" + OS + "</b></li>" +
+                "          </ul>" +
 
-	            "          <h4 style='color: #34495e; margin-top: 25px;'>Next Actions</h4>" +
-	            "          <ul style='list-style-type: disc; margin-left: 25px;'>" +
-	            "            <li>Owners to review failing scenarios and update defect status by <b>" + DueDate + "</b>.</li>" +
-	            "            <li>Automation team will rerun impacted tests after fixes are deployed in <b>" + Env + "</b> Environment.</li>" +
-	            "          </ul>" +
+                "          <h4 style='color: #34495e; margin-top: 25px;'>Next Actions</h4>" +
+                "          <ul style='list-style-type: disc; margin-left: 25px;'>" +
+                "            <li>Owners to review failing scenarios and update defect status by <b>" + DueDate + "</b>.</li>" +
+                "            <li>Automation team will rerun impacted tests after fixes are deployed in <b>" + Env + "</b> Environment.</li>" +
+                "          </ul>" +
 
-	            "          <div style='text-align: center; margin-top: 30px; font-size: 14px; color: #555;'>Thanks,<br/><b>QA Automation Team</b></div>" +
-	            "        </div>" +
-	            "      </td>" +
-	            "    </tr>" +
-	            "  </table>" +
-	            "</body>" +
-	            "</html>";
+                "          <div style='text-align: center; margin-top: 30px; font-size: 14px; color: #555;'>Thanks,<br/><b>QA Automation Team</b></div>" +
+                "        </div>" +
+                "      </td>" +
+                "    </tr>" +
+                "  </table>" +
+                "</body>" +
+                "</html>";
     }
+
 }
