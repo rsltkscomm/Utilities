@@ -84,6 +84,17 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener
 	{
 //		long endTime = System.currentTimeMillis();
 //		String durationStr = formatDuration(endTime - startTime);
+		
+		if ("yes".toLowerCase().contains(System.getProperty("REPORT_BUG")))
+		{
+			new DefectReportingDemo().defectReporting();
+		}
+		
+		if ("yes".toLowerCase().contains(System.getProperty("UPDATE_ZEPHYR_EXECUTION")))
+		{
+			new JiraZephyrClient().zephyrUpdater();
+		}
+		
 		DetailedTestReporter.getReport().generateReport();
 		
 
@@ -101,15 +112,6 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener
 			agg.totalSkip,
 			String.valueOf(agg.totalDurationMillis),
 			dateTime);
-		if ("yes".toLowerCase().contains(System.getProperty("REPORT_BUG")))
-		{
-			new DefectReportingDemo().defectReporting();
-		}
-		
-		if ("yes".toLowerCase().contains(System.getProperty("UPDATE_ZEPHYR_EXECUTION")))
-		{
-			new JiraZephyrClient().zephyrUpdater();
-		}
 	}
 
 	public void filterCount(List<String> passMethod, List<String> failMethod, List<String> noRunMethod)

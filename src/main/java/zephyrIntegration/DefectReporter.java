@@ -282,6 +282,7 @@ public class DefectReporter
 	    {
 	        JSONObject json = new JSONObject(response);
 	        String bugKey = json.getString("key");
+	        System.setProperty(testCaseName,bugKey);
 	        System.out.println("✅ Jira bug created successfully: " + bugKey);
 	        return bugKey;
 	    } else
