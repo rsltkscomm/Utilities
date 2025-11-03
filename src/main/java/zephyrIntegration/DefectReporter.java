@@ -215,7 +215,7 @@ public class DefectReporter
 	    String apiUrl = JIRA_BASE_URL + "/rest/api/3/issue";
 
 	    JSONObject fields = new JSONObject();
-	    fields.put("summary", "AUTOMATION BUG: " + testCaseKey + " - " + testCaseName);
+	    fields.put("summary", "AUTOMATION BUG: " + testCaseKey + " - " + failureReason);
 	    fields.put("description", createBugDescription(testCaseKey, testCaseName, failureReason, stepResults));
 	    fields.put("project", new JSONObject().put("key", PROJECT_KEY));
 	    fields.put("issuetype", new JSONObject().put("name", "Bug"));
@@ -247,7 +247,7 @@ public class DefectReporter
 	    }
 
 	    // Set labels for easy identification
-	    fields.put("labels", new org.json.JSONArray().put("automation-bug").put("test-failure").put("auto-generated"));
+	    fields.put("labels", new org.json.JSONArray().put(""));
 	    
 	    // ⭐ CHANGE 1: Use the correct custom field ID (customfield_10375)
 	    // ⭐ CHANGE 2: Use the required format: {"value": "Version Name"}
@@ -315,7 +315,7 @@ public class DefectReporter
 		content.put(createAdfParagraph("Test Case Key: " + testCaseKey));
 		content.put(createAdfParagraph("Test Case Name: " + testCaseName));
 		content.put(createAdfParagraph("Failure Date: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date())));
-		content.put(createAdfParagraph("Environment: QA"));
+		content.put(createAdfParagraph("Environment: "+System.getProperty("Environment","QA")));
 
 		// Failure Details
 		content.put(createAdfHeading("Failure Details", 3));

@@ -4,8 +4,6 @@ package testManagement;
 import reporting.DetailedTestReporter;
 import reporting.DetailedTestReporter.ExecutionStatus;
 import reporting.DetailedTestReporter.TestExecution;
-import reporting.ExtentManager;
-
 import javax.net.ssl.HttpsURLConnection;
 
 import org.json.JSONArray;
@@ -97,7 +95,7 @@ public class JiraZephyrClient {
         System.out.println("Response: " + response);
 
         // Create Jira bug if failed and reporting enabled
-        if (!result.isPass.equalsIgnoreCase("Fail") && REPORT_BUG) {
+        if (!result.isPass.equalsIgnoreCase("Fail") && REPORT_BUG) {	
             createJiraBug(result);
         }
     }
