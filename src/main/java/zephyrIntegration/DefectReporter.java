@@ -315,6 +315,7 @@ public class DefectReporter
 		content.put(createAdfParagraph("Test Case Key: " + testCaseKey));
 		content.put(createAdfParagraph("Test Case Name: " + testCaseName));
 		content.put(createAdfParagraph("Failure Date: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date())));
+		content.put(createAdfParagraph("UserName: "+System.getProperty("UserName","")));
 		content.put(createAdfParagraph("Environment: "+System.getProperty("Environment","QA")));
 
 		// Failure Details

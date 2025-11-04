@@ -17,7 +17,7 @@ public class GridManager
 
 	public static boolean checkIfGrid(String runner)
 	{
-		if ("SELENIUM GRID".equalsIgnoreCase(runner))
+		if ("seleniumgrid".equalsIgnoreCase(runner))
 		{
 			isGrid.set(true);
 			TestLogManager.info("Test execution started on Selenium Grid");

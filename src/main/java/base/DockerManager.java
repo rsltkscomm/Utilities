@@ -71,34 +71,42 @@ public class DockerManager
 
 	private static void executeCommand(String command, String workingDirectoryPath)
 	{
-		CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-			try
-			{
-				Process process = new ProcessBuilder(command.split("\\s+")).directory(new File(workingDirectoryPath)).redirectErrorStream(true).start();
-				Thread outputThread = new Thread(new StreamGobbler(process.getInputStream()));
-				outputThread.start();
+		
+		try
+		{
+			CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+				try
+				{
+					Process process = new ProcessBuilder(command.split("\\s+")).directory(new File(workingDirectoryPath)).redirectErrorStream(true).start();
+					Thread outputThread = new Thread(new StreamGobbler(process.getInputStream()));
+					outputThread.start();
 
-				// Terminate the process if it takes too long
-				if (!process.waitFor(40, TimeUnit.SECONDS))
-				{
-					process.destroy();
-				} else
-				{
-					int exitCode = process.waitFor();
-					if (exitCode != 0)
+					// Terminate the process if it takes too long
+					if (!process.waitFor(40, TimeUnit.SECONDS))
 					{
-						throw new RuntimeException("FAILED..! to execute Docker command '" + command + "' with Exitcode : " + exitCode);
+						process.destroy();
+					} else
+					{
+						int exitCode = process.waitFor();
+						if (exitCode != 0)
+						{
+							throw new RuntimeException("FAILED..! to execute Docker command '" + command + "' with Exitcode : " + exitCode);
+						}
 					}
+
+				} catch (IOException | InterruptedException e)
+				{
+					TestLogManager.error("Docker command execution failed", e);
 				}
+			});
 
-			} catch (IOException | InterruptedException e)
-			{
-				TestLogManager.error("Docker command execution failed", e);
-			}
-		});
-
-		future.join();
-		TestLogManager.info("Docker command execution completed");
+			future.join();
+			TestLogManager.info("Docker command execution completed");
+		} catch (Exception e2)
+		{
+			e2.printStackTrace();
+		}
+		
 	}
 
 	public static void printAlignedBoxedText(String text, int width)

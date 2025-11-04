@@ -59,12 +59,12 @@ public class LambdaTestDriverStrategy implements DriverStrategy
 	            String[][] combos = {
 	                {"chrome", "Windows 11"},
 	                {"chrome", "Windows 10"},
-	                {"chrome", "macOS Sonoma"},
+	                {"chrome", "macos 26.0"},
 	                {"firefox", "Windows 11"},
-	                {"firefox", "macOS Ventura"},
+	                {"firefox", "macos 26.0"},
 	                {"edge", "Windows 11"},
-	                {"safari", "macOS Sonoma"},
-	                {"safari", "macOS Ventura"}
+	                {"safari", "macos 26.0"},
+	                {"safari", "macos 26.0"}
 	            };
 	            String[] versions = {"latest", "latest-1"};
 	            java.util.Random rand = new java.util.Random();

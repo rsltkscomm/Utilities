@@ -36,6 +36,7 @@ public class DriverFactory {
         registerStrategy(new LambdaTestDriverStrategy());
         registerStrategy(new BrowserStackDriverStrategy());
         registerStrategy(new SauceLabsDriverStrategy());
+        registerStrategy(new SeleniumGridStrategy());
         
         // Register cloud strategies if cloud is enabled
         registerCloudStrategies();
