@@ -17,6 +17,7 @@ import org.testng.ISuiteListener;
 import org.testng.ITestListener;
 import org.testng.ITestResult;
 
+import performanceTracker.PerformanceTracker;
 import testManagement.JiraZephyrClient;
 import zephyrIntegration.DefectReportingDemo;
 
@@ -106,6 +107,10 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener
 
 		// Generate summary report using aggregated stats
 		NewSummaryReportGenerator.AggregatedStats agg = NewSummaryReportGenerator.aggregateStats();
+		if (System.getProperty("performanceReport").equalsIgnoreCase("yes"))
+		{
+			PerformanceTracker.generatePerformanceReportsForSuite(suite);
+		}
 		NewSummaryReportGenerator.generateReport(
 			agg.totalPass,
 			agg.totalFail,

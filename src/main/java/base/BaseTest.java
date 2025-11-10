@@ -119,10 +119,7 @@ public class BaseTest {
 	@AfterMethod(alwaysRun = true)
 	public void tearDown(ITestResult result) {
 		try {
-			// Capture screenshot always
 			ScreenshotUtil.takeScreenshot();
-
-			// Reporting based on result
 			switch (result.getStatus()) {
 				case ITestResult.SUCCESS -> {
 					TestLogManager.success("Test passed: " + result.getName());

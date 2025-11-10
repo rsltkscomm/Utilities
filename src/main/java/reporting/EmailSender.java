@@ -346,33 +346,61 @@ public class EmailSender {
     }
 
     private static void calculateTopFailures(List<TestExecution> executions) {
-        Map<String, Integer> failureCounts = new LinkedHashMap<>();
-        Map<String, List<String>> moduleFailTests = new LinkedHashMap<>();
+        // Collect counts per module + the reasons seen for that module
+        Map<String, Integer> failureCounts = new HashMap<>();
+        Map<String, List<String>> moduleFailTests = new HashMap<>();
 
-        for (TestExecution t : executions) {
-            if (t.getStatus() == ExecutionStatus.FAIL) {
-                String module = t.getModule();
-                String testName = t.getShortDescription();
+        if (executions != null) {
+            for (TestExecution t : executions) {
+                if (t == null || t.getStatus() != ExecutionStatus.FAIL) continue;
 
-                failureCounts.put(module, failureCounts.getOrDefault(module, 0) + 1);
-                moduleFailTests.computeIfAbsent(module, k -> new ArrayList<>()).add(testName);
+                String module = t.getModule() != null ? t.getModule() : "Unknown";
+                String failureReason = "Unknown";
+                try {
+                    var steps = t.getSteps();
+                    if (steps != null && !steps.isEmpty()) {
+                        String ar = steps.get(0) != null ? steps.get(0).getActualResult() : null;
+                        if (ar != null && !ar.isBlank()) failureReason = ar;
+                    }
+                } catch (Exception ignore) {
+                    // Keep "Unknown"
+                }
+
+                failureCounts.merge(module, 1, Integer::sum);
+                moduleFailTests.computeIfAbsent(module, k -> new ArrayList<>()).add(failureReason);
             }
         }
 
-        failureCounts.entrySet().stream()
-                .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
-                .limit(3)
-                .forEach(entry -> {
-                    String module = entry.getKey();
-                    moduleFailTests.get(module).stream()
-                            .limit(3 - topFails.size())
-                            .forEach(test -> topFails.add("Module: " + module + " | Test: " + test));
-                });
+        // Sort modules by failure count desc, then by module name for stability
+        List<String> modulesSorted = failureCounts.entrySet().stream()
+                .sorted((a, b) -> {
+                    int cmp = Integer.compare(b.getValue(), a.getValue());
+                    return (cmp != 0) ? cmp : a.getKey().compareToIgnoreCase(b.getKey());
+                })
+                .map(Map.Entry::getKey)
+                .toList();
 
+        // Build the top 3 overall entries: "Module: X | FailureReason: Y"
+        List<String> topFails = new ArrayList<>(3);
+        for (String module : modulesSorted) {
+            if (topFails.size() >= 3) break;
+
+            // Deduplicate reasons per module while preserving order
+            List<String> reasons = moduleFailTests.getOrDefault(module, List.of());
+            LinkedHashSet<String> uniqueReasons = new LinkedHashSet<>(reasons);
+
+            for (String reason : uniqueReasons) {
+                topFails.add("Module: " + module + " | FailureReason: " + reason);
+                if (topFails.size() >= 3) break;
+            }
+        }
+
+        // Assign to your existing static fields
         Failure1 = topFails.size() > 0 ? topFails.get(0) : "N/A";
         Failure2 = topFails.size() > 1 ? topFails.get(1) : "N/A";
         Failure3 = topFails.size() > 2 ? topFails.get(2) : "N/A";
     }
+
 
     // ──────────────────────────────
     // 🔹 EMAIL SUBJECT BUILDER
@@ -387,26 +415,53 @@ public class EmailSender {
     // ──────────────────────────────
     private static String getMailHtml() {
 
-        // Append Bug IDs if available as System properties
-        Failure1 = Failure1 + " - Bug ID : <b>" + System.getProperty(Failure1.split("Test:")[1].trim(), "NA") + "</b>";
-        Failure2 = Failure2 + " - Bug ID : <b>" + System.getProperty(Failure2.split("Test:")[1].trim(), "NA") + "</b>";
-        Failure3 = Failure3 + " - Bug ID : <b>" + System.getProperty(Failure3.split("Test:")[1].trim(), "NA") + "</b>";
+        // Helper: extract a reasonable System property key from a failure line.
+        // Supports either "... Test: <key>" or "... FailureReason: <key>"
+        java.util.function.Function<String, String> extractBugKey = (failure) -> {
+            if (failure == null) return null;
 
-        List<String> validFails = Arrays.asList(Failure1, Failure2, Failure3)
-                .stream()
-                .filter(f -> f != null && !"N/A".equals(f) && !f.isEmpty())
-                .toList();
+            // Try "Test:"
+            int idx = failure.indexOf("Test:");
+            if (idx >= 0) {
+                String after = failure.substring(idx + "Test:".length()).trim();
+                return after.isEmpty() ? null : after;
+            }
+
+            // Try "FailureReason:"
+            idx = failure.indexOf("FailureReason:");
+            if (idx >= 0) {
+                String after = failure.substring(idx + "FailureReason:".length()).trim();
+                return after.isEmpty() ? null : after;
+            }
+
+            return null; // no recognizable token found
+        };
+
+        // Helper: fetch System property safely, defaulting to "N/A"
+        java.util.function.Function<String, String> safeSysProp = (key) ->
+                (key == null || key.isBlank()) ? "N/A" : System.getProperty(key, "N/A");
+
+        // Build the final list of failures to render (without mutating Failure1/2/3)
+        java.util.List<String> validFails = java.util.stream.Stream.of(Failure1, Failure2, Failure3)
+                .filter(f -> f != null && !f.trim().isEmpty() && !"N/A".equalsIgnoreCase(f.trim()))
+                .map(f -> {
+                    String key = extractBugKey.apply(f);
+                    String bugId = safeSysProp.apply(key);
+                    return f + " - Bug ID : <b>" + bugId + "</b>";
+                })
+                .collect(java.util.stream.Collectors.toList());
 
         String failuresSection = validFails.isEmpty() ? "" :
                 "<h4 style='color:#34495e;margin-top:25px;'>Failures (Top Items)</h4><ol style='margin-left:25px;'>"
-                        + validFails.stream().map(f -> "<li>" + f + "</li>").collect(Collectors.joining())
+                        + validFails.stream().map(f -> "<li>" + f + "</li>").collect(java.util.stream.Collectors.joining())
                         + "</ol>";
 
-        String reportName = ReportName.toLowerCase().contains("daily") ? "Daily Checklist" :
-                            ReportName.toLowerCase().contains("postproduction") ? "Post Production Checklist" :
-                            "Regression";
+        String reportName =
+                ReportName != null && ReportName.toLowerCase().contains("daily") ? "Daily Checklist" :
+                ReportName != null && ReportName.toLowerCase().contains("postproduction") ? "Post Production Checklist" :
+                "Regression";
 
-        // Main email HTML
+        // Main email HTML (unchanged layout/styles)
         return "<!DOCTYPE html>" +
                 "<html>" +
                 "<body style='font-family: Arial, sans-serif; background-color: #f7f7f7; margin: 0; padding: 0;'>" +
@@ -417,10 +472,10 @@ public class EmailSender {
                 "box-shadow: 0 0 10px rgba(0,0,0,0.1); text-align: left;'>" +
 
                 "          <div style='font-size: 20px; font-weight: bold; color: #2c3e50; margin-bottom: 20px; " +
-                "text-align: center;'>"+reportName+" Automation Report</div>" +
+                "text-align: center;'>" + reportName + " Automation Report</div>" +
 
                 "          <p>Hi All,</p>" +
-                "          <p>"+reportName+" has been successfully completed on <b>" + Environment + "</b> " +
+                "          <p>" + reportName + " has been successfully completed on <b>" + Environment + "</b> " +
                 "Environment for <b>" + Project + "</b> (Build: <b>" + Build + "</b>) on <b>" + Date + " " + Time + " IST</b>.</p>" +
 
                 "          <h4 style='color: #34495e; margin-top: 25px;'>Key Results</h4>" +
@@ -462,5 +517,6 @@ public class EmailSender {
                 "</body>" +
                 "</html>";
     }
+
 
 }

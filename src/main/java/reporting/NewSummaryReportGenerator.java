@@ -150,7 +150,7 @@ public class NewSummaryReportGenerator
 	public static void generateReport(int pass, int fail, int noRun, String duration, String startTime)
 	{
 		String reportFileName = "";
-		if (!Boolean.valueOf(System.getProperty("isOverwritePath")))
+		if (Boolean.valueOf(System.getProperty("isOverwritePath")))
 		{
 			reportFileName = System.getProperty("reportFileName") + "_" + DateUtils.getCurrentDate("ddMMMyyyy")+".html";
 		}else {
@@ -170,13 +170,13 @@ public class NewSummaryReportGenerator
 		{
 			System.err.println("❌ Failed to generate HTML report: " + e.getMessage());
 			e.printStackTrace();
-			return; // Stop further execution if report generation fails
+			return;
 		}
 
 		// 2. Check if email should be sent
 		if (!"yes".equalsIgnoreCase(System.getProperty("isReportSend")))
 		{
-			return; // Exit if email is not required
+			return;
 		}
 
 		// 3. Prepare attachments
@@ -192,7 +192,7 @@ public class NewSummaryReportGenerator
 		} else
 		{
 			System.err.println("⚠️ HTML report not found: " + reportPath);
-			return; // Stop if HTML report is missing
+			return;
 		}
 
 		// Add Excel report if required
@@ -233,8 +233,6 @@ public class NewSummaryReportGenerator
 			e.printStackTrace();
 		}
 	}
-
-	// removed unused percent() helper
 
 	public static String customReportHtml(int pass, int fail, int noRun, String duration, String startTime)
 	{
@@ -325,42 +323,107 @@ public class NewSummaryReportGenerator
 		return "all".equalsIgnoreCase(suiteName) ? "All Modules" : suiteName;
 	}
 
-	public static String getReportHtml(String productName, int pass, int fail, int noRun, int total, String duration, String startTime) {
+	public static String getReportHtml(String productName, int pass, int fail, int noRun, int total, String durationMillis, String startTime) {
+	    // Generate detailed HTML
 	    String detailedReportContent = DetailedTestReporter.generateHTMLContent();
+
+	    // Helper to safely inject a "Back to Summary" link right after </header>, case-insensitive, with a graceful fallback.
+	    // Fixes:
+	    //  - Calls parent window to ensure it works inside iframe
+	    //  - Prevents default anchor navigation (return false)
+	    //  - Locks icon/link sizing via inline styles so embedded page CSS can’t change it
+	    java.util.function.Function<String, String> injectBackLink = (html) -> {
+	        if (html == null || html.isEmpty()) return "";
+	        String backLink =
+	            "<div style='text-align:right; padding:10px;'>"
+	          +   "<a class='back-btn' href='#' "
+	          +      "onclick='if (window.parent && typeof window.parent.showSummaryReport === \"function\") { "
+	          +                "window.parent.showSummaryReport(); "
+	          +              "} return false;' "
+	          +      "style='"
+	          +        "display:inline-block;"
+	          +        "background:#ffffff;"
+	          +        "color:#0066cc;"
+	          +        "padding:8px 14px;"
+	          +        "border-radius:6px;"
+	          +        "text-decoration:none;"
+	          +        "box-shadow:0 2px 10px rgba(0,0,0,0.2);"
+	          +        "cursor:pointer;"
+	          +        "font-size:14px !important;"
+	          +        "line-height:1 !important;"
+	          +      "'>"
+	          +      "<span style=\"font-size:14px !important; vertical-align:middle;\">⬅</span>"
+	          +      "<span style=\"margin-left:6px; vertical-align:middle; font-weight:600;\">Back to Summary Report</span>"
+	          +   "</a>"
+	          + "</div>";
+	        String lower = html.toLowerCase();
+	        int idx = lower.indexOf("</header>");
+	        if (idx >= 0) {
+	            // 9 chars in "</header>"
+	            return html.substring(0, idx + 9) + backLink + html.substring(idx + 9);
+	        }
+	        // Fallback: prepend back link
+	        return backLink + html;
+	    };
+
+	    // READ SmartUI report (optional)
 	    String smartUIHtmlString = "";
-	    String property = System.getProperty("smartUIComparisonReportPath");
+	    String smartUiReportPath = System.getProperty("smartUIComparisonReportPath");
+	    boolean hasSmartUIReport = false;
 	    try {
-	        byte[] bytes = Files.readAllBytes(Paths.get(property));
-	        smartUIHtmlString = new String(bytes, StandardCharsets.UTF_8);
-
-	        // Add "Back to Summary Report" button right after </header>
-	        String backLink = "<div style='text-align:right; padding:10px;'>"
-	                + "<a class='back-btn' href='#' onclick='showSummaryReport()'>⬅ Back to Summary Report</a>"
-	                + "</div>";
-
-	        smartUIHtmlString = smartUIHtmlString.replace("</header>", "</header>" + backLink);
+	        if (smartUiReportPath != null && !smartUiReportPath.isBlank()) {
+	            java.nio.file.Path p = java.nio.file.Paths.get(smartUiReportPath);
+	            if (java.nio.file.Files.exists(p)) {
+	                smartUIHtmlString = java.nio.file.Files.readString(p, java.nio.charset.StandardCharsets.UTF_8);
+	                smartUIHtmlString = injectBackLink.apply(smartUIHtmlString);
+	                hasSmartUIReport = true;
+	            }
+	        }
 	    } catch (Exception e) {
 	        e.printStackTrace();
+	        smartUIHtmlString = "";
 	    }
-	    
-	    
-	    String moduleDataJson = getModuleDataJson();
-	    String overallDurationFormatted = formatMillisAsHMS(duration);
+
+	    // READ Performance report (optional)
+	    String performanceHtmlString = "";
+	    String performanceReport = System.getProperty("performanceReportPath");
+	    boolean hasPerformanceReport = false;
+	    try {
+	        if (performanceReport != null && !performanceReport.isBlank()) {
+	            java.nio.file.Path p = java.nio.file.Paths.get(performanceReport);
+	            if (java.nio.file.Files.exists(p)) {
+	                performanceHtmlString = java.nio.file.Files.readString(p, java.nio.charset.StandardCharsets.UTF_8);
+	                performanceHtmlString = injectBackLink.apply(performanceHtmlString);
+	                hasPerformanceReport = true;
+	            }
+	        }
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	        performanceHtmlString = "";
+	    }
+
+	    // Data and properties
+	    String moduleDataJson = getModuleDataJson(); // must be valid JSON; ensure your impl returns "[]"
+	    if (moduleDataJson == null || moduleDataJson.isBlank()) {
+	        moduleDataJson = "[]";
+	    }
+
+	    String overallDurationFormatted = formatMillisAsHMS(durationMillis);
 	    String reportTitle = System.getProperty("reportTitle");
-	    
-	    // Get environment properties with fallbacks
+
+	    // Optional environment props (kept for future use)
 	    String environment = getSystemProperty("Environment", "Not Specified");
 	    String account = getSystemProperty("Account", "Not Specified");
 	    String browser = getSystemProperty("Browser", "Not Specified");
 	    String username = getSystemProperty("UserName", "Not Specified");
 	    String releaseVersion = getSystemProperty("ReleaseVersion", "Not Specified");
-	    String requestedBy = getSystemProperty("user.name", "Not Specified");
+	    String requestedBy = getSystemProperty("RequestedBy", getSystemProperty("user.name", "Not Specified"));
 	    String machineUser = getSystemProperty("user.name", "Not Specified");
-	    
-	    // Calculate SLA percentage
+
+	    // SLA percentage (currently same as success rate; adjust if your SLA differs)
 	    double slaPercentage = total > 0 ? ((double) pass / total) * 100 : 0;
 	    String slaFormatted = String.format("%.0f%%", slaPercentage);
-	    
+
 	    return String.format("""
 	            <!DOCTYPE html>
 	            <html lang="en">
@@ -386,6 +449,9 @@ public class NewSummaryReportGenerator
 	            /* Detailed Report Styles */
 	            .detailed-section { display: none; }
 	            #smartui-section { display: none; }
+	            /* Ensure performance section is hidden by default so refresh always starts on summary */
+	            #performance-section { display: none; }
+
 	            .step-table { width:90%%; margin:10px auto; border-collapse:collapse; font-size:0.85em; }
 	            .step-table th, .step-table td { border:1px solid #ccc; padding:5px; text-align:left; }
 	            .step-table th { background:#f1f1f1; color:black; }
@@ -453,8 +519,9 @@ public class NewSummaryReportGenerator
 	            
 	            .smartui-report-link {
 	                text-align:right; 
-	                padding:10px;
-	                display: block;
+	                padding-right:10px;
+	                padding-top:4px;
+	                display: %s;
 	            }
 	            .smartui-report-link a {
 	                color: #0052cc;
@@ -463,6 +530,22 @@ public class NewSummaryReportGenerator
 	                cursor: pointer;
 	            }
 	            .smartui-report-link a:hover {
+	                text-decoration: underline;
+	            }
+	            
+	            .performance-report-link {
+	                text-align:right; 
+	                padding-top:12px;
+	                padding-right:23px;
+	                display: %s;
+	            }
+	            .performance-report-link a {
+	                color: #0052cc;
+	                text-decoration: none;
+	                font-weight: 600;
+	                cursor: pointer;
+	            }
+	            .performance-report-link a:hover {
 	                text-decoration: underline;
 	            }
 	            
@@ -481,6 +564,14 @@ public class NewSummaryReportGenerator
 	            .status-pass { color: #28a745; font-weight: bold; }
 	            .status-fail { color: #dc3545; font-weight: bold; }
 	            .status-skipped { color: #ffc107; font-weight: bold; }
+
+	            /* Iframes to isolate embedded reports */
+	            .embedded-report-frame {
+	                width: 100%%;
+	                border: 0;
+	                display: block;
+	                min-height: 600px; /* fallback height */
+	            }
 	            </style>
 	            </head>
 	            <body>
@@ -502,9 +593,8 @@ public class NewSummaryReportGenerator
 	                <div class="detailed-report-link">
 	                <a onclick="showDetailedReport()">📑 Open Detailed Report</a>
 	                </div>
-	                <div class="smartui-report-link">
-	                <a onclick="smartuiReport()">📑 UI Comparison Report</a>
-	                </div>
+	                %s
+	                %s
 	                <div class="main">
 	                <div class="chart-container">
 	                    <canvas id="chart1"></canvas>
@@ -525,8 +615,14 @@ public class NewSummaryReportGenerator
 	                %s
 	            </div>
 	            
-	             <div id="smartui-section" class="smartui-section">
-	                %s
+	            <!-- SmartUI report isolated in iframe -->
+	            <div id="smartui-section" class="smartui-section">
+	                <iframe id="smartui-frame" class="embedded-report-frame"></iframe>
+	            </div>
+	            
+	            <!-- Performance report isolated in iframe -->
+	            <div id="performance-section" class="performance-section">
+	                <iframe id="performance-frame" class="embedded-report-frame"></iframe>
 	            </div>
 	            
 	            <!-- Lightbox Modal -->
@@ -540,33 +636,60 @@ public class NewSummaryReportGenerator
 	            function showDetailedReport() {
 	                document.getElementById("summary-section").style.display = "none";
 	                document.getElementById("detailed-section").style.display = "block";
-	                 document.getElementById("smartui-section").style.display = "none";
+	                document.getElementById("smartui-section").style.display = "none";
+	                document.getElementById("performance-section").style.display = "none";
 	                window.scrollTo(0,0);
 	            }
 	            
 	            function smartuiReport() {
 	                document.getElementById("summary-section").style.display = "none";
-	                 document.getElementById("detailed-section").style.display = "none";
+	                document.getElementById("detailed-section").style.display = "none";
 	                document.getElementById("smartui-section").style.display = "block";
+	                document.getElementById("performance-section").style.display = "none";
+	                window.scrollTo(0,0);
+	            }
+	            
+	            function performanceReport() {
+	                document.getElementById("summary-section").style.display = "none";
+	                document.getElementById("detailed-section").style.display = "none";
+	                document.getElementById("smartui-section").style.display = "none";
+	                document.getElementById("performance-section").style.display = "block";
 	                window.scrollTo(0,0);
 	            }
 	            
 	            function showSummaryReport() {
 	                document.getElementById("detailed-section").style.display = "none";
 	                document.getElementById("summary-section").style.display = "block";
-	                 document.getElementById("smartui-section").style.display = "none";
+	                document.getElementById("smartui-section").style.display = "none";
+	                document.getElementById("performance-section").style.display = "none";
 	                window.scrollTo(0,0);
 	            }
-	            
+
+	            // Ensure we always start on summary after a hard refresh
+	            (function ensureStartOnSummary(){
+	                document.addEventListener('DOMContentLoaded', function(){
+	                    showSummaryReport();
+	                });
+	            })();
+
+	            // Utility: sanitize IDs consistently
+	            const sanitizeId = s => String(s ?? '')
+	              .toLowerCase()
+	              .replace(/\\s+/g, '-')
+	              .replace(/[^a-z0-9\\-_:.]/g, '');
+
 	            // Initialize main chart
 	            new Chart(document.getElementById('chart1'), {
-	             type: 'doughnut',
-	             data: { labels:['Passed','Failed','Skipped'], datasets:[{ data:[%d,%d,%d], backgroundColor:['#28a745','#dc3545','#ffc107']}] },
-	             options: { plugins:{ legend:{ position:'bottom'} } }
+	              type: 'doughnut',
+	              data: { labels:['Passed','Failed','Skipped'], datasets:[{ data:[%d,%d,%d], backgroundColor:['#28a745','#dc3545','#ffc107']}] },
+	              options: { plugins:{ legend:{ position:'bottom'} } }
 	            });
-	            
-	            const moduleData = %s;
-	            
+
+	            // Safer JSON injection/parsing for module data
+	            const moduleDataRaw = `%s`;
+	            let moduleData = [];
+	            try { moduleData = JSON.parse(moduleDataRaw); } catch (e) { moduleData = []; }
+
 	            function formatDuration(ms) {
 	                if (!ms || ms <= 0) return '-';
 	                const totalSeconds = Math.floor(ms / 1000);
@@ -579,17 +702,18 @@ public class NewSummaryReportGenerator
 	            
 	            function populateModuleTable() {
 	                const tableBody = document.getElementById('moduleTableBody');
-	                if (!moduleData || !Array.isArray(moduleData)) {
+	                if (!moduleData || !Array.isArray(moduleData) || moduleData.length === 0) {
 	                    tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #666;">No module data available</td></tr>';
 	                    return;
 	                }
 	                
 	                tableBody.innerHTML = moduleData.map(m => {
 	                    const successRate = m.total > 0 ? ((m.passed/m.total)*100).toFixed(0) : '0';
-	                    const slaRate = m.total > 0 ? ((m.passed/m.total)*100).toFixed(0) : '0';
+	                    const slaRate = successRate; // TODO: compute real SLA if different
 	                    const moduleName = m.module || 'Unknown Module';
+	                    const anchorId = 'module-' + sanitizeId(moduleName);
 	                    
-	                    return `<tr onclick="showDetailedReport(); setTimeout(() => document.getElementById('module-${moduleName.toLowerCase()}')?.scrollIntoView(), 100);" style="cursor:pointer;">
+	                    return `<tr onclick="showDetailedReport(); setTimeout(() => { const el = document.getElementById('${anchorId}'); if (el) el.scrollIntoView({behavior:'smooth'}); }, 100);" style="cursor:pointer;">
 	                        <td>${moduleName}</td>
 	                        <td>${m.total || 0}</td>
 	                        <td>${m.passed || 0}</td>
@@ -601,19 +725,66 @@ public class NewSummaryReportGenerator
 	                    </tr>`;
 	                }).join('');
 	            }
-	            
-	            // Set current datetime
+
+	            // ===== Embed external reports in sandboxed iframes so their original CSS is preserved =====
+	            const HAS_SMARTUI = %s;
+	            const HAS_PERFORMANCE = %s;
+
+	            // Raw HTML strings (with back link injected on the Java side)
+	            const SMARTUI_HTML = `%s`;
+	            const PERFORMANCE_HTML = `%s`;
+
+	            function setIframeHtml(iframeId, html) {
+	                const frame = document.getElementById(iframeId);
+	                if (!frame) return;
+	                function resize() {
+	                    try {
+	                        const doc = frame.contentDocument || frame.contentWindow.document;
+	                        if (!doc) return;
+	                        const h = Math.max(
+	                          doc.documentElement.scrollHeight || 0,
+	                          doc.body ? doc.body.scrollHeight : 0
+	                        );
+	                        if (h) frame.style.height = (h + 20) + 'px';
+	                    } catch (e) { /* ignore */ }
+	                }
+	                frame.addEventListener('load', resize);
+	                frame.srcdoc = html || '<!doctype html><html><body><div style="padding:16px;color:#666;">No report content</div></body></html>';
+	            }
+
 	            document.addEventListener("DOMContentLoaded", () => {
 	              const now = new Date();
 	              document.getElementById("current-datetime").textContent = now.toLocaleString();
 	              populateModuleTable();
+
+	              if (HAS_SMARTUI) setIframeHtml('smartui-frame', SMARTUI_HTML);
+	              if (HAS_PERFORMANCE) setIframeHtml('performance-frame', PERFORMANCE_HTML);
 	            });
 	            </script>
 	            </body>
 	            </html>
 	            """,
-	            reportTitle,pass, fail, noRun, total, overallDurationFormatted, slaFormatted,
-	            startTime, detailedReportContent,smartUIHtmlString, pass, fail, noRun, moduleDataJson);
+	            // CSS display properties
+	            hasSmartUIReport ? "block" : "none",
+	            hasPerformanceReport ? "block" : "none",
+	            // Main content
+	            reportTitle, pass, fail, noRun, total, overallDurationFormatted, slaFormatted,
+	            // Conditional report links
+	            hasSmartUIReport ? "<div class='smartui-report-link'><a onclick='smartuiReport()'>📑 UI Comparison Report</a></div>" : "",
+	            hasPerformanceReport ? "<div class='performance-report-link'><a onclick='performanceReport()'>📑 Performance Report</a></div>" : "",
+	            startTime,
+	            // Detailed report stays inline
+	            detailedReportContent,
+	            // Chart data
+	            pass, fail, noRun,
+	            // Module data (escape backslashes and backticks)
+	            moduleDataJson.replace("\\", "\\\\").replace("`", "\\`"),
+	            // Flags for iframes
+	            String.valueOf(hasSmartUIReport), String.valueOf(hasPerformanceReport),
+	            // SmartUI & Performance HTML passed into JS (escape backslashes and backticks)
+	            smartUIHtmlString.replace("\\", "\\\\").replace("`", "\\`"),
+	            performanceHtmlString.replace("\\", "\\\\").replace("`", "\\`")
+	    );
 	}
 
 	// Helper method to safely get system properties with fallback
