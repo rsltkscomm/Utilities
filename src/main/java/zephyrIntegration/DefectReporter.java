@@ -215,7 +215,7 @@ public class DefectReporter
 	    String apiUrl = JIRA_BASE_URL + "/rest/api/3/issue";
 
 	    JSONObject fields = new JSONObject();
-	    fields.put("summary", "AUTOMATION BUG: " + testCaseKey + " - " + failureReason);
+	    fields.put("summary", "AUTO BUG: " + testCaseKey + " - " + failureReason);
 	    fields.put("description", createBugDescription(testCaseKey, testCaseName, failureReason, stepResults));
 	    fields.put("project", new JSONObject().put("key", PROJECT_KEY));
 	    fields.put("issuetype", new JSONObject().put("name", "Bug"));
