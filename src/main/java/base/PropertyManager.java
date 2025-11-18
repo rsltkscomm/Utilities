@@ -28,7 +28,7 @@ public class PropertyManager {
         if (initialized) return;
 
         // Initialize ConfigurationManager first
-        configManager = ConfigurationManager.getInstance();
+//        configManager = ConfigurationManager.getInstance();
         
         if (folderPath != null) {
             readAllProperties(folderPath);

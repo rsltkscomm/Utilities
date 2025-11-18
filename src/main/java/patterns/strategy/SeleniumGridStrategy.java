@@ -7,6 +7,7 @@ import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 import org.openqa.selenium.MutableCapabilities;
 import org.openqa.selenium.WebDriver;
@@ -19,6 +20,7 @@ import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.safari.SafariOptions;
 
+import base.BaseTest;
 import reporting.TestLogManager;
 
 public class SeleniumGridStrategy implements DriverStrategy
@@ -40,6 +42,7 @@ public class SeleniumGridStrategy implements DriverStrategy
 			remoteWebDriver = new RemoteWebDriver(new URL(getRemoteWebDriverURL()), options);
 		} catch (Exception e)
 		{
+			e.printStackTrace();
 		}
 		return remoteWebDriver;
 	}
@@ -47,7 +50,17 @@ public class SeleniumGridStrategy implements DriverStrategy
 	@Override
 	public String getBrowserName()
 	{
-		return "grid";
+		String browser = System.getProperty("BrowserType");
+		
+		if (browser.toLowerCase().contains("all"))
+		{
+			String[] browsers = {"chrome", "edge", "firefox"};
+		    Random r = new Random();
+		    browser =  browsers[r.nextInt(browsers.length)];
+		    return browser;
+		}else {
+			return browser;
+		}
 	}
 
 	@Override
@@ -90,6 +103,10 @@ public class SeleniumGridStrategy implements DriverStrategy
 	            opts.addArguments("--disable-extensions");
 	            opts.addArguments("--incognito");
 	            opts.addArguments("--window-size=" + resolution);
+	            opts.setCapability("se:sessionName", BaseTest.method_name.get());
+	            opts.setCapability("se:name", BaseTest.method_name.get());
+	            opts.setCapability("se:recordVideo", true);
+	            opts.setCapability("se:videoName", BaseTest.method_name.get() + ".mp4");
 
 	            // ✅ Enable headless if requested
 	            if (headless) opts.addArguments("--headless=new");
@@ -106,6 +123,7 @@ public class SeleniumGridStrategy implements DriverStrategy
 	            opts.setExperimentalOption("prefs", prefs);
 	            opts.setExperimentalOption("excludeSwitches", Collections.singletonList("enable-automation"));
 	            opts.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
+	            opts.setCapability("se:sessionName", BaseTest.method_name.get());
 
 	            return opts;
 	        }
@@ -131,7 +149,10 @@ public class SeleniumGridStrategy implements DriverStrategy
 	                    "application/pdf,application/octet-stream,text/csv");
 	            profile.setPreference("pdfjs.disabled", true);
 	            opts.setProfile(profile);
-
+	            opts.setCapability("se:sessionName", BaseTest.method_name.get());
+	            opts.setCapability("se:name", BaseTest.method_name.get());
+	            opts.setCapability("se:recordVideo", true);
+	            opts.setCapability("se:videoName", BaseTest.method_name.get() + ".mp4");
 	            opts.setAcceptInsecureCerts(true);
 	            return opts;
 	        }
@@ -144,6 +165,10 @@ public class SeleniumGridStrategy implements DriverStrategy
 	            opts.addArguments("--disable-gpu");
 	            opts.addArguments("--disable-notifications");
 	            opts.addArguments("--window-size=" + resolution);
+	            opts.setCapability("se:sessionName", BaseTest.method_name.get());
+	            opts.setCapability("se:name", BaseTest.method_name.get());
+	            opts.setCapability("se:recordVideo", true);
+	            opts.setCapability("se:videoName", BaseTest.method_name.get() + ".mp4");
 
 	            if (headless) opts.addArguments("--headless=new");
 
@@ -155,6 +180,10 @@ public class SeleniumGridStrategy implements DriverStrategy
 	            SafariOptions opts = new SafariOptions();
 	            // Safari currently does not support headless mode
 	            opts.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
+	            opts.setCapability("se:sessionName", BaseTest.method_name.get());
+	            opts.setCapability("se:name", BaseTest.method_name.get());
+	            opts.setCapability("se:recordVideo", true);
+	            opts.setCapability("se:videoName", BaseTest.method_name.get() + ".mp4");
 	            return opts;
 	        }
 
@@ -163,6 +192,10 @@ public class SeleniumGridStrategy implements DriverStrategy
 	            ChromeOptions opts = new ChromeOptions();
 	            opts.addArguments("--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu");
 	            opts.addArguments("--window-size=" + resolution);
+	            opts.setCapability("se:sessionName", BaseTest.method_name.get());
+	            opts.setCapability("se:name", BaseTest.method_name.get());
+	            opts.setCapability("se:recordVideo", true);
+	            opts.setCapability("se:videoName", BaseTest.method_name.get() + ".mp4");
 	            if (headless) opts.addArguments("--headless=new");
 	            return opts;
 	        }

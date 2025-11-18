@@ -13,6 +13,7 @@ import seleniumUtils.ScreenshotUtil;
 
 import java.lang.reflect.Method;
 import java.util.Map;
+import java.util.Random;
 
 import org.openqa.selenium.WebDriver;
 import org.testng.Assert;
@@ -40,6 +41,7 @@ public class BaseTest {
 
 		// Start Docker Grid if enabled
 		if (GridManager.checkIfGrid(System.getProperty("Browser"))) {
+//			AutoDockerInstallAndRun.dockerInstallAndRun();
 			DockerManager.dockerContainterUp();
 		}
 
@@ -63,7 +65,14 @@ public class BaseTest {
 			System.setProperty("LT_NAME", method.getName());
 
 			String browser = System.getProperty("Browser");
-
+			
+			if (browser.toLowerCase().contains("all"))
+			{
+				String[] browsers = {"chrome", "edge", "firefox"};
+			    Random r = new Random();
+			    browser =  browsers[r.nextInt(browsers.length)];
+			}
+			
 			// Set ThreadLocal metadata
 			appName.set(applicationName);
 			sheet_name.set(sheetname);
@@ -119,7 +128,10 @@ public class BaseTest {
 	@AfterMethod(alwaysRun = true)
 	public void tearDown(ITestResult result) {
 		try {
+			// Capture screenshot always
 			ScreenshotUtil.takeScreenshot();
+
+			// Reporting based on result
 			switch (result.getStatus()) {
 				case ITestResult.SUCCESS -> {
 					TestLogManager.success("Test passed: " + result.getName());
