@@ -7,7 +7,6 @@ import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
 
 import org.openqa.selenium.MutableCapabilities;
 import org.openqa.selenium.WebDriver;
@@ -20,7 +19,6 @@ import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.safari.SafariOptions;
 
-import base.BaseTest;
 import reporting.TestLogManager;
 
 public class SeleniumGridStrategy implements DriverStrategy
@@ -42,7 +40,6 @@ public class SeleniumGridStrategy implements DriverStrategy
 			remoteWebDriver = new RemoteWebDriver(new URL(getRemoteWebDriverURL()), options);
 		} catch (Exception e)
 		{
-			e.printStackTrace();
 		}
 		return remoteWebDriver;
 	}
@@ -56,9 +53,9 @@ public class SeleniumGridStrategy implements DriverStrategy
 	@Override
 	public boolean supports(String browserType)
 	{
-		return "grid".equalsIgnoreCase(browserType) || "seleniumgrid".equalsIgnoreCase(browserType);
+		 return "grid".equalsIgnoreCase(browserType) || "seleniumgrid".equalsIgnoreCase(browserType);
 	}
-
+	
 	private static String getRemoteWebDriverURL()
 	{
 		String remoteURL = null;
@@ -74,135 +71,103 @@ public class SeleniumGridStrategy implements DriverStrategy
 		}
 		return remoteURL;
 	}
+	
+	private MutableCapabilities buildOptions(String browserName) {
+	    // Fetch headless flag from property (default false)
+	    boolean headless = Boolean.parseBoolean(System.getProperty("GRID_HEADLESS", "false"));
+	    String resolution = System.getProperty("GRID_RESOLUTION", "1920x1080");
 
-	private MutableCapabilities buildOptions(String browserName)
-	{
-		// Fetch headless flag from property (default false)
-		boolean headless = Boolean.parseBoolean(System.getProperty("GRID_HEADLESS", "false"));
-		String resolution = System.getProperty("GRID_RESOLUTION", "1920x1080");
+	    switch (browserName.toLowerCase()) {
+	        case "chrome" -> {
+	            ChromeOptions opts = new ChromeOptions();
 
-		String browser = System.getProperty("BrowserType");
+	            // 🧱 Common arguments for stability (especially in Docker/Grid)
+	            opts.addArguments("--no-sandbox");
+	            opts.addArguments("--disable-dev-shm-usage");
+	            opts.addArguments("--disable-gpu");
+	            opts.addArguments("--disable-notifications");
+	            opts.addArguments("--disable-popup-blocking");
+	            opts.addArguments("--disable-extensions");
+	            opts.addArguments("--incognito");
+	            opts.addArguments("--window-size=" + resolution);
 
-		if (browser.toLowerCase().contains("all"))
-		{
-			String[] browsers = { "chrome", "edge", "firefox" };
-			Random r = new Random();
-			browser = browsers[r.nextInt(browsers.length)];
-		}
+	            // ✅ Enable headless if requested
+	            if (headless) opts.addArguments("--headless=new");
 
-		switch (browserName.toLowerCase())
-		{
-		case "chrome" -> {
-			ChromeOptions opts = new ChromeOptions();
+	            // 🧩 Preferences (downloads, security)
+	            Map<String, Object> prefs = new HashMap<>();
+	            prefs.put("download.prompt_for_download", false);
+	            prefs.put("profile.default_content_settings.popups", 0);
+	            prefs.put("credentials_enable_service", false);
+	            prefs.put("profile.password_manager_enabled", false);
+	            prefs.put("download.default_directory",
+	                    Paths.get(System.getProperty("user.dir"), "target", "downloads").toString());
 
-			// 🧱 Common arguments for stability (especially in Docker/Grid)
-			opts.addArguments("--no-sandbox");
-			opts.addArguments("--disable-dev-shm-usage");
-			opts.addArguments("--disable-gpu");
-			opts.addArguments("--disable-notifications");
-			opts.addArguments("--disable-popup-blocking");
-			opts.addArguments("--disable-extensions");
-			opts.addArguments("--incognito");
-			opts.addArguments("--window-size=" + resolution);
-			opts.setCapability("se:sessionName", BaseTest.method_name.get());
-			opts.setCapability("se:name", BaseTest.method_name.get());
-			opts.setCapability("se:recordVideo", true);
-			opts.setCapability("se:videoName", BaseTest.method_name.get() + ".mp4");
+	            opts.setExperimentalOption("prefs", prefs);
+	            opts.setExperimentalOption("excludeSwitches", Collections.singletonList("enable-automation"));
+	            opts.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
 
-			// ✅ Enable headless if requested
-			if (headless)
-				opts.addArguments("--headless=new");
+	            return opts;
+	        }
 
-			// 🧩 Preferences (downloads, security)
-			Map<String, Object> prefs = new HashMap<>();
-			prefs.put("download.prompt_for_download", false);
-			prefs.put("profile.default_content_settings.popups", 0);
-			prefs.put("credentials_enable_service", false);
-			prefs.put("profile.password_manager_enabled", false);
-			prefs.put("download.default_directory", Paths.get(System.getProperty("user.dir"), "target", "downloads").toString());
+	        case "firefox" -> {
+	            FirefoxOptions opts = new FirefoxOptions();
 
-			opts.setExperimentalOption("prefs", prefs);
-			opts.setExperimentalOption("excludeSwitches", Collections.singletonList("enable-automation"));
-			opts.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
-			opts.setCapability("se:sessionName", BaseTest.method_name.get());
+	            if (headless) opts.addArguments("-headless");
 
-			return opts;
-		}
+	            // 🧱 Set resolution if specified
+	            String[] res = resolution.split("x");
+	            if (res.length == 2) {
+	                opts.addArguments("--width=" + res[0]);
+	                opts.addArguments("--height=" + res[1]);
+	            }
 
-		case "firefox" -> {
-			FirefoxOptions opts = new FirefoxOptions();
+	            // 🧩 Download prefs
+	            FirefoxProfile profile = new FirefoxProfile();
+	            profile.setPreference("browser.download.folderList", 2);
+	            profile.setPreference("browser.download.dir",
+	                    Paths.get(System.getProperty("user.dir"), "target", "downloads").toString());
+	            profile.setPreference("browser.helperApps.neverAsk.saveToDisk",
+	                    "application/pdf,application/octet-stream,text/csv");
+	            profile.setPreference("pdfjs.disabled", true);
+	            opts.setProfile(profile);
 
-			if (headless)
-				opts.addArguments("-headless");
+	            opts.setAcceptInsecureCerts(true);
+	            return opts;
+	        }
 
-			// 🧱 Set resolution if specified
-			String[] res = resolution.split("x");
-			if (res.length == 2)
-			{
-				opts.addArguments("--width=" + res[0]);
-				opts.addArguments("--height=" + res[1]);
-			}
+	        case "edge" -> {
+	            EdgeOptions opts = new EdgeOptions();
 
-			// 🧩 Download prefs
-			FirefoxProfile profile = new FirefoxProfile();
-			profile.setPreference("browser.download.folderList", 2);
-			profile.setPreference("browser.download.dir", Paths.get(System.getProperty("user.dir"), "target", "downloads").toString());
-			profile.setPreference("browser.helperApps.neverAsk.saveToDisk", "application/pdf,application/octet-stream,text/csv");
-			profile.setPreference("pdfjs.disabled", true);
-			opts.setProfile(profile);
-			opts.setCapability("se:sessionName", BaseTest.method_name.get());
-			opts.setCapability("se:name", BaseTest.method_name.get());
-			opts.setCapability("se:recordVideo", true);
-			opts.setCapability("se:videoName", BaseTest.method_name.get() + ".mp4");
-			opts.setAcceptInsecureCerts(true);
-			return opts;
-		}
+	            opts.addArguments("--no-sandbox");
+	            opts.addArguments("--disable-dev-shm-usage");
+	            opts.addArguments("--disable-gpu");
+	            opts.addArguments("--disable-notifications");
+	            opts.addArguments("--window-size=" + resolution);
 
-		case "edge" -> {
-			EdgeOptions opts = new EdgeOptions();
+	            if (headless) opts.addArguments("--headless=new");
 
-			opts.addArguments("--no-sandbox");
-			opts.addArguments("--disable-dev-shm-usage");
-			opts.addArguments("--disable-gpu");
-			opts.addArguments("--disable-notifications");
-			opts.addArguments("--window-size=" + resolution);
-			opts.setCapability("se:sessionName", BaseTest.method_name.get());
-			opts.setCapability("se:name", BaseTest.method_name.get());
-			opts.setCapability("se:recordVideo", true);
-			opts.setCapability("se:videoName", BaseTest.method_name.get() + ".mp4");
+	            opts.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
+	            return opts;
+	        }
 
-			if (headless)
-				opts.addArguments("--headless=new");
+	        case "safari" -> {
+	            SafariOptions opts = new SafariOptions();
+	            // Safari currently does not support headless mode
+	            opts.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
+	            return opts;
+	        }
 
-			opts.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
-			return opts;
-		}
-
-		case "safari" -> {
-			SafariOptions opts = new SafariOptions();
-			// Safari currently does not support headless mode
-			opts.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
-			opts.setCapability("se:sessionName", BaseTest.method_name.get());
-			opts.setCapability("se:name", BaseTest.method_name.get());
-			opts.setCapability("se:recordVideo", true);
-			opts.setCapability("se:videoName", BaseTest.method_name.get() + ".mp4");
-			return opts;
-		}
-
-		default -> {
-			// Fallback: Chrome as default
-			ChromeOptions opts = new ChromeOptions();
-			opts.addArguments("--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu");
-			opts.addArguments("--window-size=" + resolution);
-			opts.setCapability("se:sessionName", BaseTest.method_name.get());
-			opts.setCapability("se:name", BaseTest.method_name.get());
-			opts.setCapability("se:recordVideo", true);
-			opts.setCapability("se:videoName", BaseTest.method_name.get() + ".mp4");
-			if (headless)
-				opts.addArguments("--headless=new");
-			return opts;
-		}
-		}
+	        default -> {
+	            // Fallback: Chrome as default
+	            ChromeOptions opts = new ChromeOptions();
+	            opts.addArguments("--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu");
+	            opts.addArguments("--window-size=" + resolution);
+	            if (headless) opts.addArguments("--headless=new");
+	            return opts;
+	        }
+	    }
 	}
+
 
 }
