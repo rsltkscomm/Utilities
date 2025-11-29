@@ -57,14 +57,7 @@ public class EdgeDriverStrategy implements DriverStrategy {
     }
     
     private EdgeOptions createEdgeOptions() {
-    	try
-		{
-    		WebDriverManager.edgedriver().setup();
-		} catch (Exception e)
-		{
-			System.out.println("Edge browser is not able to initialize");
-		}
-        
+        WebDriverManager.edgedriver().setup();
         EdgeOptions options = new EdgeOptions();
         
         // Set common options
