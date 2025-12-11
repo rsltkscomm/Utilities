@@ -126,10 +126,10 @@ public class FrameworkConstants
 	private static String getOneDriveBasePath() {
 		try {
 			String oneDrivePath = ConfigurationFactory.getConfigValue("paths.oneDrive", 
-				Paths.get(System.getProperty("user.home"), "OneDrive - RESULTICKS DIGITALS INDIA PRIVATE LIMITED", "Automation", PROJECT_NAME).toString());
+				Paths.get(System.getProperty("user.home"), "OneDrive - RESULTICKS DIGITALS INDIA PRIVATE LIMITED", "OneDrive - RESULTICKS", PROJECT_NAME).toString());
 			return oneDrivePath;
 		} catch (Exception e) {
-			return Paths.get(System.getProperty("user.home"), "OneDrive - RESULTICKS DIGITALS INDIA PRIVATE LIMITED", "Automation", "DefaultProject").toString();
+			return Paths.get(System.getProperty("user.home"), "OneDrive - RESULTICKS DIGITALS INDIA PRIVATE LIMITED", "OneDrive - RESULTICKS", "DefaultProject").toString();
 		}
 	}
 	

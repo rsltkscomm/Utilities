@@ -7,6 +7,7 @@ import java.awt.event.KeyEvent;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.*;
 
 import net.lingala.zip4j.ZipFile;
@@ -100,6 +101,13 @@ public class FileUtils
 	// ---------------------- CSV Reading ----------------------
 	public static List<Map<String, String>> fileHandler()
 	{
+		try
+		{
+			Thread.sleep(Duration.ofSeconds(30));
+		} catch (InterruptedException e)
+		{
+			e.printStackTrace();
+		}
 		List<Map<String, String>> result = new ArrayList<>();
 
 		File path = new File(System.getProperty("user.dir") + "/src/main/resources/data/downloadedFile/");

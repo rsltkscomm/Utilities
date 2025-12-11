@@ -8,6 +8,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFFormulaEvaluator;
 
 import constants.FrameworkConstants;
 import reporting.TestLogManager;
@@ -93,11 +94,11 @@ public class DataInputProvider {
             if (cell == null) cell = row.createCell(colNum);
 
             cell.setCellValue(value);
-
+            XSSFFormulaEvaluator.evaluateAllFormulaCells(workbook);
             try (FileOutputStream fos = new FileOutputStream(filePath)) {
                 workbook.write(fos);
             }
-
+  	        workbook.close();
         } catch (IOException e) {
             TestLogManager.error("Error writing value in sheet: " + sheetName, e);
         } finally {
@@ -295,12 +296,13 @@ public class DataInputProvider {
   	            }
   	        }
    
-  	        // Write Excel
+  	        // Evaluate formulas, write Excel and close streams
   	        fis.close();
-  	        FileOutputStream fos = new FileOutputStream(TestDataUtil.getDataFilesPath(datafileName + ".xlsx"));
-  	        workbook.write(fos);
-  	        fos.close();
+  	        XSSFFormulaEvaluator.evaluateAllFormulaCells(workbook);
+  	        FileOutputStream outFile = new FileOutputStream(TestDataUtil.getDataFilesPath(datafileName + ".xlsx"));
+  	        workbook.write(outFile);
   	        workbook.close();
+  	        outFile.close();
   	        return resultMap;
   	    }
    
