@@ -8,15 +8,25 @@ import org.apache.poi.openxml4j.util.ZipSecureFile;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.remote.RemoteWebDriver;
 import reporting.DetailedTestReporter.ExecutionStatus;
+import reporting.DetailedTestReporter.StepStatus;
 import reporting.DetailedTestReporter.TestExecution;
+import zephyrIntegration.DuplicateDefectChecker;
 
+import javax.net.ssl.HttpsURLConnection;
 import java.io.*;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+/**
+ * EmailSender - builds and sends the HTML automation report, now with Jira bug-key lookup for top failures.
+ */
 public class EmailSender {
 
     // ──────────────────────────────
@@ -36,79 +46,275 @@ public class EmailSender {
     public static List<String> topFails = new ArrayList<>();
 
     // ──────────────────────────────
+    // 🔹 JIRA LOOKUP SUPPORT
+    // ──────────────────────────────
+    // Cache to avoid repeated Jira calls for same failure text
+    private static final ConcurrentMap<String, String> JIRA_LOOKUP_CACHE = new ConcurrentHashMap<>();
+    // Lazy-initialized DuplicateDefectChecker (optional)
+    private static volatile DuplicateDefectChecker jiraChecker = null;
+
+    private static synchronized DuplicateDefectChecker getJiraChecker() {
+        if (jiraChecker == null) {
+            try {
+                jiraChecker = new DuplicateDefectChecker(DuplicateDefectChecker.DuplicateStrategy.JIRA_QUERY);
+            } catch (Throwable t) {
+                System.err.println("⚠️  Failed to initialize DuplicateDefectChecker: " + t.getMessage());
+                jiraChecker = null;
+            }
+        }
+        return jiraChecker;
+    }
+
+    /**
+     * Resolve bug key for a failure token or failure text:
+     * 1) Try system property (existing behaviour)
+     * 2) If not present, check in-memory cache
+     * 3) Try DuplicateDefectChecker.findBugKeyByFailure(...) if available
+     * 4) Fallback to direct Jira REST search
+     *
+     * Returns "N/A" when not found.
+     */
+ // Replace existing resolveBugKey(...) with this
+    private static String resolveBugKey(String keyFromFailure, String fullFailureText) {
+        try {
+            // 1) System property token (preserve current behavior)
+            if (keyFromFailure != null && !keyFromFailure.isBlank()) {
+                String val = System.getProperty(keyFromFailure);
+                if (val != null && !val.isBlank()) {
+                    System.out.println("[JIRA-LOOKUP] Found system property for token '" + keyFromFailure + "' -> " + val);
+                    return val;
+                } else {
+                    System.out.println("[JIRA-LOOKUP] No system property for token '" + keyFromFailure + "'");
+                }
+            }
+
+            // 2) Nothing to search
+            if (fullFailureText == null || fullFailureText.isBlank()) {
+                System.out.println("[JIRA-LOOKUP] fullFailureText is empty -> returning N/A");
+                return "N/A";
+            }
+
+            // 3) Cache check
+            String cached = JIRA_LOOKUP_CACHE.get(fullFailureText);
+            if (cached != null) {
+                System.out.println("[JIRA-LOOKUP] Cache hit for failureText -> " + cached);
+                return cached;
+            }
+
+            System.out.println("[JIRA-LOOKUP] Performing Jira search for: \"" + shortForLog(fullFailureText) + "\"");
+
+            // 4) Try DuplicateDefectChecker (preferred)
+            DuplicateDefectChecker checker = getJiraChecker();
+            if (checker != null) {
+                try {
+                    // if your checker supports findBugKeyByFailure, this will call it
+                    String found = null;
+                    try {
+                    	fullFailureText = fullFailureText.split("FailureReason:")[1].trim();
+                        found = checker.findBugKeyByFailure(fullFailureText, 1);
+                    } catch (Throwable ignore) { /* ignore if method signature differs */ }
+
+                    if (found != null && !found.isBlank()) {
+                        System.out.println("[JIRA-LOOKUP] DuplicateDefectChecker found: " + found);
+                        JIRA_LOOKUP_CACHE.put(fullFailureText, found);
+                        return found;
+                    } else {
+                        System.out.println("[JIRA-LOOKUP] DuplicateDefectChecker returned no results");
+                    }
+                } catch (Throwable e) {
+                    System.err.println("[JIRA-LOOKUP] DuplicateDefectChecker exception: " + e.getMessage());
+                }
+            } else {
+                System.out.println("[JIRA-LOOKUP] DuplicateDefectChecker is not available, falling back to direct REST search");
+            }
+
+            // 5) Fallback to direct Jira REST search
+            String direct = searchJiraForFailure(fullFailureText);
+            if (direct != null && !direct.isBlank()) {
+                System.out.println("[JIRA-LOOKUP] searchJiraForFailure found: " + direct);
+                JIRA_LOOKUP_CACHE.put(fullFailureText, direct);
+                return direct;
+            } else {
+                System.out.println("[JIRA-LOOKUP] searchJiraForFailure returned nothing");
+            }
+
+        } catch (Throwable t) {
+            System.err.println("[JIRA-LOOKUP] resolveBugKey error: " + t.getMessage());
+        }
+        JIRA_LOOKUP_CACHE.put(fullFailureText, "N/A");
+        return "N/A";
+    }
+
+    private static String shortForLog(String s) {
+        if (s == null) return "";
+        return s.length() <= 200 ? s : s.substring(0, 200) + "...";
+    }
+
+
+    /**
+     * Minimal Jira search fallback using REST API /rest/api/3/search
+     * Returns the first issue key found or null if none.
+     */
+ // Replace existing searchJiraForFailure(...) with this verbose version
+    private static String searchJiraForFailure(String failureText) {
+        try {
+            String jiraBase = System.getProperty("JIRA_BASE_URL");
+            String email = System.getProperty("JIRA_EMAIL");
+            String apiKey = System.getProperty("JIRA_API_KEY");
+            String proj = System.getProperty("PROJECT_KEY");
+
+            System.out.println("[JIRA-REST] Config: base=" + jiraBase + ", project=" + proj + ", user=" + (email != null ? email : "null"));
+
+            if (jiraBase == null || email == null || apiKey == null) {
+                System.err.println("[JIRA-REST] Missing Jira config (JIRA_BASE_URL/JIRA_EMAIL/JIRA_API_KEY). Aborting search.");
+                return null;
+            }
+
+            // safe token
+            String cleaned = failureText.replace("\\", "\\\\").replace("\"", "\\\"");
+            if (cleaned.length() > 400) cleaned = cleaned.substring(0, 400);
+
+            String jql = (proj != null && !proj.isBlank())
+                    ? String.format("project = %s AND issuetype = Bug AND status not in (Closed, Resolved, Done) AND (summary ~ \"%s\" OR description ~ \"%s\") ORDER BY created DESC", proj, cleaned, cleaned)
+                    : String.format("issuetype = Bug AND status not in (Closed, Resolved, Done) AND (summary ~ \"%s\" OR description ~ \"%s\") ORDER BY created DESC", cleaned, cleaned);
+
+            System.out.println("[JIRA-REST] JQL: " + shortForLog(jql));
+
+            String encoded = URLEncoder.encode(jql, StandardCharsets.UTF_8);
+            String urlStr = jiraBase + "/rest/api/3/search?jql=" + encoded + "&maxResults=1&fields=key";
+
+            System.out.println("[JIRA-REST] URL: " + urlStr);
+
+            URL url = new URL(urlStr);
+            HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setDoOutput(false);
+
+            String auth = email + ":" + apiKey;
+            String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes(StandardCharsets.UTF_8));
+            conn.setRequestProperty("Authorization", "Basic " + encodedAuth);
+            conn.setRequestProperty("Accept", "application/json");
+
+            int connTimeout = Integer.parseInt(System.getProperty("CONNECTION_TIMEOUT_MS", "10000"));
+            int readTimeout = Integer.parseInt(System.getProperty("READ_TIMEOUT_MS", "10000"));
+            conn.setConnectTimeout(connTimeout);
+            conn.setReadTimeout(readTimeout);
+
+            int code = conn.getResponseCode();
+            String body = readHttpResponse(conn);
+
+            System.out.println("[JIRA-REST] HTTP " + code + " - body (first 1000 chars): " + (body == null ? "null" : (body.length() <= 1000 ? body : body.substring(0, 1000) + "...")));
+
+            if (code >= 200 && code < 300) {
+                org.json.JSONObject json = new org.json.JSONObject(body);
+                org.json.JSONArray issues = json.optJSONArray("issues");
+                if (issues != null && issues.length() > 0) {
+                    String key = issues.getJSONObject(0).getString("key");
+                    System.out.println("[JIRA-REST] Found issue: " + key);
+                    return key;
+                } else {
+                    System.out.println("[JIRA-REST] No issues found for JQL");
+                }
+            } else {
+                System.err.println("[JIRA-REST] Non-success status: " + code);
+            }
+
+        } catch (Throwable t) {
+            System.err.println("[JIRA-REST] error: " + t.getMessage());
+        }
+        return null;
+    }
+
+
+    private static String readHttpResponse(HttpsURLConnection conn) {
+        try {
+            InputStream is = (conn.getResponseCode() < 400) ? conn.getInputStream() : conn.getErrorStream();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) sb.append(line);
+                return sb.toString();
+            }
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    // ──────────────────────────────
     // 🔹 MAIN EMAIL SENDER
     // ──────────────────────────────
-    public static void sendEmail(String filePaths, String fileNames) {try {
-        // Load system properties
-        String host = System.getProperty("host");
-        String port = System.getProperty("port");
-        String senderEmail = System.getProperty("senderEmail");
-        String senderPassword = System.getProperty("senderPassword");
-        String recipients = System.getProperty("recipientEmails");
-        String subject = getEmailSubject();
- 
-        // Prepare data
-        GetParameter();
- 
-        // Create mail session
-        Session session = createMailSession(getSmtpProperties(host, port), senderEmail, senderPassword);
- 
-        Message message = prepareMessage(session, senderEmail, recipients, subject);
-        Multipart multipart = new MimeMultipart("mixed");
- 
-        // Zip and attach reports
-        handleReportAttachments(filePaths, fileNames, multipart);
- 
-        // Add email body (HTML)
-        addHtmlPart(multipart, getMailHtml());
- 
-      
-        // Send email
-        message.setContent(multipart);
-        Transport.send(message);
-        System.out.println("✅ Email sent successfully to: " + recipients);
- 
-    } catch (SendFailedException e) {
-        System.err.println("❌ Failed to send email: " + e.getMessage());
- 
-        // 🔹 Log invalid addresses
-        if (e.getInvalidAddresses() != null) {
-            System.err.println("🚫 Invalid Addresses:");
-            for (Address addr : e.getInvalidAddresses()) {
-                System.err.println("   ➤ " + addr.toString());
+    public static void sendEmail(String filePaths, String fileNames) {
+        try {
+            // Load system properties
+            String host = System.getProperty("host");
+            String port = System.getProperty("port");
+            String senderEmail = System.getProperty("senderEmail");
+            String senderPassword = System.getProperty("senderPassword");
+            String recipients = System.getProperty("recipientEmails");
+            String subject = getEmailSubject();
+
+            // Prepare data
+            GetParameter();
+
+            // Create mail session
+            Session session = createMailSession(getSmtpProperties(host, port), senderEmail, senderPassword);
+
+            Message message = prepareMessage(session, senderEmail, recipients, subject);
+            Multipart multipart = new MimeMultipart("mixed");
+
+            // Zip and attach reports
+            handleReportAttachments(filePaths, fileNames, multipart);
+
+            // Add email body (HTML)
+            addHtmlPart(multipart, getMailHtml());
+
+            // Send email
+            message.setContent(multipart);
+            Transport.send(message);
+            System.out.println("✅ Email sent successfully to: " + recipients);
+
+        } catch (SendFailedException e) {
+            System.err.println("❌ Failed to send email: " + e.getMessage());
+
+            // 🔹 Log invalid addresses
+            if (e.getInvalidAddresses() != null) {
+                System.err.println("🚫 Invalid Addresses:");
+                for (Address addr : e.getInvalidAddresses()) {
+                    System.err.println("   ➤ " + addr.toString());
+                }
             }
-        }
- 
-        // 🔹 Log valid but unsent addresses (like mailbox full)
-        if (e.getValidUnsentAddresses() != null) {
-            System.err.println("⚠️ Valid but not sent (SMTP rejection):");
-            for (Address addr : e.getValidUnsentAddresses()) {
-                System.err.println("   ➤ " + addr.toString());
+
+            // 🔹 Log valid but unsent addresses (like mailbox full)
+            if (e.getValidUnsentAddresses() != null) {
+                System.err.println("⚠️ Valid but not sent (SMTP rejection):");
+                for (Address addr : e.getValidUnsentAddresses()) {
+                    System.err.println("   ➤ " + addr.toString());
+                }
             }
-        }
- 
-        // 🔹 Log successfully sent ones
-        if (e.getValidSentAddresses() != null) {
-            System.out.println("✅ Successfully sent to:");
-            for (Address addr : e.getValidSentAddresses()) {
-                System.out.println("   ➤ " + addr.toString());
+
+            // 🔹 Log successfully sent ones
+            if (e.getValidSentAddresses() != null) {
+                System.out.println("✅ Successfully sent to:");
+                for (Address addr : e.getValidSentAddresses()) {
+                    System.out.println("   ➤ " + addr.toString());
+                }
             }
+
+            // 🔹 Get nested SMTP error info (specific failed recipient)
+            Exception next = e.getNextException();
+            if (next instanceof com.sun.mail.smtp.SMTPAddressFailedException smtpEx) {
+                System.err.println("📧 Failed recipient: " + smtpEx.getAddress());
+                System.err.println("📩 SMTP error code: " + smtpEx.getReturnCode());
+                System.err.println("📜 Server message: " + smtpEx.getMessage());
+            }
+
+            e.printStackTrace();
+
+        } catch (Exception e) {
+            System.err.println("❌ General email failure: " + e.getMessage());
+            e.printStackTrace();
         }
- 
-        // 🔹 Get nested SMTP error info (specific failed recipient)
-        Exception next = e.getNextException();
-        if (next instanceof com.sun.mail.smtp.SMTPAddressFailedException smtpEx) {
-            System.err.println("📧 Failed recipient: " + smtpEx.getAddress());
-            System.err.println("📩 SMTP error code: " + smtpEx.getReturnCode());
-            System.err.println("📜 Server message: " + smtpEx.getMessage());
-        }
- 
-        e.printStackTrace();
- 
-    } catch (Exception e) {
-        System.err.println("❌ General email failure: " + e.getMessage());
-        e.printStackTrace();
-    }}
+    }
 
     // ──────────────────────────────
     // 🔹 SMTP & SESSION HANDLERS
@@ -169,17 +375,16 @@ public class EmailSender {
             zipPath = zipHtmlWithTimestamp(paths[0], FrameworkConstants.ONEDRIVE_BASE_PATH + "\\DeploymentCheckListResults\\");
             FilePath = "https://azureresulticks-my.sharepoint.com/:f:/g/personal/qaautomation_resulticks_com/ElTgyT1WS9lDvvhRMHlnL4ABWvmHGIYvYUu4QR0GkDQTmw?e=fkj5xP";
             LogsLink = "https://azureresulticks-my.sharepoint.com/:f:/g/personal/a_maheshanand_resulticks_com/Eq7fuRascUlEk9jufCwOBeYByg5PbIo-dOjEf3mfTbKBJg?e=4e7gMT";
-        }else if (ReportName.contains("Regression")) {
+        } else if (ReportName.contains("Regression")) {
             zipPath = zipHtmlWithTimestamp(paths[0], FrameworkConstants.ONEDRIVE_BASE_PATH + "\\RegressionExecution\\");
             FilePath = "https://azureresulticks-my.sharepoint.com/:f:/g/personal/qaautomation_resulticks_com/EoEqGZpYUctMicgHzIN5KBEBZGrLh79kpJq2Bm-bmXyvog?e=ZWcZ9W";
             LogsLink = "https://azureresulticks-my.sharepoint.com/:f:/g/personal/a_maheshanand_resulticks_com/Eqc9Vj5D0sNMr_rEREbfQgIB1CDqSqq6M-5noPgNHXaTOA?e=dwAkeT";
         }
         boolean useCustomName = "yes".equalsIgnoreCase(System.getProperty("AttachMailFile", "no"));
-        if (useCustomName)
-        {
-                for (int i = 0; i < paths.length; i++) {
-                    attachFile(multipart, paths[i], names[i]);
-                }
+        if (useCustomName) {
+            for (int i = 0; i < paths.length; i++) {
+                attachFile(multipart, paths[i], names[i]);
+            }
         }
 
         System.out.println("📦 Final ZIP stored at: " + zipPath);
@@ -206,15 +411,15 @@ public class EmailSender {
     // ──────────────────────────────
     public static String zipHtmlWithTimestamp(String sourceFile, String oneDriveFolder) {
         ZipSecureFile.setMinInflateRatio(0.001);
-        String zipFileName =null;
+        String zipFileName = null;
         String timeStamp = new SimpleDateFormat("ddMMMyyyy_HHmmss").format(new Date());
         if (ReportName.contains("Daily")) {
-        	 zipFileName = "DailyCheckList_" + timeStamp + ".zip";
-        	} else if (ReportName.contains("Deploy")) {
-        		 zipFileName = "DeploymentCheckList_" + timeStamp + ".zip";
-        		}else if (ReportName.contains("Regression")) {
-        			 zipFileName = ReportName+"_" + timeStamp + ".zip";
-        			}
+            zipFileName = "DailyCheckList_" + timeStamp + ".zip";
+        } else if (ReportName.contains("Deploy")) {
+            zipFileName = "DeploymentCheckList_" + timeStamp + ".zip";
+        } else if (ReportName.contains("Regression")) {
+            zipFileName = ReportName + "_" + timeStamp + ".zip";
+        }
         String destZipFile = oneDriveFolder + File.separator + zipFileName;
 
         try (FileOutputStream fos = new FileOutputStream(destZipFile);
@@ -273,10 +478,10 @@ public class EmailSender {
             skipped += Integer.parseInt(String.valueOf(module.get("skipped")));
         }
 
-         Total = String.valueOf(total);
-         Passed = String.valueOf(passed);
-         Failed = String.valueOf(failed);
-         Skipped = String.valueOf(skipped);
+        Total = String.valueOf(total);
+        Passed = String.valueOf(passed);
+        Failed = String.valueOf(failed);
+        Skipped = String.valueOf(skipped);
         int totalTests = Integer.parseInt(Total);
         int passedTests = Integer.parseInt(Passed);
         PassRate = totalTests > 0 ? String.valueOf((passedTests * 100) / totalTests) : "0";
@@ -296,8 +501,8 @@ public class EmailSender {
         WebDriver driver = null;
         String osName = System.getProperty("os.name").toLowerCase();
         OS = osName.contains("win") ? "Windows" :
-             osName.contains("mac") ? "macOS" :
-             osName.contains("nux") ? "Linux" : "Unknown";
+                osName.contains("mac") ? "macOS" :
+                        osName.contains("nux") ? "Linux" : "Unknown";
 
         Infrastructure = (driver instanceof RemoteWebDriver) ? "Grid" : "Local";
         String cloud = System.getenv("CLOUD_PROVIDER");
@@ -314,31 +519,28 @@ public class EmailSender {
     }
 
     private static void setTriggerAndGitInfo() {
-    	// Trigger type
-    			String buildCause = System.getenv("BUILD_CAUSE");
-    			TriggerType = (buildCause != null && buildCause.contains("TIMERTRIGGER")) ? "Scheduled" : "On-Demand";
+        // Trigger type
+        String buildCause = System.getenv("BUILD_CAUSE");
+        TriggerType = (buildCause != null && buildCause.contains("TIMERTRIGGER")) ? "Scheduled" : "On-Demand";
 
-    			// Branch and commit
-    			Branch = System.getenv("GIT_BRANCH");
-    			ShortSHA = System.getenv("GIT_COMMIT");
+        // Branch and commit
+        Branch = System.getenv("GIT_BRANCH");
+        ShortSHA = System.getenv("GIT_COMMIT");
 
-    			// Fallback to git command if env variables not present
-    			if (Branch == null || ShortSHA == null)
-    			{
-    				try
-    				{
-    					Process p1 = Runtime.getRuntime().exec("git rev-parse --abbrev-ref HEAD");
-    					Branch = new BufferedReader(new InputStreamReader(p1.getInputStream())).readLine();
+        // Fallback to git command if env variables not present
+        if (Branch == null || ShortSHA == null) {
+            try {
+                Process p1 = Runtime.getRuntime().exec("git rev-parse --abbrev-ref HEAD");
+                Branch = new BufferedReader(new InputStreamReader(p1.getInputStream())).readLine();
 
-    					Process p2 = Runtime.getRuntime().exec("git rev-parse --short HEAD");
-    					ShortSHA = new BufferedReader(new InputStreamReader(p2.getInputStream())).readLine();
-    				} catch (IOException e)
-    				{
-    					Branch = "Unknown";
-    					ShortSHA = "Unknown";
-    				}
-    			}
- }
+                Process p2 = Runtime.getRuntime().exec("git rev-parse --short HEAD");
+                ShortSHA = new BufferedReader(new InputStreamReader(p2.getInputStream())).readLine();
+            } catch (IOException e) {
+                Branch = "Unknown";
+                ShortSHA = "Unknown";
+            }
+        }
+    }
 
     private static String execCommand(String command) throws IOException {
         Process process = Runtime.getRuntime().exec(command);
@@ -359,8 +561,15 @@ public class EmailSender {
                 try {
                     var steps = t.getSteps();
                     if (steps != null && !steps.isEmpty()) {
-                        String ar = steps.get(0) != null ? steps.get(0).getActualResult() : null;
-                        if (ar != null && !ar.isBlank()) failureReason = ar;
+                    	for(int i=0;i<steps.size();i++) {
+                    		if(steps.get(i).getStatus()==StepStatus.FAIL) {
+                    			String ar = steps.get(i) != null ? steps.get(i).getActualResult() : null;
+                    			if (ar != null && !ar.isBlank()) {
+                    				failureReason = ar;
+                    				break;
+                    			}
+                    		}
+                    	}
                     }
                 } catch (Exception ignore) {
                     // Keep "Unknown"
@@ -381,26 +590,25 @@ public class EmailSender {
                 .toList();
 
         // Build the top 3 overall entries: "Module: X | FailureReason: Y"
-        List<String> topFails = new ArrayList<>(3);
+        List<String> topFailsLocal = new ArrayList<>(3);
         for (String module : modulesSorted) {
-            if (topFails.size() >= 3) break;
+            if (topFailsLocal.size() >= 3) break;
 
             // Deduplicate reasons per module while preserving order
             List<String> reasons = moduleFailTests.getOrDefault(module, List.of());
             LinkedHashSet<String> uniqueReasons = new LinkedHashSet<>(reasons);
 
             for (String reason : uniqueReasons) {
-                topFails.add("Module: " + module + " | FailureReason: " + reason);
-                if (topFails.size() >= 3) break;
+                topFailsLocal.add("Module: " + module + " | FailureReason: " + reason);
+                if (topFailsLocal.size() >= 3) break;
             }
         }
 
         // Assign to your existing static fields
-        Failure1 = topFails.size() > 0 ? topFails.get(0) : "N/A";
-        Failure2 = topFails.size() > 1 ? topFails.get(1) : "N/A";
-        Failure3 = topFails.size() > 2 ? topFails.get(2) : "N/A";
+        Failure1 = topFailsLocal.size() > 0 ? topFailsLocal.get(0) : "N/A";
+        Failure2 = topFailsLocal.size() > 1 ? topFailsLocal.get(1) : "N/A";
+        Failure3 = topFailsLocal.size() > 2 ? topFailsLocal.get(2) : "N/A";
     }
-
 
     // ──────────────────────────────
     // 🔹 EMAIL SUBJECT BUILDER
@@ -437,17 +645,27 @@ public class EmailSender {
             return null; // no recognizable token found
         };
 
-        // Helper: fetch System property safely, defaulting to "N/A"
-        java.util.function.Function<String, String> safeSysProp = (key) ->
-                (key == null || key.isBlank()) ? "N/A" : System.getProperty(key, "N/A");
-
         // Build the final list of failures to render (without mutating Failure1/2/3)
         java.util.List<String> validFails = java.util.stream.Stream.of(Failure1, Failure2, Failure3)
                 .filter(f -> f != null && !f.trim().isEmpty() && !"N/A".equalsIgnoreCase(f.trim()))
                 .map(f -> {
                     String key = extractBugKey.apply(f);
-                    String bugId = safeSysProp.apply(key);
-                    return f + " - Bug ID : <b>" + bugId + "</b>";
+                    // Resolve bug id: prefer system property token, then Jira lookup if needed
+                    String bugId = "N/A";
+
+                    if (key != null && !key.isBlank()) {
+                        String prop = System.getProperty(key);
+                        if (prop != null && !prop.isBlank()) {
+                            bugId = prop;
+                        }
+                    }
+
+                    // If still N/A, attempt Jira lookup using the full failure text
+                    if ("N/A".equalsIgnoreCase(bugId)) {
+                        bugId = resolveBugKey(key, f);
+                    }
+
+                    return f + " - Bug ID : <b>" + (bugId == null ? "N/A" : bugId) + "</b>";
                 })
                 .collect(java.util.stream.Collectors.toList());
 
@@ -458,8 +676,8 @@ public class EmailSender {
 
         String reportName =
                 ReportName != null && ReportName.toLowerCase().contains("daily") ? "Daily Checklist" :
-                ReportName != null && ReportName.toLowerCase().contains("postproduction") ? "Post Production Checklist" :
-                "Regression";
+                        ReportName != null && ReportName.toLowerCase().contains("postproduction") ? "Post Production Checklist" :
+                                "Regression";
 
         // Main email HTML (unchanged layout/styles)
         return "<!DOCTYPE html>" +
@@ -517,6 +735,4 @@ public class EmailSender {
                 "</body>" +
                 "</html>";
     }
-
-
 }
