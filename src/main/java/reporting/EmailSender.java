@@ -17,6 +17,10 @@ import java.io.*;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -367,19 +371,39 @@ public class EmailSender {
         String[] paths = filePaths.split(",");
         String[] names = fileNames.split(",");
 
+        String sourceFile = paths[0];
+
+        String targetFolder = "";
+
         if (ReportName.contains("Daily")) {
-            zipPath = zipHtmlWithTimestamp(paths[0], FrameworkConstants.ONEDRIVE_BASE_PATH + "\\DailyCheckListResults\\");
-            FilePath = "https://azureresulticks-my.sharepoint.com/:f:/g/personal/qaautomation_resulticks_com/Ev1Aog7jO5RAt_0Wrx5wJPkBsy0sQ47Tr2hTAfm0kiHUaw";
+            targetFolder = FrameworkConstants.ONEDRIVE_BASE_PATH + "\\DailyCheckListResults\\";
             LogsLink = "https://azureresulticks-my.sharepoint.com/:f:/g/personal/a_maheshanand_resulticks_com/Eq7fuRascUlEk9jufCwOBeYByg5PbIo-dOjEf3mfTbKBJg?e=4e7gMT";
+
         } else if (ReportName.contains("Deploy")) {
-            zipPath = zipHtmlWithTimestamp(paths[0], FrameworkConstants.ONEDRIVE_BASE_PATH + "\\DeploymentCheckListResults\\");
-            FilePath = "https://azureresulticks-my.sharepoint.com/:f:/g/personal/qaautomation_resulticks_com/ElTgyT1WS9lDvvhRMHlnL4ABWvmHGIYvYUu4QR0GkDQTmw?e=fkj5xP";
+            targetFolder = FrameworkConstants.ONEDRIVE_BASE_PATH + "\\DeploymentCheckListResults\\";
             LogsLink = "https://azureresulticks-my.sharepoint.com/:f:/g/personal/a_maheshanand_resulticks_com/Eq7fuRascUlEk9jufCwOBeYByg5PbIo-dOjEf3mfTbKBJg?e=4e7gMT";
+
         } else if (ReportName.contains("Regression")) {
-            zipPath = zipHtmlWithTimestamp(paths[0], FrameworkConstants.ONEDRIVE_BASE_PATH + "\\RegressionExecution\\");
-            FilePath = "https://azureresulticks-my.sharepoint.com/:f:/g/personal/qaautomation_resulticks_com/EoEqGZpYUctMicgHzIN5KBEBZGrLh79kpJq2Bm-bmXyvog?e=ZWcZ9W";
+            targetFolder = FrameworkConstants.ONEDRIVE_BASE_PATH + "\\RegressionExecution\\";
             LogsLink = "https://azureresulticks-my.sharepoint.com/:f:/g/personal/a_maheshanand_resulticks_com/Eqc9Vj5D0sNMr_rEREbfQgIB1CDqSqq6M-5noPgNHXaTOA?e=dwAkeT";
         }
+
+        // Ensure folder exists
+        File folder = new File(targetFolder);
+        if (!folder.exists()) folder.mkdirs();
+
+        // Build new file name inside OneDrive folder
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        String newFilePath = targetFolder + timestamp + "_" + new File(sourceFile).getName();
+
+        // Copy the actual file into OneDrive
+        Files.copy(Paths.get(sourceFile), Paths.get(newFilePath), StandardCopyOption.REPLACE_EXISTING);
+
+        // Store OneDrive file path
+        FilePath = newFilePath;
+        zipPath = newFilePath;
+
+        // Attach email files if needed
         boolean useCustomName = "yes".equalsIgnoreCase(System.getProperty("AttachMailFile", "no"));
         if (useCustomName) {
             for (int i = 0; i < paths.length; i++) {
@@ -387,9 +411,10 @@ public class EmailSender {
             }
         }
 
-        System.out.println("📦 Final ZIP stored at: " + zipPath);
+        System.out.println("📄 File stored in OneDrive path: " + newFilePath);
     }
 
+    
     private static void attachFile(Multipart multipart, String filePath, String fileName) {
         try {
             File file = new File(filePath);
@@ -709,7 +734,7 @@ public class EmailSender {
 
                 "          <h4 style='color: #34495e; margin-top: 25px;'>Quick Links</h4>" +
                 "          <ul style='list-style-type: disc; margin-left: 25px;'>" +
-                "            <li>Execution report: <a href='" + FilePath + "' style='color: #007bff;'>[OneDrive Report Link]</a></li>" +
+                "            <li>Execution report: <a href='" + FilePath + "' style='color: #007bff;'>[Report Link]</a></li>" +
                 "            <li>Logs / screenshots (if any): <a href='" + LogsLink + "' style='color: #007bff;'>[OneDrive Evidence Link]</a></li>" +
                 "          </ul>" +
 
