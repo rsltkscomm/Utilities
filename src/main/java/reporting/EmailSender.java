@@ -512,7 +512,7 @@ public class EmailSender {
         PassRate = totalTests > 0 ? String.valueOf((passedTests * 100) / totalTests) : "0";
 
         StartTime = BaseTest.currentDate;
-        EndTime = BaseTest.EndDateTime;
+        EndTime = BaseTest.endDateTime;
         Browser = System.getProperty("Browser");
         Env = Environment;
 

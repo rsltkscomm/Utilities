@@ -1,0 +1,123 @@
+package base;
+
+import com.microsoft.playwright.*;
+
+import core.interfaces.EngineType;
+
+import org.openqa.selenium.WebDriver;
+
+/**
+ * Holds runtime driver state for Selenium or Playwright.
+ * This is the single source of truth for the current engine.
+ */
+public final class DriverContext {
+
+    private final EngineType engineType;
+
+    // ===== Selenium =====
+    private final WebDriver webDriver;
+
+    // ===== Playwright =====
+    private final Playwright playwright;
+    private final Browser browser;
+    private final BrowserContext browserContext;
+    private final Page page;
+
+    // ===== Common =====
+    private final AutomationContext automationContext;
+    private final EngineActions engineActions;
+
+    /* =========================
+       PRIVATE CONSTRUCTORS
+       ========================= */
+
+    private DriverContext(
+            EngineType engineType,
+            WebDriver webDriver,
+            Playwright playwright,
+            Browser browser,
+            BrowserContext browserContext,
+            Page page,
+            AutomationContext automationContext
+    ) {
+        this.engineType = engineType;
+        this.webDriver = webDriver;
+        this.playwright = playwright;
+        this.browser = browser;
+        this.browserContext = browserContext;
+        this.page = page;
+        this.automationContext = automationContext;
+        this.engineActions = EngineActions.from(this);
+    }
+
+    /* =========================
+       FACTORY METHODS
+       ========================= */
+
+    public static DriverContext selenium(WebDriver driver) {
+        return new DriverContext(
+                EngineType.SELENIUM,
+                driver,
+                null,
+                null,
+                null,
+                null,
+                new SeleniumContext(driver)
+        );
+    }
+
+    public static DriverContext playwright(
+            Playwright playwright,
+            Browser browser,
+            BrowserContext context,
+            Page page
+    ) {
+        return new DriverContext(
+                EngineType.PLAYWRIGHT,
+                null,
+                playwright,
+                browser,
+                context,
+                page,
+                new PlaywrightContext(page)
+        );
+    }
+
+    /* =========================
+       GETTERS
+       ========================= */
+
+    public EngineType getEngineType() {
+        return engineType;
+    }
+
+    // Selenium (legacy-safe)
+    public WebDriver getWebDriver() {
+        return webDriver;
+    }
+
+    // Playwright
+    public Playwright getPlaywright() {
+        return playwright;
+    }
+
+    public Browser getBrowser() {
+        return browser;
+    }
+
+    public BrowserContext getBrowserContext() {
+        return browserContext;
+    }
+
+    public Page getPage() {
+        return page;
+    }
+
+    public AutomationContext getAutomationContext() {
+        return automationContext;
+    }
+
+    public EngineActions getEngineActions() {
+        return engineActions;
+    }
+}

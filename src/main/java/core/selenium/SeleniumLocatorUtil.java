@@ -1,0 +1,97 @@
+package core.selenium;
+
+import java.util.Arrays;
+import java.util.List;
+
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+
+import core.interfaces.LocatorInterface;
+
+/**
+ * Utility class to convert locator strings into Selenium By objects.
+ * 
+ * Format: "ElementName,locatorType,value" Example: "Login Button,xpath,//button[@id='login']"
+ */
+public class SeleniumLocatorUtil implements LocatorInterface
+{
+	WebDriver driver;
+
+	public SeleniumLocatorUtil(WebDriver driver) {
+		this.driver = driver;
+	}
+
+	public static ThreadLocal<String> logName = new ThreadLocal<String>();
+
+	public By autolocator(String key)
+	{
+		if (key == null || key.isEmpty())
+		{
+			throw new IllegalArgumentException("Locator string cannot be null or empty.");
+		}
+
+		String[] parts = key.split(",", 3); // Expecting 3 parts
+		if (parts.length < 3)
+		{
+			throw new IllegalArgumentException("Invalid locator format: " + key + " | Expected format: 'ElementName,locatorType,value'");
+		}
+
+		String elementName = parts[0].trim();
+		String locatorType = parts[1].trim().toLowerCase();
+		String locatorValue = parts[2].trim();
+		logName.set(elementName);
+		switch (locatorType)
+		{
+		case "id":
+			return By.id(locatorValue);
+		case "name":
+			return By.name(locatorValue);
+		case "xpath":
+			return By.xpath(locatorValue);
+		case "css":
+		case "cssselector":
+			return By.cssSelector(locatorValue);
+		case "link":
+		case "linktext":
+			return By.linkText(locatorValue);
+		case "parlink":
+		case "partiallinktext":
+			return By.partialLinkText(locatorValue);
+		case "class":
+		case "classname":
+			return By.className(locatorValue);
+		case "tag":
+		case "tagname":
+			return By.tagName(locatorValue);
+		default:
+			throw new IllegalArgumentException("Unsupported locator type: " + locatorType + " in locator string: " + key);
+		}
+	}
+
+	public String replacePlaceHolder(String locator, String placeHolder)
+	{
+		return locator.replace("PLACE_HOLDER", placeHolder);
+	}
+
+	public String replacePlaceHolder(String locator, int placeHolder)
+	{
+		return locator.replace("PLACE_HOLDER", Integer.toString(placeHolder));
+	}
+
+	public WebElement getElement(Object pr)
+	{
+		return (pr instanceof String) ? driver.findElement(autolocator(pr.toString())) : (WebElement) pr;
+	}
+
+	public String replacePlaceHolder(String locator, String placeHolder, String placeHolder1)
+	{
+		return locator.replace("PLACE_HOLDER", placeHolder).replace("TEMP", placeHolder1);
+	}
+	
+	public List<WebElement> getElements(Object pr)
+	{
+		return (pr instanceof String) ? driver.findElements(autolocator(pr.toString())) : Arrays.asList((WebElement) pr);
+	}
+
+}

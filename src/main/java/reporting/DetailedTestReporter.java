@@ -5,6 +5,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -20,6 +21,10 @@ import org.openqa.selenium.logging.LogEntries;
 import org.openqa.selenium.logging.LogEntry;
 import org.openqa.selenium.logging.LogType;
 
+import com.microsoft.playwright.Page;
+import com.microsoft.playwright.options.ScreenshotType;
+
+import base.DriverContext;
 import base.DriverManager;
 import reporting.NewSummaryReportGenerator.ModuleStats;
 
@@ -88,30 +93,66 @@ public class DetailedTestReporter
 		return detailedTestReporter;
 	}
 	
-	public static void updateStep(boolean status, TestCase failConstant, TestCase passConstant)
-	{
-	    WebDriver driver = DriverManager.getDriver();
-	    String logPath = "";
+	public static void updateStep(
+	        boolean status,
+	        TestCase failConstant,
+	        TestCase passConstant
+	) {
+	    DriverContext context = DriverManager.getContext();
+	    String logPath = null;
 	    File harFile = null;
-	    if (!status)
-	    {
-	        try {
-	            LogEntries logs = driver.manage().logs().get(LogType.BROWSER);
-	            if (logs != null && logs.getAll().size() > 0) {
-	            	logPath = saveBrowserLogs(logs, failConstant.getDescription());
-	            } else {
-	                System.out.println("⚠️ No browser logs available for this failure.");
+
+	    Object automationDriver = context.getWebDriver();
+
+	    if (!status) {
+
+	        // 🔹 Selenium: capture browser logs
+	        if (automationDriver instanceof org.openqa.selenium.WebDriver) {
+	            try {
+	                org.openqa.selenium.WebDriver webDriver =
+	                        (org.openqa.selenium.WebDriver) automationDriver;
+
+	                LogEntries logs = webDriver.manage()
+	                        .logs()
+	                        .get(LogType.BROWSER);
+
+	                if (logs != null && !logs.getAll().isEmpty()) {
+	                    logPath = saveBrowserLogs(
+	                            logs,
+	                            failConstant.getDescription()
+	                    );
+	                }
+	            } catch (Exception e) {
+	                System.out.println(
+	                        "❌ Could not capture Selenium browser logs: "
+	                                + e.getMessage()
+	                );
 	            }
-	        } catch (Exception e) {
-	            System.out.println("❌ Could not capture browser logs: " + e.getMessage());
 	        }
-	        DetailedTestReporter.addStep(failConstant, StepStatus.FAIL, driver,logPath,harFile);
-	    } 
-	    else
-	    {
-	        DetailedTestReporter.addStep(passConstant, StepStatus.PASS, driver,logPath,harFile);
+
+	        // 🔹 Playwright: NO browser log API
+	        // Console logs must be collected via listeners earlier
+
+	        DetailedTestReporter.addStep(
+	                failConstant,
+	                StepStatus.FAIL,
+	                context,
+	                logPath,
+	                harFile
+	        );
+
+	    } else {
+	    	Page page = DriverManager.getContext().getPage();
+	        DetailedTestReporter.addStep(
+	                passConstant,
+	                StepStatus.PASS,
+	                page,
+	                null,
+	                null
+	        );
 	    }
 	}
+
 	
 	/**
 	 * Save browser console logs to a timestamped file
@@ -152,7 +193,7 @@ public class DetailedTestReporter
 	    }
 	}
 
-    public static void addStep(TestCase testCase, StepStatus status, WebDriver driver,String logFilePath,File harFile) {
+    public static void addStep(TestCase testCase, StepStatus status, Object context,String logFilePath,File harFile) {
         synchronized (MUTEX) {
             boolean isDuplicate = false;
             Optional<TestExecution> executionOpt = getReport().getTestExecutions().stream()
@@ -197,7 +238,7 @@ public class DetailedTestReporter
                     testCase.getExpectedResult(),
                     testCase.getActualResult(),
                     status,
-                    encryptScreenshot(driver),
+                    encryptScreenshot(context),
                     logFilePath,
                     harFile
                     
@@ -237,22 +278,39 @@ public class DetailedTestReporter
         }
 	}
 	
-     public static String encryptScreenshot(WebDriver driver)
-        {
-            if (driver == null) {
-                return null;
-            }
-            try {
-                if (driver instanceof TakesScreenshot) {
-                    TakesScreenshot ts = (TakesScreenshot) driver;
-                    String screenshotAs = ts.getScreenshotAs(OutputType.BASE64);
-                    return "data:image/png;base64," + screenshotAs;
-                }
-            } catch (Exception e) {
-                // ignore screenshot errors and proceed without image
-            }
+    public static String encryptScreenshot(Object context) {
+        if (context == null) {
             return null;
         }
+
+        try {
+            // Selenium
+            if (context instanceof TakesScreenshot) {
+                TakesScreenshot ts = (TakesScreenshot) context;
+                return "data:image/png;base64,"
+                        + ts.getScreenshotAs(OutputType.BASE64);
+            }
+
+            // Playwright
+            if (context instanceof Page) {
+                Page page = (Page) context;
+
+                byte[] bytes = page.screenshot(
+                        new Page.ScreenshotOptions()
+                                .setType(ScreenshotType.PNG)
+                );
+
+                return "data:image/png;base64,"
+                        + Base64.getEncoder().encodeToString(bytes);
+            }
+
+        } catch (Exception e) {
+            // Optional: log debug info
+        }
+
+        return null;
+    }
+
 
     public static List<TestExecution> getTestExecutions()
 	{

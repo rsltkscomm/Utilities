@@ -1,12 +1,15 @@
 package pages;
 
-import org.openqa.selenium.WebDriver;
+import base.AutomationContext;
+import base.DriverContext;
 
 public class PageFactory
 {
-	private WebDriver driver;
+	private final AutomationContext context;
+    private final DriverContext driverContext;
 
-	public PageFactory(WebDriver driver) {
-		this.driver = driver;
-	}
+    public PageFactory(DriverContext driverContext) {
+        this.context = driverContext.getAutomationContext();
+        this.driverContext = driverContext;
+    }
 }

@@ -35,7 +35,9 @@ public class GridManager
 			String url = getRemoteWebDriverURL();
 			if (url != null)
 			{
-				DriverManager.getDriverThread().set(new RemoteWebDriver(new URL(url), capabilities));
+				DriverManager.setContext(DriverContext.selenium(
+				        new RemoteWebDriver(new URL(url), capabilities)
+				));
 				return true;
 			} else
 			{

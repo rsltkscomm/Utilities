@@ -1,7 +1,7 @@
 package base;
 
-import org.testng.annotations.*;
 import constants.FrameworkConstants;
+import core.interfaces.EngineType;
 import data.TestDataUtil;
 import data.XLSReader;
 import pages.PageFactory;
@@ -10,6 +10,7 @@ import reporting.ExtentManager;
 import reporting.TestLogManager;
 import seleniumUtils.DateUtils;
 import seleniumUtils.ScreenshotUtil;
+import org.apache.poi.openxml4j.util.ZipSecureFile;
 
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -18,181 +19,213 @@ import org.openqa.selenium.WebDriver;
 import org.testng.Assert;
 import org.testng.ITestContext;
 import org.testng.ITestResult;
+import org.testng.annotations.*;
 
 public class BaseTest {
-	protected WebDriver driver;
 
-	public static ThreadLocal<String> appName = new ThreadLocal<>();
-	public static ThreadLocal<String> method_name = new ThreadLocal<>();
-	public static ThreadLocal<String> browserName = new ThreadLocal<>();
-	public static ThreadLocal<String> sheet_name = new ThreadLocal<>();
-	public static ThreadLocal<XLSReader> datatable = new ThreadLocal<>();
-	public static ThreadLocal<Integer> currentRow = new ThreadLocal<>();
+    protected DriverContext driverContext;
+    protected WebDriver driver; // legacy Selenium support
 
-	public static String currentDate;
-	public static String EndDateTime;
+    static {
+        // Allow writing Excel reports with highly compressed templates without triggering zip bomb checks
+        ZipSecureFile.setMinInflateRatio(0.0d);
+    }
 
-	@BeforeSuite(alwaysRun = true)
-	public void beforeSuite(ITestContext context) {
-		// Initialize reports and logging
-		ExtentManager.initReports();
-		TestLogManager.reloadConfiguration();
+    /* =========================
+       THREAD LOCALS
+       ========================= */
 
-		// Start Docker Grid if enabled
-		if (GridManager.checkIfGrid(System.getProperty("Browser"))) {
-			AutoDockerInstallAndRun.dockerInstallAndRun();
-			DockerManager.dockerContainterUp();
-		}
+    public static ThreadLocal<String> appName = new ThreadLocal<>();
+    public static ThreadLocal<String> method_name = new ThreadLocal<>();
+    public static ThreadLocal<String> browserName = new ThreadLocal<>();
+    public static ThreadLocal<String> sheet_name = new ThreadLocal<>();
+    public static ThreadLocal<XLSReader> datatable = new ThreadLocal<>();
+    public static ThreadLocal<Integer> currentRow = new ThreadLocal<>();
 
-		// ✅ Create LambdaTest Build once per suite
-		String suiteName = context.getSuite().getName();
-		String timestamp = DateUtils.getCurrentDate("dd-MMM-yyyy_HH-mm-ss");
-		String ltBuildName = suiteName + "_Build_" + timestamp;
-		System.setProperty("LT_BUILD", ltBuildName);
+    public static String currentDate;
+    public static String endDateTime;
 
-		TestLogManager.info("LambdaTest Build (Suite-level): " + ltBuildName);
-		currentDate = DateUtils.getCurrentDate("dd-MMM-yyyy HH:mm");
-		TestLogManager.info("==== Test Suite Started ====");
-	}
+    /* =========================
+       BEFORE SUITE
+       ========================= */
 
-	@BeforeMethod(alwaysRun = true)
-	@Parameters({ "applicationName", "sheetname" })
-	public void beforeMethod(String applicationName, String sheetname, Method method) {
-		try {
-			// Start Test Logging
-			TestLogManager.testStart(method.getName());
-			System.setProperty("LT_NAME", method.getName());
+    @BeforeSuite(alwaysRun = true)
+    public void beforeSuite(ITestContext context) {
 
-			String browser = System.getProperty("Browser");
+        ExtentManager.initReports();
+        TestLogManager.reloadConfiguration();
 
-			// Set ThreadLocal metadata
-			appName.set(applicationName);
-			sheet_name.set(sheetname);
-			method_name.set(method.getName());
-			browserName.set(browser);
+        if (GridManager.checkIfGrid(System.getProperty("Browser"))) {
+            AutoDockerInstallAndRun.dockerInstallAndRun();
+            DockerManager.dockerContainterUp();
+        }
 
-			// ✅ Ensure a fresh driver instance each time
-			DriverManager.quitDriver();
-			DriverManager.createDriver(browser);
-			driver = DriverManager.getDriver();
+        String suiteName = context.getSuite().getName();
+        String timestamp = DateUtils.getCurrentDate("dd-MMM-yyyy_HH-mm-ss");
+        System.setProperty("LT_BUILD", suiteName + "_Build_" + timestamp);
 
-			// Start Extent reporting
-			String testName = method.getAnnotation(Test.class).testName();
-			ExtentManager.startTest(method.getAnnotation(Test.class).description(), testName, browserName.get());
+        currentDate = DateUtils.getCurrentDate("dd-MMM-yyyy HH:mm");
+        TestLogManager.info("==== TEST SUITE STARTED ====");
+    }
 
-			// Load test data for this app/sheet
-			Map<String, String> appPropertyMap = Map.of(
-				"RegressionAccountSetup", System.getProperty("RegressionAccountSetup"),
-				"RegressionAudience", System.getProperty("RegressionAudience"),
-				"RegressionCommunication", System.getProperty("RegressionCommunication"),
-				"RegressionPreferences", System.getProperty("RegressionPreferences"),
-				"RegressionAnalytics", System.getProperty("RegressionAnalytics"),
-				"Deploymentchecklist", System.getProperty("Deploymentchecklist"),
-				"PageLoadTesting", System.getProperty("PageLoadTesting"),
-				"NewAccountCreationChecklist", System.getProperty("NewAccountCreationChecklist"),
-				"FeaturewiseChecklist", System.getProperty("FeaturewiseChecklist")
-			);
+    /* =========================
+       BEFORE METHOD
+       ========================= */
 
-			String dataFile = appPropertyMap.getOrDefault(appName.get(), "");
-			String testDataFile = TestDataUtil.getDataFilesPath(dataFile);
-			datatable.set(new XLSReader(PageBase.getNormalizedPath(testDataFile)));
+    @BeforeMethod(alwaysRun = true)
+    @Parameters({ "applicationName", "sheetname" })
+    public void beforeMethod(
+            String applicationName,
+            String sheetname,
+            Method method
+    ) {
 
-			TestLogManager.info("Loaded test data from: " + testDataFile);
+        try {
+            TestLogManager.testStart(method.getName());
+            System.setProperty("LT_NAME", method.getName());
 
-			TestDataUtil testDataUtil = new TestDataUtil();
-			if (!testDataUtil.isTCIDFound(this)) {
-				ExtentManager.failLabel("Test data not found for: " + method_name.get());
-				Assert.fail("Test data not found in Excel for method: " + method_name.get());
-			} else {
-				ExtentManager.infoTest("METHOD NAME FOUND -> " + method_name.get());
-			}
+            String browser = System.getProperty("Browser");
 
-			TestDataUtil.createDataRef();
-			PageBase.getDeviceSpecs();
+            appName.set(applicationName);
+            sheet_name.set(sheetname);
+            method_name.set(method.getName());
+            browserName.set(browser);
 
-			TestLogManager.info("Using LambdaTest Build: " + System.getProperty("LT_BUILD"));
-		} catch (Exception e) {
-			TestLogManager.error("Error in beforeMethod: " + e.getMessage(), e);
-			Assert.fail("Setup failed for method: " + method.getName(), e);
-		}
-	}
+            // Always start clean
+            DriverManager.quitDriver();
+            DriverManager.createDriver(browser);
 
-	@AfterMethod(alwaysRun = true)
-	public void tearDown(ITestResult result) {
-		try {
-			ScreenshotUtil.takeScreenshot();
-			switch (result.getStatus()) {
-				case ITestResult.SUCCESS -> {
-					TestLogManager.success("Test passed: " + result.getName());
-					ExtentManager.passLabel(result.getName());
-				}
-				case ITestResult.FAILURE -> {
-					TestLogManager.error("Test failed: " + result.getName(), result.getThrowable());
-					ExtentManager.failLabel(result.getName());
-					if (result.getThrowable() != null)
-						ExtentManager.failLabel(result.getThrowable().toString());
-				}
-				case ITestResult.SKIP -> {
-					TestLogManager.warning("Test skipped: " + result.getName());
-					ExtentManager.skipLabel(result.getName());
-					if (result.getThrowable() != null)
-						ExtentManager.skipLabel(result.getThrowable().toString());
-				}
-			}
+            driverContext = DriverManager.getContext();
 
-			// Excel reporting
-			String flag = System.getProperty("DateWiseReport") + "," +
-						  System.getProperty("ReleasewiseReport") + "," +
-						  System.getProperty("AccountWiseReport");
+            // Legacy Selenium support
+            if (driverContext.getEngineType() == EngineType.SELENIUM) {
+                driver = driverContext.getWebDriver();
+            }
 
-			String methodname = result.getMethod().getMethodName().toUpperCase();
-			String status = System.getProperty("Account") + "_" + System.getProperty("Environment");
+            Test test = method.getAnnotation(Test.class);
+            ExtentManager.startTest(
+                    test.description(),
+                    test.testName(),
+                    browser
+            );
 
-			ExcelReportGenerator.writeToExcel(
-					FrameworkConstants.ONEDRIVE_BASE_PATH,
-					"Daily,Release,Account",
-					flag,
-					methodname,
-					System.getProperty("ReleaseVersion"),
-					status,
-					System.getProperty("Account"),
-					System.getProperty("SuiteName")
-			);
+            loadTestData(method);
+            
+            // Device / browser info
+            driverContext.getAutomationContext().getDeviceSpecs();
 
-		} catch (Exception e) {
-			TestLogManager.warning("Error during teardown for: " + result.getName() + " -> " + e.getMessage());
-		} finally {
-			// ✅ Always cleanup
-			try {
-				DriverManager.quitDriver();
-			} catch (Exception e) {
-				TestLogManager.warning("Driver cleanup skipped or failed.");
-			}
+        } catch (Exception e) {
+            TestLogManager.error("BeforeMethod failed", e);
+            Assert.fail("Test setup failed for: " + method.getName(), e);
+        }
+    }
 
-			try {
-				if (datatable.get() != null) datatable.remove();
-			} catch (Exception ignored) {}
-		}
-	}
+    /* =========================
+       LOAD TEST DATA
+       ========================= */
 
-	@AfterSuite(alwaysRun = true)
-	public void afterSuite() {
-		try {
-			ExtentManager.flushReports();
+    private void loadTestData(Method method) {
 
-			if (GridManager.isGrid.get().equals(true)) {
-				DockerManager.dockerContainterDown();
-			}
+        Map<String, String> appPropertyMap = Map.of(
+                "RegressionAccountSetup", System.getProperty("RegressionAccountSetup"),
+                "RegressionAudience", System.getProperty("RegressionAudience"),
+                "RegressionCommunication", System.getProperty("RegressionCommunication"),
+                "RegressionPreferences", System.getProperty("RegressionPreferences"),
+                "RegressionAnalytics", System.getProperty("RegressionAnalytics"),
+                "Deploymentchecklist", System.getProperty("Deploymentchecklist")
+        );
 
-			ExtentManager.openExtentReport();
-			EndDateTime = DateUtils.getCurrentDate(" HH:mm");
-			TestLogManager.info("==== Test Suite Finished ====");
-		} catch (Exception e) {
-			TestLogManager.warning("Error in afterSuite: " + e.getMessage());
-		}
-	}
+        String dataFile = appPropertyMap.getOrDefault(appName.get(), "");
+        String testDataFile = TestDataUtil.getDataFilesPath(dataFile);
 
-	public static PageFactory getPageFactory() {
-		return new PageFactory(DriverManager.getDriver());
-	}
+        datatable.set(new XLSReader(PageBase.getNormalizedPath(testDataFile)));
+
+        TestDataUtil util = new TestDataUtil();
+        if (!util.isTCIDFound(this)) {
+            ExtentManager.failLabel("Test data not found for: " + method_name.get());
+            Assert.fail("No test data found for method: " + method_name.get());
+        }
+
+        TestDataUtil.createDataRef();
+    }
+
+    /* =========================
+       AFTER METHOD
+       ========================= */
+
+    @AfterMethod(alwaysRun = true)
+    public void tearDown(ITestResult result) {
+
+        try {
+            ScreenshotUtil.takeScreenshot();
+
+            switch (result.getStatus()) {
+                case ITestResult.SUCCESS ->
+                        ExtentManager.passLabel(result.getName());
+
+                case ITestResult.FAILURE -> {
+                    ExtentManager.failLabel(result.getName());
+                    if (result.getThrowable() != null) {
+                        ExtentManager.failLabel(result.getThrowable().toString());
+                    }
+                }
+
+                case ITestResult.SKIP ->
+                        ExtentManager.skipLabel(result.getName());
+            }
+
+            ExcelReportGenerator.writeToExcel(
+                    FrameworkConstants.ONEDRIVE_BASE_PATH,
+                    "Daily,Release,Account",
+                    System.getProperty("DateWiseReport") + "," +
+                            System.getProperty("ReleasewiseReport") + "," +
+                            System.getProperty("AccountWiseReport"),
+                    result.getMethod().getMethodName().toUpperCase(),
+                    System.getProperty("ReleaseVersion"),
+                    System.getProperty("Account") + "_" + System.getProperty("Environment"),
+                    System.getProperty("Account"),
+                    System.getProperty("SuiteName")
+            );
+
+        } finally {
+            DriverManager.quitDriver();
+            datatable.remove();
+        }
+    }
+
+    /* =========================
+       AFTER SUITE
+       ========================= */
+
+    @AfterSuite(alwaysRun = true)
+    public void afterSuite() {
+
+        try {
+            ExtentManager.flushReports();
+
+            if (GridManager.isGrid.get().equals(true)) {
+                DockerManager.dockerContainterDown();
+            }
+
+            ExtentManager.openExtentReport();
+            endDateTime = DateUtils.getCurrentDate("HH:mm");
+
+            TestLogManager.info("==== TEST SUITE FINISHED ====");
+
+        } catch (Exception e) {
+            TestLogManager.warning("AfterSuite error: " + e.getMessage());
+        }
+    }
+
+    /* =========================
+       PAGE FACTORY ACCESS
+       ========================= */
+
+    protected PageFactory getPageFactory() {
+        return new PageFactory(driverContext);
+    }
+
+    protected DriverContext getDriverContext() {
+        return driverContext;
+    }
 }
