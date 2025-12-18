@@ -1,0 +1,229 @@
+package core.selenium;
+
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.NoSuchElementException;
+
+import org.openqa.selenium.Alert;
+import org.openqa.selenium.ElementClickInterceptedException;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.StaleElementReferenceException;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.FluentWait;
+import org.openqa.selenium.support.ui.Wait;
+import org.openqa.selenium.support.ui.WebDriverWait;
+
+import core.interfaces.WaitInterface;
+
+/**
+ * Utility class for handling all types of Selenium waits.
+ * Supports both String locators and WebElement objects.
+ */
+public class SeleniumWaitUtil extends SeleniumDateUtils implements WaitInterface {
+
+    protected WebDriver driver;
+
+    public SeleniumWaitUtil(WebDriver driver) {
+        super(driver);
+        this.driver = driver;
+    }
+
+    // ---------------------------------------------------------
+    // 🔹 IMPLICIT WAIT
+    // ---------------------------------------------------------
+    public void setImplicitWait(int sec) {
+        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(sec));
+        System.out.println("Implicit wait set to " + sec + " seconds");
+    }
+
+    // ---------------------------------------------------------
+    // 🔹 EXPLICIT WAITS
+    // ---------------------------------------------------------
+
+    public WebElement waitForClickable(Object pr, int sec) {
+        return new WebDriverWait(driver, Duration.ofSeconds(sec))
+                .until(ExpectedConditions.elementToBeClickable(getElement(pr)));
+    }
+
+    public WebElement waitForVisible(Object pr, int sec) {
+        return new WebDriverWait(driver, Duration.ofSeconds(sec))
+                .until(ExpectedConditions.visibilityOf(getElement(pr)));
+    }
+
+    public WebElement waitForPresence(Object pr, int sec) {
+        if (pr instanceof String) {
+            return new WebDriverWait(driver, Duration.ofSeconds(sec))
+                    .until(ExpectedConditions.presenceOfElementLocated(autolocator(pr.toString())));
+        } else {
+            return new WebDriverWait(driver, Duration.ofSeconds(sec))
+                    .until(ExpectedConditions.visibilityOf((WebElement) pr));
+        }
+    }
+    
+    public boolean explicitWaitTextToBePresent(String text, Object pr, int sec) {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(sec));
+
+        if (pr instanceof String) {
+            WebElement element = getElement(pr);
+            return wait.until(ExpectedConditions.textToBePresentInElementValue(element, text));
+        } else if (pr instanceof WebElement) {
+            WebElement element = wait.until(ExpectedConditions.visibilityOf((WebElement) pr));
+            return element != null;
+        } else {
+            throw new IllegalArgumentException("Parameter must be String or WebElement");
+        }
+    }
+
+    public boolean waitForInvisibility(Object pr, int sec) {
+        if (pr instanceof String) {
+            return new WebDriverWait(driver, Duration.ofSeconds(sec))
+                    .until(ExpectedConditions.invisibilityOfElementLocated(autolocator(pr.toString())));
+        } else {
+            return new WebDriverWait(driver, Duration.ofSeconds(sec))
+                    .until(ExpectedConditions.invisibilityOf((WebElement) pr));
+        }
+    }
+
+    public boolean waitForText(Object pr, String text, int sec) {
+        if (pr instanceof String) {
+            return new WebDriverWait(driver, Duration.ofSeconds(sec))
+                    .until(ExpectedConditions.textToBePresentInElementLocated(autolocator(pr.toString()), text));
+        } else {
+            return new WebDriverWait(driver, Duration.ofSeconds(sec))
+                    .until(ExpectedConditions.textToBePresentInElement((WebElement) pr, text));
+        }
+    }
+
+    public boolean waitForTitle(String title, int sec) {
+        return new WebDriverWait(driver, Duration.ofSeconds(sec))
+                .until(ExpectedConditions.titleIs(title));
+    }
+
+    public boolean waitForTitleContains(String partialTitle, int sec) {
+        return new WebDriverWait(driver, Duration.ofSeconds(sec))
+                .until(ExpectedConditions.titleContains(partialTitle));
+    }
+
+    public boolean waitForUrl(String url, int sec) {
+        return new WebDriverWait(driver, Duration.ofSeconds(sec))
+                .until(ExpectedConditions.urlToBe(url));
+    }
+
+    public boolean waitForUrlContains(String partialUrl, int sec) {
+        return new WebDriverWait(driver, Duration.ofSeconds(sec))
+                .until(ExpectedConditions.urlContains(partialUrl));
+    }
+
+    public Alert waitForAlert(int sec) {
+        return new WebDriverWait(driver, Duration.ofSeconds(sec))
+                .until(ExpectedConditions.alertIsPresent());
+    }
+
+    public boolean waitForStaleness(WebElement element, int sec) {
+        return new WebDriverWait(driver, Duration.ofSeconds(sec))
+                .until(ExpectedConditions.stalenessOf(element));
+    }
+
+    public boolean waitForFrame(Object pr, int sec) {
+        if (pr instanceof String) {
+            new WebDriverWait(driver, Duration.ofSeconds(sec))
+                    .until(ExpectedConditions.frameToBeAvailableAndSwitchToIt(autolocator(pr.toString())));
+        } else {
+            new WebDriverWait(driver, Duration.ofSeconds(sec))
+                    .until(ExpectedConditions.frameToBeAvailableAndSwitchToIt((WebElement) pr));
+        }
+        return true;
+    }
+
+    // ---------------------------------------------------------
+    // 🔹 FLUENT WAIT
+    // ---------------------------------------------------------
+    public WebElement fluentWait(Object pr, int timeoutSec, int pollingSec) {
+        Wait<WebDriver> wait = new FluentWait<>(driver)
+                .withTimeout(Duration.ofSeconds(timeoutSec))
+                .pollingEvery(Duration.ofSeconds(pollingSec))
+                .ignoreAll(Arrays.asList(
+                        NoSuchElementException.class,
+                        StaleElementReferenceException.class,
+                        ElementClickInterceptedException.class
+                ));
+
+        return wait.until(d -> {
+            WebElement element = getElement(pr);
+            return (element != null && element.isDisplayed()) ? element : null;
+        });
+    }
+
+    // ---------------------------------------------------------
+    // 🔹 CUSTOM WAITS
+    // ---------------------------------------------------------
+    public boolean waitForPageLoad(int sec) {
+        return new WebDriverWait(driver, Duration.ofSeconds(sec))
+                .until(webDriver -> ((JavascriptExecutor) webDriver)
+                        .executeScript("return document.readyState").equals("complete"));
+    }
+
+    public boolean waitForJQueryLoad(int sec) {
+        return new WebDriverWait(driver, Duration.ofSeconds(sec))
+                .until(webDriver -> (Boolean) ((JavascriptExecutor) webDriver)
+                        .executeScript("return !!window.jQuery && jQuery.active == 0"));
+    }
+
+    public boolean waitForJSReady(int sec) {
+        return new WebDriverWait(driver, Duration.ofSeconds(sec))
+                .until(webDriver -> ((JavascriptExecutor) webDriver)
+                        .executeScript("return document.readyState").toString().equals("complete"));
+    }
+
+    public void turnOnImplicityWait() {
+        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(30));
+    }
+
+    public void turnOffImplicityWait() {
+        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(0));
+    }
+
+	public void wait(int seconds) {
+	    try {
+	        Thread.sleep(seconds * 1000);
+	    } catch (InterruptedException e) {
+	        Thread.currentThread().interrupt();
+	    }
+	}
+	
+	public void wait_Milli_Seconds(int seconds) {
+	    try {
+	        Thread.sleep(seconds);
+	    } catch (InterruptedException e) {
+	        Thread.currentThread().interrupt();
+	    }
+	}
+	
+	/**
+	 * Sleeps for the given total time but prints a message every 5 minutes.
+	 *
+	 * @param totalMillis total time to sleep (e.g., 780000 for 13 min)
+	 * @throws InterruptedException if the thread is interrupted
+	 */
+	public static void sleepWithFiveMinuteLogs(long totalMillis) throws InterruptedException
+	{
+		final long chunkMillis = 5 * 60 * 1000; // 5 minutes = 300000 ms
+		long remaining = totalMillis;
+		int chunkCount = 0;
+
+		while (remaining > 0)
+		{
+			long sleepTime = Math.min(chunkMillis, remaining);
+			Thread.sleep(sleepTime);
+
+			chunkCount++;
+			System.out.println("Completed " + chunkCount * 5 + " minutes...");
+
+			remaining -= sleepTime;
+		}
+
+		System.out.println("Total sleep of " + (totalMillis / 60000.0) + " minutes is done.");
+	}
+}

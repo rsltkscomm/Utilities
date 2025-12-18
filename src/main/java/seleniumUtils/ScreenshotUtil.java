@@ -34,47 +34,6 @@ public class ScreenshotUtil extends WaitUtil {
      * @param element        element to highlight (can be null)
      * @return path of saved screenshot
      */
-    public static synchronized String takeScreenshot(String screenshotName, WebElement element) {
-        String screenshotPath = null;
-        try {
-            // Highlight element if provided
-            if (element != null) {
-                highlightElement(element);
-            }
-
-            // Generate timestamp
-            String timeStamp = new SimpleDateFormat("yyMMdd_HHmmssSSS").format(new Date());
-
-            // Define screenshot path
-            String screenshotDir = PageBase.detectFilePath(System.getProperty("user.dir")
-                    + "/src/test/resources/ExtentReports/ScreenShots/");
-            File destPath = new File(screenshotDir + screenshotName + "_" + timeStamp + ".jpg");
-
-            // Create directory if it does not exist
-            if (!destPath.getParentFile().exists()) {
-                destPath.getParentFile().mkdirs();
-            }
-
-            // Capture screenshot
-            File srcFile = ((TakesScreenshot) DriverManager.getDriver()).getScreenshotAs(OutputType.FILE);
-            FileUtils.copyFile(srcFile, destPath);
-            screenshotPath = destPath.getAbsolutePath();
-
-            // Attach screenshot to Extent report
-            ExtentManager.getTest().log(Status.INFO, "Screenshot captured",
-                    MediaEntityBuilder.createScreenCaptureFromPath(screenshotPath).build());
-
-            // Remove highlight
-            if (element != null) {
-                removeHighlight(element);
-            }
-
-        } catch (IOException e) {
-            ExtentManager.getTest().log(Status.WARNING, "Unable to take screenshot: " + e.getMessage());
-        }
-        return screenshotPath;
-    }
-    
     public static synchronized void takeScreenshot()
 	{
 		try
@@ -147,8 +106,4 @@ public class ScreenshotUtil extends WaitUtil {
         }
     }
 
-    // Overloaded method for old usage (no element)
-    public static synchronized String takeScreenshot(String screenshotName) {
-        return takeScreenshot(screenshotName, null);
-    }
 }
