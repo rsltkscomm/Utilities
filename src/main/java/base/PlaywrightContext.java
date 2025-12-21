@@ -10,19 +10,22 @@ import com.microsoft.playwright.Page;
 
 import core.interfaces.EngineType;
 
-
 public class PlaywrightContext implements AutomationContext {
 
-    private final Page page;
+    private final DriverContext driverContext;
 
-    public PlaywrightContext(Page page) {
-        this.page = page;
+    public PlaywrightContext(DriverContext driverContext) {
+        this.driverContext = driverContext;
     }
+
+    /* ---------------- ENGINE ---------------- */
 
     @Override
     public EngineType getEngineType() {
         return EngineType.PLAYWRIGHT;
     }
+
+    /* ---------------- ENVIRONMENT ---------------- */
 
     @Override
     public String getLoginURL() {
@@ -36,6 +39,8 @@ public class PlaywrightContext implements AutomationContext {
         return System.getProperty("SuiteName").toUpperCase();
     }
 
+    /* ---------------- FILE UTILS ---------------- */
+
     @Override
     public String getNormalizedPath(String path) {
         return path.replace("/", File.separator)
@@ -45,14 +50,16 @@ public class PlaywrightContext implements AutomationContext {
 
     @Override
     public String detectFilePath(String path) {
-        // Playwright does not need LocalFileDetector
         return getNormalizedPath(path);
     }
+
+    /* ---------------- DEVICE INFO ---------------- */
 
     @Override
     public Map<String, String> getDeviceSpecs() {
         Map<String, String> deviceInfo = new LinkedHashMap<>();
 
+        Page page = driverContext.getPage();
         Browser browser = page.context().browser();
         BrowserType type = browser.browserType();
 
@@ -64,8 +71,10 @@ public class PlaywrightContext implements AutomationContext {
 
         return deviceInfo;
     }
-    
+
+    /* ---------------- PAGE ACCESS ---------------- */
+
     public Page getPage() {
-        return page;
+        return driverContext.getPage();
     }
 }

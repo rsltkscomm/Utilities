@@ -9,6 +9,8 @@ import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.safari.SafariOptions;
 
+import base.DriverContext;
+import core.interfaces.EngineType;
 import reporting.TestLogManager;
 
 import java.net.URL;
@@ -17,157 +19,194 @@ import java.util.Map;
 
 /**
  * Driver strategy for running tests on BrowserStack Selenium Grid.
- * Usage: set system properties or environment variables, then select browser "browserstack" or "bs".
- * Required: BROWSERSTACK_USERNAME, BROWSERSTACK_ACCESS_KEY
+ * NOTE: Selenium ONLY. Playwright is NOT supported here.
  */
-public class BrowserStackDriverStrategy implements DriverStrategy
-{
-	@Override
-	public WebDriver createDriver()
-	{
-		return createDriver(null);
-	}
+public class BrowserStackDriverStrategy implements DriverStrategy {
 
-	@Override
-	public WebDriver createDriver(DesiredCapabilities capabilities)
-	{
-		try
-		{
-			String username = System.getProperty("BROWSERSTACK_USERNAME", System.getProperty("bs.username"));
-			String accessKey = System.getProperty("BROWSERSTACK_ACCESS_KEY", System.getProperty("bs.accessKey"));
+    @Override
+    public DriverContext createDriver() {
+        return createDriver(null);
+    }
 
-			if (isNullOrEmpty(username) || isNullOrEmpty(accessKey))
-			{
-				throw new IllegalArgumentException("BrowserStack credentials not provided. Set BROWSERSTACK_USERNAME and BROWSERSTACK_ACCESS_KEY");
-			}
+    @Override
+    public DriverContext createDriver(DesiredCapabilities capabilities) {
 
-			String gridUrl = System.getProperty("BROWSERSTACK_GRID_URL", System.getProperty("bs.gridUrl"));
-			if (isNullOrEmpty(gridUrl))
-			{
-				gridUrl = "https://" + username + ":" + accessKey + "@hub-cloud.browserstack.com/wd/hub";
-			}
-			URL remoteUrl = new URL(gridUrl);
+        EngineType engine =
+                EngineType.valueOf(System.getProperty("engine", "SELENIUM"));
 
-			String browserName = System.getProperty("BS_BROWSER", System.getProperty("browserName", "chrome"));
-			String browserVersion = System.getProperty("BS_BROWSER_VERSION", System.getProperty("browserVersion", "latest"));
-			String platformName = System.getProperty("BS_PLATFORM", System.getProperty("platformName", "Windows 11"));
+        if (engine == EngineType.PLAYWRIGHT) {
+            throw new UnsupportedOperationException(
+                "BrowserStackDriverStrategy supports SELENIUM only. " +
+                "Playwright must use Playwright-native cloud providers."
+            );
+        }
 
-			MutableCapabilities options = buildOptions(browserName, capabilities);
+        try {
+            String username = System.getProperty(
+                    "BROWSERSTACK_USERNAME",
+                    System.getProperty("bs.username")
+            );
 
-			Map<String, Object> bsOptions = new HashMap<>();
-			bsOptions.put("os", platformName);
-			bsOptions.put("browserVersion", browserVersion);
-			bsOptions.put("projectName", System.getProperty("BS_PROJECT", "Resulticks-Automation-Project"));
-			bsOptions.put("buildName", System.getProperty("BS_BUILD", "Resulticks-Automation-Build"));
-			bsOptions.put("sessionName", System.getProperty("BS_NAME", "BrowserStack-Test"));
-			bsOptions.put("seleniumVersion", System.getProperty("BS_SELENIUM_VERSION", "4.22.0"));
-			putIfPresent(bsOptions, "resolution", System.getProperty("BS_RESOLUTION", "1920x1080"));
-			putIfPresent(bsOptions, "networkLogs", System.getProperty("BS_NETWORK", "true"));
-			putIfPresent(bsOptions, "video", System.getProperty("BS_VIDEO", "true"));
-			putIfPresent(bsOptions, "consoleLogs", System.getProperty("BS_CONSOLE", "info"));
-			putIfPresent(bsOptions, "geoLocation", System.getProperty("BS_GEO_LOCATION", "IN"));
-			putIfPresent(bsOptions, "debug", System.getProperty("BS_DEBUG", "true"));
+            String accessKey = System.getProperty(
+                    "BROWSERSTACK_ACCESS_KEY",
+                    System.getProperty("bs.accessKey")
+            );
 
-			// Attach BrowserStack options
-			if (options instanceof ChromeOptions chrom)
-			{
-				chrom.setBrowserVersion(browserVersion);
-				chrom.setCapability("bstack:options", bsOptions);
-			}
-			else if (options instanceof FirefoxOptions fox)
-			{
-				fox.setBrowserVersion(browserVersion);
-				fox.setCapability("bstack:options", bsOptions);
-			}
-			else if (options instanceof EdgeOptions edge)
-			{
-				edge.setBrowserVersion(browserVersion);
-				edge.setCapability("bstack:options", bsOptions);
-			}
-			else if (options instanceof SafariOptions safari)
-			{
-				safari.setBrowserVersion(browserVersion);
-				safari.setCapability("bstack:options", bsOptions);
-			}
-			else
-			{
-				options.setCapability("bstack:options", bsOptions);
-			}
+            if (isNullOrEmpty(username) || isNullOrEmpty(accessKey)) {
+                throw new IllegalArgumentException(
+                        "BrowserStack credentials not provided. " +
+                        "Set BROWSERSTACK_USERNAME and BROWSERSTACK_ACCESS_KEY"
+                );
+            }
 
-			TestLogManager.info("Connecting to BrowserStack Grid: " + remoteUrl);
-			return new RemoteWebDriver(remoteUrl, options);
-		}
-		catch (Exception e)
-		{
-			TestLogManager.error("Failed to create BrowserStack RemoteWebDriver", e);
-			throw new RuntimeException("BrowserStack driver creation failed", e);
-		}
-	}
+            String gridUrl = System.getProperty(
+                    "BROWSERSTACK_GRID_URL",
+                    System.getProperty("bs.gridUrl")
+            );
 
-	@Override
-	public String getBrowserName()
-	{
-		return "browserstack";
-	}
+            if (isNullOrEmpty(gridUrl)) {
+                gridUrl = "https://" + username + ":" + accessKey +
+                          "@hub-cloud.browserstack.com/wd/hub";
+            }
 
-	@Override
-	public boolean supports(String browserType)
-	{
-		return "browserstack".equalsIgnoreCase(browserType) || "bs".equalsIgnoreCase(browserType);
-	}
+            URL remoteUrl = new URL(gridUrl);
 
-	private MutableCapabilities buildOptions(String browserName, DesiredCapabilities extra)
-	{
-		String headlessFlag = System.getProperty("BS_HEADLESS", System.getProperty("headless", "false"));
-		boolean headless = Boolean.parseBoolean(headlessFlag);
+            String browserName =
+                    System.getProperty("BS_BROWSER",
+                            System.getProperty("browserName", "chrome"));
 
-		if (browserName == null || browserName.isBlank())
-		{
-			browserName = "chrome";
-		}
+            String browserVersion =
+                    System.getProperty("BS_BROWSER_VERSION",
+                            System.getProperty("browserVersion", "latest"));
 
-		switch (browserName.toLowerCase())
-		{
-			case "chrome" -> {
-				ChromeOptions opts = new ChromeOptions();
-				if (headless) opts.addArguments("--headless=new", "--disable-gpu");
-				opts.addArguments("--no-sandbox", "--disable-dev-shm-usage");
-				if (extra != null) opts.merge(extra);
-				return opts;
-			}
-			case "firefox" -> {
-				FirefoxOptions opts = new FirefoxOptions();
-				if (headless) opts.addArguments("-headless");
-				if (extra != null) opts.merge(extra);
-				return opts;
-			}
-			case "edge" -> {
-				EdgeOptions opts = new EdgeOptions();
-				if (headless) opts.addArguments("--headless=new");
-				if (extra != null) opts.merge(extra);
-				return opts;
-			}
-			case "safari" -> {
-				SafariOptions opts = new SafariOptions();
-				if (extra != null) opts.merge(extra);
-				return opts;
-			}
-			default -> {
-				ChromeOptions opts = new ChromeOptions();
-				if (headless) opts.addArguments("--headless=new");
-				if (extra != null) opts.merge(extra);
-				return opts;
-			}
-		}
-	}
+            String platformName =
+                    System.getProperty("BS_PLATFORM",
+                            System.getProperty("platformName", "Windows 11"));
 
-	private static void putIfPresent(Map<String, Object> map, String key, Object value)
-	{
-		if (value != null) map.put(key, value);
-	}
+            MutableCapabilities options =
+                    buildOptions(browserName, capabilities);
 
-	private static boolean isNullOrEmpty(String s)
-	{
-		return s == null || s.isBlank();
-	}
+            Map<String, Object> bsOptions = new HashMap<>();
+            bsOptions.put("os", platformName);
+            bsOptions.put("browserVersion", browserVersion);
+            bsOptions.put("projectName",
+                    System.getProperty("BS_PROJECT", "Resulticks-Automation-Project"));
+            bsOptions.put("buildName",
+                    System.getProperty("BS_BUILD", "Resulticks-Automation-Build"));
+            bsOptions.put("sessionName",
+                    System.getProperty("BS_NAME", "BrowserStack-Test"));
+            bsOptions.put("seleniumVersion",
+                    System.getProperty("BS_SELENIUM_VERSION", "4.22.0"));
+
+            putIfPresent(bsOptions, "resolution",
+                    System.getProperty("BS_RESOLUTION", "1920x1080"));
+            putIfPresent(bsOptions, "networkLogs",
+                    System.getProperty("BS_NETWORK", "true"));
+            putIfPresent(bsOptions, "video",
+                    System.getProperty("BS_VIDEO", "true"));
+            putIfPresent(bsOptions, "consoleLogs",
+                    System.getProperty("BS_CONSOLE", "info"));
+            putIfPresent(bsOptions, "geoLocation",
+                    System.getProperty("BS_GEO_LOCATION", "IN"));
+            putIfPresent(bsOptions, "debug",
+                    System.getProperty("BS_DEBUG", "true"));
+
+            attachBrowserStackOptions(options, browserVersion, bsOptions);
+
+            TestLogManager.info("Connecting to BrowserStack Grid: " + remoteUrl);
+
+            WebDriver driver = new RemoteWebDriver(remoteUrl, options);
+
+            return DriverContext.selenium(driver);
+
+        } catch (Exception e) {
+            TestLogManager.error("Failed to create BrowserStack RemoteWebDriver", e);
+            throw new RuntimeException("BrowserStack driver creation failed", e);
+        }
+    }
+
+    @Override
+    public String getBrowserName() {
+        return "browserstack";
+    }
+
+    @Override
+    public boolean supports(String browserType) {
+        return "browserstack".equalsIgnoreCase(browserType)
+            || "bs".equalsIgnoreCase(browserType);
+    }
+
+    /* ===================== INTERNAL HELPERS ===================== */
+
+    private static void attachBrowserStackOptions(
+            MutableCapabilities options,
+            String browserVersion,
+            Map<String, Object> bsOptions
+    ) {
+        if (options instanceof ChromeOptions chrom) {
+            chrom.setBrowserVersion(browserVersion);
+            chrom.setCapability("bstack:options", bsOptions);
+        } else if (options instanceof FirefoxOptions fox) {
+            fox.setBrowserVersion(browserVersion);
+            fox.setCapability("bstack:options", bsOptions);
+        } else if (options instanceof EdgeOptions edge) {
+            edge.setBrowserVersion(browserVersion);
+            edge.setCapability("bstack:options", bsOptions);
+        } else if (options instanceof SafariOptions safari) {
+            safari.setBrowserVersion(browserVersion);
+            safari.setCapability("bstack:options", bsOptions);
+        } else {
+            options.setCapability("bstack:options", bsOptions);
+        }
+    }
+
+    private MutableCapabilities buildOptions(
+            String browserName,
+            DesiredCapabilities extra
+    ) {
+        boolean headless =
+                Boolean.parseBoolean(
+                        System.getProperty("BS_HEADLESS",
+                                System.getProperty("headless", "false")));
+
+        if (browserName == null || browserName.isBlank()) {
+            browserName = "chrome";
+        }
+
+        MutableCapabilities opts;
+
+        switch (browserName.toLowerCase()) {
+            case "firefox" -> {
+                FirefoxOptions o = new FirefoxOptions();
+                if (headless) o.addArguments("-headless");
+                opts = o;
+            }
+            case "edge" -> {
+                EdgeOptions o = new EdgeOptions();
+                if (headless) o.addArguments("--headless=new");
+                opts = o;
+            }
+            case "safari" -> opts = new SafariOptions();
+            default -> {
+                ChromeOptions o = new ChromeOptions();
+                if (headless) o.addArguments("--headless=new", "--disable-gpu");
+                o.addArguments("--no-sandbox", "--disable-dev-shm-usage");
+                opts = o;
+            }
+        }
+
+        if (extra != null) {
+            opts.merge(extra);
+        }
+
+        return opts;
+    }
+
+    private static void putIfPresent(Map<String, Object> map, String key, Object value) {
+        if (value != null) map.put(key, value);
+    }
+
+    private static boolean isNullOrEmpty(String s) {
+        return s == null || s.isBlank();
+    }
 }

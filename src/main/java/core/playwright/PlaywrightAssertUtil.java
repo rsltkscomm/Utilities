@@ -6,22 +6,32 @@ import java.util.List;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 
+import base.DriverContext;
 import core.interfaces.AssertInterface;
 import reporting.ExtentManager;
 import reporting.TestLogManager;
 
-public class PlaywrightAssertUtil extends PlaywrightElementUtil implements AssertInterface {
+public class PlaywrightAssertUtil extends PlaywrightElementUtil
+        implements AssertInterface {
 
-    private final Page page;
+    protected final DriverContext driverContext;
 
-    public PlaywrightAssertUtil(Page page) {
-        super(page);
-        this.page = page;
+    public PlaywrightAssertUtil(DriverContext driverContext) {
+        super(driverContext); // ✅ parent now also uses DriverContext
+        this.driverContext = driverContext;
+    }
+
+    /**
+     * Always resolve the CURRENT active page
+     */
+    protected Page page() {
+        return driverContext.getPage();
     }
 
     // ------------------------------------------------------------------
     // LOGGING WITH SCREENSHOT
     // ------------------------------------------------------------------
+
     @Override
     public boolean writeLog(boolean expression, String passLog, String failLog) {
         if (expression) {
@@ -62,6 +72,7 @@ public class PlaywrightAssertUtil extends PlaywrightElementUtil implements Asser
     // ------------------------------------------------------------------
     // PLACEHOLDER CHECK
     // ------------------------------------------------------------------
+
     @Override
     public boolean placeholderValueCheck(String locatorKey, String placeHolderText) {
         Locator locator = resolveLocator(locatorKey);
@@ -86,8 +97,10 @@ public class PlaywrightAssertUtil extends PlaywrightElementUtil implements Asser
     // ------------------------------------------------------------------
     // BACKGROUND COLOR VALIDATION
     // ------------------------------------------------------------------
+
     @Override
-    public boolean validateUiBackgroundColour(String cssProperty, String pr, String expectedHex) {
+    public boolean validateUiBackgroundColour(
+            String cssProperty, String pr, String expectedHex) {
         try {
             Locator locator = resolveLocator(pr);
 
@@ -96,7 +109,9 @@ public class PlaywrightAssertUtil extends PlaywrightElementUtil implements Asser
                 cssProperty
             ).toString();
 
-            String rgb = cssValue.substring(cssValue.indexOf("(") + 1, cssValue.indexOf(")"));
+            String rgb = cssValue.substring(
+                cssValue.indexOf("(") + 1, cssValue.indexOf(")")
+            );
             String[] colors = rgb.replace(" ", "").split(",");
 
             String actualHex = String.format(
@@ -111,14 +126,16 @@ public class PlaywrightAssertUtil extends PlaywrightElementUtil implements Asser
             writeLog(
                 isMatch,
                 "Background colour matches expected: " + actualHex,
-                "Background colour mismatch. Expected: " + expectedHex + ", Found: " + actualHex
+                "Background colour mismatch. Expected: " + expectedHex +
+                ", Found: " + actualHex
             );
 
             return isMatch;
 
         } catch (Exception e) {
             ExtentManager.warningTest(
-                "Error validating background colour for locator [" + pr + "]: " + e.getMessage()
+                "Error validating background colour for locator [" +
+                pr + "]: " + e.getMessage()
             );
             return false;
         }
@@ -127,8 +144,10 @@ public class PlaywrightAssertUtil extends PlaywrightElementUtil implements Asser
     // ------------------------------------------------------------------
     // MULTI VALUE UI ASSERT
     // ------------------------------------------------------------------
+
     @Override
-    public boolean uiPageEqualsWithMultipleInputValue(String locatorKey, String testDatas) {
+    public boolean uiPageEqualsWithMultipleInputValue(
+            String locatorKey, String testDatas) {
 
         List<String> uiTexts = resolveLocator(locatorKey)
                 .allTextContents()
@@ -139,7 +158,9 @@ public class PlaywrightAssertUtil extends PlaywrightElementUtil implements Asser
         String[] expectedValues = testDatas.split(",");
 
         if (uiTexts.isEmpty()) {
-            ExtentManager.getTest().fail("No elements found for locator: " + locatorKey);
+            ExtentManager.getTest().fail(
+                "No elements found for locator: " + locatorKey
+            );
             takeScreenshot();
             return false;
         }
@@ -147,7 +168,8 @@ public class PlaywrightAssertUtil extends PlaywrightElementUtil implements Asser
         if (uiTexts.size() != expectedValues.length) {
             ExtentManager.getTest().fail(
                 "UI values count (" + uiTexts.size() +
-                ") does not match expected count (" + expectedValues.length + ")"
+                ") does not match expected count (" +
+                expectedValues.length + ")"
             );
             return false;
         }
@@ -160,12 +182,14 @@ public class PlaywrightAssertUtil extends PlaywrightElementUtil implements Asser
 
             if (actual.equals(expected)) {
                 ExtentManager.getTest().info(
-                    "UI text <b>'" + actual + "'</b> matches expected."
+                    "UI text <b>'" + actual +
+                    "'</b> matches expected."
                 );
             } else {
                 ExtentManager.getTest().fail(
                     "UI text <b>'" + actual +
-                    "'</b> does NOT match expected <b>'" + expected + "'</b>"
+                    "'</b> does NOT match expected <b>'" +
+                    expected + "'</b>"
                 );
                 allMatch = false;
             }
@@ -176,18 +200,23 @@ public class PlaywrightAssertUtil extends PlaywrightElementUtil implements Asser
     // ------------------------------------------------------------------
     // SIMPLE TEXT MATCH
     // ------------------------------------------------------------------
+
     @Override
-    public boolean uiPageEqualswithInputValue(String txt, String actualText) {
+    public boolean uiPageEqualswithInputValue(
+            String txt, String actualText) {
+
         boolean flag = txt.trim().equals(actualText.trim());
 
         if (flag) {
             ExtentManager.infoTest(
-                "UI text <b>'" + txt + "'</b> is displayed as expected."
+                "UI text <b>'" + txt +
+                "'</b> is displayed as expected."
             );
         } else {
             ExtentManager.warningTest(
                 "UI text <b>'" + txt +
-                "'</b> is NOT displayed as expected <b>" + actualText + "</b>"
+                "'</b> is NOT displayed as expected <b>" +
+                actualText + "</b>"
             );
         }
         return flag;
@@ -196,6 +225,7 @@ public class PlaywrightAssertUtil extends PlaywrightElementUtil implements Asser
     // ------------------------------------------------------------------
     // BASE64 DECODE
     // ------------------------------------------------------------------
+
     @Override
     public String decodeBase64ToText(String base64Text) {
         return new String(Base64.getDecoder().decode(base64Text));

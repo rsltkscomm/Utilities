@@ -1,37 +1,43 @@
 package patterns.strategy;
 
-import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.remote.DesiredCapabilities;
 
+import base.DriverContext;
+
 /**
- * Strategy interface for creating different types of WebDriver instances.
- * This allows for easy extension and modification of driver creation logic.
+ * Strategy interface for creating drivers.
+ * Supports BOTH Selenium and Playwright via DriverContext.
  */
 public interface DriverStrategy {
-    
+
     /**
-     * Creates a WebDriver instance based on the strategy implementation.
-     * @return WebDriver instance
+     * Creates a driver (Selenium or Playwright) based on EngineType.
+     *
+     * @return DriverContext (single source of truth)
      */
-    WebDriver createDriver();
-    
+    DriverContext createDriver();
+
     /**
-     * Creates a WebDriver instance with custom capabilities.
-     * @param capabilities Custom capabilities for the driver
-     * @return WebDriver instance
+     * Creates a driver with custom capabilities.
+     * Only applicable for Selenium.
+     *
+     * @param capabilities Selenium DesiredCapabilities
+     * @return DriverContext
      */
-    WebDriver createDriver(DesiredCapabilities capabilities);
-    
+    DriverContext createDriver(DesiredCapabilities capabilities);
+
     /**
      * Gets the browser name associated with this strategy.
+     *
      * @return Browser name
      */
     String getBrowserName();
-    
+
     /**
      * Checks if this strategy supports the given browser type.
+     *
      * @param browserType Browser type to check
-     * @return true if supported, false otherwise
+     * @return true if supported
      */
     boolean supports(String browserType);
 }

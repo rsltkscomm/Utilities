@@ -17,19 +17,33 @@ import com.microsoft.playwright.ElementHandle;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 
+import base.DriverContext;
 import core.interfaces.ElementInterface;
 import reporting.ExtentManager;
 import reporting.TestLogManager;
 
-public class PlaywrightElementUtil extends PlaywrightClickUtil implements ElementInterface {
+public class PlaywrightElementUtil extends PlaywrightClickUtil
+        implements ElementInterface {
 
-    private final Page page;
-    private final PlaywrightLocatorUtil locatorUtil;
+    protected final DriverContext driverContext;
 
-    public PlaywrightElementUtil(Page page) {
-        super(page);
-        this.page = page;
-        this.locatorUtil = new PlaywrightLocatorUtil(page);
+    public PlaywrightElementUtil(DriverContext driverContext) {
+        super(driverContext); // ✅ parent uses DriverContext
+        this.driverContext = driverContext;
+    }
+
+    /**
+     * Always resolve the CURRENT active page
+     */
+    protected Page page() {
+        return driverContext.getPage();
+    }
+
+    /**
+     * Always resolve locator util with CURRENT page
+     */
+    protected PlaywrightLocatorUtil locatorUtil() {
+        return new PlaywrightLocatorUtil(driverContext);
     }
 
     // ---------------- RESOLVERS ----------------
@@ -38,14 +52,13 @@ public class PlaywrightElementUtil extends PlaywrightClickUtil implements Elemen
         if (obj == null) return null;
 
         if (obj instanceof String)
-            return locatorUtil.getLocator((String) obj);  // FIXED
+            return locatorUtil().getLocator((String) obj);
 
         if (obj instanceof PlaywrightWebElement)
             return ((PlaywrightWebElement) obj).locator;
 
         return null;
     }
-
 
     private PlaywrightWebElement resolveElement(Object obj) {
         if (obj instanceof PlaywrightWebElement)
@@ -117,21 +130,27 @@ public class PlaywrightElementUtil extends PlaywrightClickUtil implements Elemen
     public boolean isDisplayed(String locator) {
         try {
             return resolveLocator(locator).isVisible();
-        } catch (Exception e) { return false; }
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     @Override
     public boolean isEnabled(String locator) {
         try {
             return !Boolean.TRUE.equals(resolveLocator(locator).isDisabled());
-        } catch (Exception e) { return false; }
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     @Override
     public boolean isSelected(String locator) {
         try {
             return resolveLocator(locator).isChecked();
-        } catch (Exception e) { return false; }
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     // ---------------- ENTER VALUE ----------------
@@ -142,7 +161,6 @@ public class PlaywrightElementUtil extends PlaywrightClickUtil implements Elemen
             Locator loc = resolveLocator(locator);
             loc.fill("");
             loc.fill(value);
-
             return loc.inputValue().equals(value);
         } catch (Exception e) {
             return false;
@@ -154,10 +172,11 @@ public class PlaywrightElementUtil extends PlaywrightClickUtil implements Elemen
     @Override
     public boolean javaScriptEnterValue(Object locator, String text) {
         try {
-            Locator loc = resolveLocator(locator);
-            loc.evaluate("(e, v) => e.value = v", text);
+            resolveLocator(locator).evaluate("(e, v) => e.value = v", text);
             return true;
-        } catch (Exception e) { return false; }
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     // ---------------- FIND ELEMENT(S) ----------------
@@ -173,12 +192,12 @@ public class PlaywrightElementUtil extends PlaywrightClickUtil implements Elemen
         int count = loc.count();
 
         List<PlaywrightWebElement> list = new ArrayList<>();
-        for (int i = 0; i < count; i++)
+        for (int i = 0; i < count; i++) {
             list.add(new PlaywrightWebElement(loc.nth(i)));
-
+        }
         return list;
     }
-    
+
     // ---------------- DROPDOWN ----------------
 
     @Override
@@ -193,20 +212,19 @@ public class PlaywrightElementUtil extends PlaywrightClickUtil implements Elemen
 
     @Override
     public void tabAction() {
-        page.keyboard().press("Tab");
+        page().keyboard().press("Tab");
     }
 
     @Override
     public void clickEnter() {
-        page.keyboard().press("Enter");
+        page().keyboard().press("Enter");
     }
 
     // ---------------- CLEAR FIELD ----------------
 
     @Override
     public void clearField(Object locator) {
-        Locator loc = resolveLocator(locator);
-        loc.fill("");
+        resolveLocator(locator).fill("");
     }
 
     // ---------------- TABLE HANDLER ----------------
@@ -225,9 +243,9 @@ public class PlaywrightElementUtil extends PlaywrightClickUtil implements Elemen
             List<String> cols = row.locator("td").allInnerTexts();
 
             Map<String, String> map = new LinkedHashMap<>();
-            for (int j = 0; j < headers.size(); j++)
+            for (int j = 0; j < headers.size(); j++) {
                 map.put(headers.get(j), cols.get(j));
-
+            }
             list.add(map);
         }
         return list;
@@ -235,7 +253,8 @@ public class PlaywrightElementUtil extends PlaywrightClickUtil implements Elemen
 
     // ---------------- UTIL ----------------
 
-    @Override public int findGCV(int a, int b) {
+    @Override
+    public int findGCV(int a, int b) {
         return (b == 0) ? a : findGCV(b, a % b);
     }
 
@@ -252,9 +271,14 @@ public class PlaywrightElementUtil extends PlaywrightClickUtil implements Elemen
     public boolean isElementPresent(String locator) {
         try {
             return resolveLocator(locator).count() > 0;
-        } catch (Exception e) { return false; }
+        } catch (Exception e) {
+            return false;
+        }
     }
-    
+
+    // ---------------- LINK VALIDATION ----------------
+
+    @Override
     public boolean validateInvalidLinks(String pageName) {
 
         int invalidLinksCount = 0;
@@ -262,26 +286,21 @@ public class PlaywrightElementUtil extends PlaywrightClickUtil implements Elemen
         int linksWithJavascriptOrNull = 0;
 
         try {
-            // Get all <a> elements
-            List<ElementHandle> anchors = page.querySelectorAll("a");
+            List<ElementHandle> anchors = page().querySelectorAll("a");
 
             ExtentManager.infoTest(
-                    "Total <a> tags found on <b>" + pageName + "</b> page: " + anchors.size()
-            );
+                "Total <a> tags found on <b>" + pageName + "</b> page: " + anchors.size());
 
             for (ElementHandle anchor : anchors) {
-                if (anchor == null) continue;
 
                 String url = anchor.getAttribute("href");
 
                 if (url != null &&
-                    !url.trim().isEmpty() &&
-                    !url.contains("javascript") &&
-                    !url.equals("\"\"")) {
+                        !url.trim().isEmpty() &&
+                        !url.contains("javascript") &&
+                        !url.equals("\"\"")) {
 
-                    boolean isValid = verifyURLStatus(url);
-
-                    if (isValid) {
+                    if (verifyURLStatus(url)) {
                         validLinksCount++;
                     } else {
                         invalidLinksCount++;
@@ -292,42 +311,21 @@ public class PlaywrightElementUtil extends PlaywrightClickUtil implements Elemen
                 }
             }
 
-            ExtentManager.infoTest(
-                    "Page: <b>" + pageName + "</b> - Links with null/javascript: "
-                            + linksWithJavascriptOrNull
-            );
-            ExtentManager.infoTest(
-                    "Page: <b>" + pageName + "</b> - Valid links: " + validLinksCount
-            );
-            ExtentManager.infoTest(
-                    "Page: <b>" + pageName + "</b> - Invalid links: " + invalidLinksCount
-            );
-            ExtentManager.infoTest(
-                    "Page: <b>" + pageName + "</b> - Total processed <a> tags: " + anchors.size()
-            );
+            ExtentManager.infoTest("Valid links: " + validLinksCount);
+            ExtentManager.infoTest("Invalid links: " + invalidLinksCount);
+            ExtentManager.infoTest("Links with null/javascript: " + linksWithJavascriptOrNull);
 
-            if (invalidLinksCount > 0) {
-                ExtentManager.warningTest(
-                        "Found " + invalidLinksCount + " invalid links on the <b>"
-                                + pageName + "</b> page."
-                );
-                return false;
-            }
-
-            return true;
+            return invalidLinksCount == 0;
 
         } catch (Exception e) {
             ExtentManager.failTest(
-                    "Exception in validateInvalidLinks for page <b>"
-                            + pageName + "</b>: " + e.getMessage()
-            );
-            TestLogManager.error(
-                    "Exception in validateInvalidLinks for page " + pageName, e
-            );
+                "Exception in validateInvalidLinks for page <b>" +
+                pageName + "</b>: " + e.getMessage());
+            TestLogManager.error("validateInvalidLinks error", e);
             return false;
         }
     }
-    
+
     private boolean verifyURLStatus(String url) {
 
         try (CloseableHttpClient client = HttpClients.createDefault()) {
@@ -339,31 +337,29 @@ public class PlaywrightElementUtil extends PlaywrightClickUtil implements Elemen
             int statusCode = response.getStatusLine().getStatusCode();
 
             if (statusCode != 200) {
-                ExtentManager.warningTest("Link is not working / dormant: " + url);
-                ExtentManager.infoTest("Response status: " + response.getStatusLine());
+                ExtentManager.warningTest("Invalid link: " + url);
                 return false;
             }
 
-            ExtentManager.infoTest("Valid link: " + url + " (Status: " + statusCode + ")");
+            ExtentManager.infoTest("Valid link: " + url);
             return true;
 
         } catch (Exception e) {
-            ExtentManager.failTest("Exception verifying URL: " + url + " | " + e.getMessage());
-            TestLogManager.error("Exception in verifyURLStatus", e);
+            ExtentManager.failTest("Exception verifying URL: " + url);
+            TestLogManager.error("verifyURLStatus error", e);
             return false;
         }
     }
-    
+
+    // ---------------- FILE UPLOAD ----------------
+
     @Override
-    public boolean uploadFile(String locator,String filePath)
-    {
-    	try
-		{
-    		page.setInputFiles(locator, Paths.get(filePath));
-        	return true;
-		} catch (Exception e)
-		{
-			return false;
-		}
+    public boolean uploadFile(String locator, String filePath) {
+        try {
+            page().setInputFiles(locator, Paths.get(filePath));
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

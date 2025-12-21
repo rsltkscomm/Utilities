@@ -6,52 +6,42 @@ import java.util.List;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Page;
 
+import base.DriverContext;
 import core.interfaces.WindowInterface;
 import reporting.ExtentManager;
 
 public class PlaywrightWindowUtil extends PlaywrightFrameUtil implements WindowInterface {
 
+    private final DriverContext driverContext;
     private final BrowserContext context;
-    private Page currentPage;
 
-    public PlaywrightWindowUtil(Page page) {
-        super(page);
-        this.context = page.context();
-        this.currentPage = page;
+    public PlaywrightWindowUtil(DriverContext driverContext) {
+        super(driverContext);
+        this.driverContext = driverContext;
+        this.context = driverContext.getBrowserContext();
     }
 
-    /* -------------------- GET CURRENT WINDOW HANDLE -------------------- */
+    protected Page page() {
+        return driverContext.getPage();
+    }
+
+    /* -------------------- WINDOW HANDLES -------------------- */
 
     @Override
     public String getCurrentWindowHandle() {
-        try {
-            String handle = "PAGE_" + context.pages().indexOf(currentPage);
-            ExtentManager.infoTest("Current window handle: " + handle);
-            return handle;
-        } catch (Exception e) {
-            ExtentManager.failTest("Failed to get current window handle");
-            return null;
-        }
+        return "PAGE_" + context.pages().indexOf(page());
     }
-
-    /* -------------------- GET ALL WINDOW HANDLES -------------------- */
 
     @Override
     public List<String> getAllWindowHandles() {
         List<String> handles = new ArrayList<>();
-        try {
-            for (int i = 0; i < context.pages().size(); i++) {
-                handles.add("PAGE_" + i);
-            }
-            ExtentManager.infoTest("All window handles: " + handles);
-            return handles;
-        } catch (Exception e) {
-            ExtentManager.failTest("Failed to get all window handles");
-            return handles;
+        for (int i = 0; i < context.pages().size(); i++) {
+            handles.add("PAGE_" + i);
         }
+        return handles;
     }
 
-    /* -------------------- SWITCH TO WINDOW BY HANDLE -------------------- */
+    /* -------------------- SWITCHING -------------------- */
 
     @Override
     public boolean switchToWindow(String windowHandle) {
@@ -64,126 +54,126 @@ public class PlaywrightWindowUtil extends PlaywrightFrameUtil implements WindowI
         }
     }
 
-    /* -------------------- SWITCH TO WINDOW BY INDEX -------------------- */
-
     @Override
     public boolean switchToWindow(int index) {
-        try {
-            List<Page> pages = context.pages();
-            if (index < 0 || index >= pages.size()) {
-                throw new IndexOutOfBoundsException("Window index out of bounds: " + index);
-            }
-            currentPage = pages.get(index);
-            currentPage.bringToFront();
-            ExtentManager.infoTest("Switched to window index: " + index);
-            return true;
-        } catch (Exception e) {
-            ExtentManager.failTest("Failed to switch to window index: " + index);
-            ExtentManager.failTest("Reason: " + e.getMessage());
+        List<Page> pages = context.pages();
+        if (index < 0 || index >= pages.size()) {
+            ExtentManager.failTest("Invalid window index: " + index);
             return false;
         }
-    }
 
-    /* -------------------- SWITCH TO PARENT WINDOW -------------------- */
+        Page target = pages.get(index);
+        driverContext.setPage(target);
+        super.updatePage(target); // ✅ keep parent in sync
+        target.bringToFront();
+
+        ExtentManager.infoTest("Switched to window index: " + index);
+        return true;
+    }
 
     @Override
     public boolean switchToParentWindow() {
-        try {
-            currentPage = context.pages().get(0);
-            currentPage.bringToFront();
-            ExtentManager.infoTest("Switched to parent window");
-            return true;
-        } catch (Exception e) {
-            ExtentManager.failTest("Failed to switch to parent window");
+        if (context.pages().isEmpty()) {
             return false;
         }
+
+        Page parent = context.pages().get(0);
+        driverContext.setPage(parent);
+        super.updatePage(parent); // ✅
+        parent.bringToFront();
+
+        ExtentManager.infoTest("Switched to parent window");
+        return true;
     }
-
-    /* -------------------- CLOSE CURRENT WINDOW -------------------- */
-
-    @Override
-    public boolean closeCurrentWindow() {
-        try {
-            currentPage.close();
-            currentPage = context.pages().get(0);
-            ExtentManager.infoTest("Closed current window");
-            return true;
-        } catch (Exception e) {
-            ExtentManager.failTest("Failed to close current window");
-            return false;
-        }
-    }
-
-    /* -------------------- CLOSE ALL OTHER WINDOWS -------------------- */
-
-    @Override
-    public boolean closeAllOtherWindows() {
-        try {
-            Page parent = context.pages().get(0);
-            for (Page page : new ArrayList<>(context.pages())) {
-                if (page != parent) {
-                    page.close();
-                    ExtentManager.infoTest("Closed window");
-                }
-            }
-            currentPage = parent;
-            parent.bringToFront();
-            ExtentManager.infoTest("Switched back to parent window");
-            return true;
-        } catch (Exception e) {
-            ExtentManager.failTest("Failed to close other windows");
-            return false;
-        }
-    }
-
-    /* -------------------- OPEN NEW TAB -------------------- */
-
-    @Override
-    public boolean openNewTab() {
-        try {
-            currentPage = context.newPage();
-            currentPage.bringToFront();
-            ExtentManager.infoTest("Opened new browser tab");
-            return true;
-        } catch (Exception e) {
-            ExtentManager.failTest("Failed to open new tab");
-            return false;
-        }
-    }
-
-    /* -------------------- SWITCH WINDOW (LAST OPENED) -------------------- */
 
     @Override
     public void switchWindow() {
         List<Page> pages = context.pages();
-        currentPage = pages.get(pages.size() - 1);
-        currentPage.bringToFront();
+
+        if (pages.size() < 2) {
+            ExtentManager.infoTest("No additional window to switch");
+            return;
+        }
+
+        Page lastOpened = pages.get(pages.size() - 1);
+        driverContext.setPage(lastOpened);
+        super.updatePage(lastOpened); // ✅
+        lastOpened.bringToFront();
+
         ExtentManager.infoTest("Switched to last opened window");
     }
 
-    /* -------------------- INTERNAL ACCESS -------------------- */
+    /* -------------------- OPEN / CLOSE -------------------- */
 
-    protected Page getCurrentPage() {
-        return currentPage;
+    @Override
+    public boolean openNewTab() {
+        Page newPage = context.newPage();
+        driverContext.setPage(newPage);
+        super.updatePage(newPage); // ✅
+        newPage.bringToFront();
+
+        ExtentManager.infoTest("Opened new tab");
+        return true;
     }
-    
-    public boolean childWindowCloseIndex(int index) {
-        try {
-            List<Page> pages = currentPage.context().pages();
 
-            if (index < 0 || index >= pages.size()) {
-                return false;
-            }
-            Page targetPage = pages.get(index);
-
-            // Do not close the main page accidentally
-            if (!targetPage.equals(currentPage)) {
-                targetPage.close();
-                return true;
-            }
-
-        } catch (Exception ignored) {
+    @Override
+    public boolean closeCurrentWindow() {
+        if (context.pages().isEmpty()) {
+            return false;
         }
-        return false;
+
+        Page current = page();
+        current.close();
+
+        Page fallback = context.pages().get(0);
+        driverContext.setPage(fallback);
+        super.updatePage(fallback); // ✅
+        fallback.bringToFront();
+
+        ExtentManager.infoTest("Closed current window");
+        return true;
+    }
+
+    @Override
+    public boolean closeAllOtherWindows() {
+        if (context.pages().isEmpty()) {
+            return false;
+        }
+
+        Page parent = context.pages().get(0);
+
+        for (Page p : new ArrayList<>(context.pages())) {
+            if (p != parent) {
+                p.close();
+            }
+        }
+
+        driverContext.setPage(parent);
+        super.updatePage(parent); // ✅
+        parent.bringToFront();
+
+        ExtentManager.infoTest("Closed all other windows");
+        return true;
+    }
+
+    @Override
+    public boolean childWindowCloseIndex(int index) {
+        List<Page> pages = context.pages();
+
+        if (index <= 0 || index >= pages.size()) {
+            ExtentManager.failTest("Invalid child window index: " + index);
+            return false;
+        }
+
+        Page target = pages.get(index);
+        target.close();
+
+        Page parent = context.pages().get(0);
+        driverContext.setPage(parent);
+        super.updatePage(parent); // ✅
+        parent.bringToFront();
+
+        ExtentManager.infoTest("Closed child window at index: " + index);
+        return true;
     }
 }

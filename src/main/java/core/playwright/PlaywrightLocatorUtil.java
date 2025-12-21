@@ -11,27 +11,37 @@ import org.openqa.selenium.WebElement;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 
+import base.DriverContext;
 import core.interfaces.LocatorInterface;
 
 /**
  * Playwright equivalent of Selenium LocatorUtil.
  * Fully compatible with LocatorInterface and main project expectations.
+ * Multi-tab safe via DriverContext.
  */
 public class PlaywrightLocatorUtil implements LocatorInterface {
 
-    private final Page page;
-
-    public PlaywrightLocatorUtil(Page page) {
-        this.page = page;
-    }
+    protected final DriverContext driverContext;
 
     public static ThreadLocal<String> logName = new ThreadLocal<>();
+
+    public PlaywrightLocatorUtil(DriverContext driverContext) {
+        this.driverContext = driverContext;
+    }
+
+    /**
+     * Always returns CURRENT active page
+     */
+    protected Page page() {
+        return driverContext.getPage();
+    }
 
     // ============================================================================================
     // SELENIUM COMPATIBLE By autolocator()
     // ============================================================================================
     @Override
     public By autolocator(String key) {
+
         if (key == null || key.isEmpty()) {
             throw new IllegalArgumentException("Locator string cannot be null or empty.");
         }
@@ -44,32 +54,24 @@ public class PlaywrightLocatorUtil implements LocatorInterface {
             );
         }
 
-        logName.set(parts[0].trim());   // same as Selenium version
+        logName.set(parts[0].trim());
         String locatorType = parts[1].trim().toLowerCase(Locale.ROOT);
         String locatorValue = parts[2].trim();
 
         switch (locatorType) {
-            case "id":
-                return By.id(locatorValue);
-            case "name":
-                return By.name(locatorValue);
-            case "xpath":
-                return By.xpath(locatorValue);
+            case "id": return By.id(locatorValue);
+            case "name": return By.name(locatorValue);
+            case "xpath": return By.xpath(locatorValue);
             case "css":
-            case "cssselector":
-                return By.cssSelector(locatorValue);
+            case "cssselector": return By.cssSelector(locatorValue);
             case "link":
-            case "linktext":
-                return By.linkText(locatorValue);
+            case "linktext": return By.linkText(locatorValue);
             case "parlink":
-            case "partiallinktext":
-                return By.partialLinkText(locatorValue);
+            case "partiallinktext": return By.partialLinkText(locatorValue);
             case "class":
-            case "classname":
-                return By.className(locatorValue);
+            case "classname": return By.className(locatorValue);
             case "tag":
-            case "tagname":
-                return By.tagName(locatorValue);
+            case "tagname": return By.tagName(locatorValue);
             default:
                 throw new IllegalArgumentException("Unsupported locator type: " + locatorType);
         }
@@ -84,10 +86,10 @@ public class PlaywrightLocatorUtil implements LocatorInterface {
         if (parts.length < 3)
             throw new IllegalArgumentException("Invalid locator format: " + key);
 
+        logName.set(parts[0].trim());
+
         String locatorType = parts[1].trim().toLowerCase(Locale.ROOT);
         String locatorValue = parts[2].trim();
-
-        logName.set(parts[0].trim());
 
         switch (locatorType) {
 
@@ -130,18 +132,17 @@ public class PlaywrightLocatorUtil implements LocatorInterface {
     }
 
     // ============================================================================================
-    // NEW: Playwright locator getter (core method)
+    // Playwright Locator
     // ============================================================================================
     public Locator getLocator(String key) {
         if (key == null || key.isEmpty())
             throw new IllegalArgumentException("Key cannot be null or empty");
 
-        String selector = toPlaywrightSelector(key);
-        return page.locator(selector);
+        return page().locator(toPlaywrightSelector(key));
     }
 
     // ============================================================================================
-    // WebElement (wrapped) getters
+    // WebElement wrappers
     // ============================================================================================
     @Override
     public WebElement getElement(Object pr) {
@@ -149,11 +150,10 @@ public class PlaywrightLocatorUtil implements LocatorInterface {
         if (pr instanceof PlaywrightWebElement)
             return (PlaywrightWebElement) pr;
 
-        if (pr instanceof String) {
-            String selector = toPlaywrightSelector(pr.toString());
-            Locator locator = page.locator(selector);
-            return new PlaywrightWebElement(locator);
-        }
+        if (pr instanceof String)
+            return new PlaywrightWebElement(
+                    page().locator(toPlaywrightSelector(pr.toString())).first()
+            );
 
         if (pr instanceof WebElement)
             return (WebElement) pr;
@@ -168,15 +168,14 @@ public class PlaywrightLocatorUtil implements LocatorInterface {
             return Arrays.asList((WebElement) pr);
 
         if (pr instanceof String) {
-            String selector = toPlaywrightSelector(pr.toString());
-            Locator locator = page.locator(selector);
 
+            Locator locator = page().locator(toPlaywrightSelector(pr.toString()));
             int count = locator.count();
+
             List<WebElement> list = new ArrayList<>();
-
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < count; i++) {
                 list.add(new PlaywrightWebElement(locator.nth(i)));
-
+            }
             return list;
         }
 
@@ -187,7 +186,7 @@ public class PlaywrightLocatorUtil implements LocatorInterface {
     }
 
     // ============================================================================================
-    // Replace Placeholders — SAME AS SELENIUM
+    // Placeholder replacement (unchanged)
     // ============================================================================================
     @Override
     public String replacePlaceHolder(String locator, String placeHolder) {
@@ -201,7 +200,7 @@ public class PlaywrightLocatorUtil implements LocatorInterface {
 
     @Override
     public String replacePlaceHolder(String locator, String placeHolder, String placeHolder1) {
-        return locator.replace("PLACE_HOLDER", placeHolder).replace("TEMP", placeHolder1);
+        return locator.replace("PLACE_HOLDER", placeHolder)
+                      .replace("TEMP", placeHolder1);
     }
-
 }

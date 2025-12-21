@@ -1,238 +1,238 @@
 package patterns.strategy;
 
-import cloud.CloudConfiguration;
+import base.DriverContext;
+import core.interfaces.EngineType;
+import reporting.TestLogManager;
+
+import com.microsoft.playwright.*;
+
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.remote.RemoteWebDriver;
-import reporting.TestLogManager;
 
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Cloud Driver Strategy
- * Creates WebDriver instances for cloud testing platforms
+ * Supports:
+ *  - Selenium Cloud (BrowserStack / Sauce / LambdaTest)
+ *  - Playwright Cloud (LambdaTest Playwright)
+ *
+ * All configuration is read from System properties.
  */
 public class CloudDriverStrategy implements DriverStrategy {
-    
+
     private final String browserName;
-    private final CloudConfiguration cloudConfig;
-    
+
     public CloudDriverStrategy(String browserName) {
         this.browserName = browserName.toLowerCase();
-        this.cloudConfig = new CloudConfiguration();
-        
-        if (!cloudConfig.isCloudEnabled()) {
-            throw new IllegalStateException("Cloud testing is not enabled. Please enable cloud testing in configuration.");
-        }
     }
-    
+
+    /* ==========================================================
+       META
+       ========================================================== */
+
     @Override
     public String getBrowserName() {
         return browserName;
     }
-    
+
     @Override
     public boolean supports(String browserType) {
-        return browserName.equalsIgnoreCase(browserType) && cloudConfig.isCloudEnabled();
+        return browserName.equalsIgnoreCase(browserType)
+                && Boolean.parseBoolean(
+                        System.getProperty("cloud.enabled", "false"));
     }
-    
+
+    /* ==========================================================
+       ENTRY
+       ========================================================== */
+
     @Override
-    public WebDriver createDriver() {
+    public DriverContext createDriver() {
         return createDriver(new DesiredCapabilities());
     }
-    
+
     @Override
-    public WebDriver createDriver(DesiredCapabilities capabilities) {
+    public DriverContext createDriver(DesiredCapabilities capabilities) {
+
+        if (!Boolean.parseBoolean(
+                System.getProperty("cloud.enabled", "false"))) {
+            throw new IllegalStateException(
+                "Cloud testing is disabled. Enable cloud.enabled=true");
+        }
+
+        EngineType engine = EngineType.valueOf(
+                System.getProperty("engine", "SELENIUM").toUpperCase()
+        );
+
+        return engine == EngineType.PLAYWRIGHT
+                ? createPlaywrightCloudDriver()
+                : createSeleniumCloudDriver(capabilities);
+    }
+
+    /* ==========================================================
+       SELENIUM CLOUD (RemoteWebDriver)
+       ========================================================== */
+
+    private DriverContext createSeleniumCloudDriver(
+            DesiredCapabilities baseCaps) {
+
         try {
-            TestLogManager.info("Creating cloud driver for browser: " + browserName);
-            
-            // Build cloud-specific capabilities
-            DesiredCapabilities cloudCapabilities = buildCloudCapabilities(capabilities);
-            
-            // Create remote WebDriver
-            URL hubUrl = URI.create(cloudConfig.getHubUrl()).toURL();
-            WebDriver driver = new RemoteWebDriver(hubUrl, cloudCapabilities);
-            
-            return driver;
-            
-        } catch (MalformedURLException e) {
-            TestLogManager.error("Invalid cloud hub URL: " + cloudConfig.getHubUrl(), e);
-            throw new RuntimeException("Failed to create cloud driver", e);
-        } catch (Exception e) {
-            TestLogManager.error("Failed to create cloud driver for browser: " + browserName, e);
-            throw new RuntimeException("Failed to create cloud driver", e);
-        }
-    }
-    
-    /**
-     * Build cloud-specific capabilities
-     */
-    private DesiredCapabilities buildCloudCapabilities(DesiredCapabilities baseCapabilities) {
-        DesiredCapabilities cloudCapabilities = new DesiredCapabilities(baseCapabilities);
-        
-        // Set basic browser capabilities
-        cloudCapabilities.setCapability("browserName", browserName);
-        
-        // Add cloud provider specific capabilities
-        switch (cloudConfig.getActiveProvider().toLowerCase()) {
-            case "browserstack":
-                addBrowserStackCapabilities(cloudCapabilities);
-                break;
-            case "saucelabs":
-                addSauceLabsCapabilities(cloudCapabilities);
-                break;
-            case "lambdatest":
-                addLambdaTestCapabilities(cloudCapabilities);
-                break;
-            case "crossbrowsertesting":
-                addCrossBrowserTestingCapabilities(cloudCapabilities);
-                break;
-            default:
-                TestLogManager.warning("Unknown cloud provider: " + cloudConfig.getActiveProvider());
-        }
-        
-        return cloudCapabilities;
-    }
-    
-    /**
-     * Add BrowserStack specific capabilities
-     */
-    private void addBrowserStackCapabilities(DesiredCapabilities capabilities) {
-        java.util.Map<String, Object> browserstackOptions = new java.util.HashMap<>();
-        
-        browserstackOptions.put("userName", cloudConfig.getUsername());
-        browserstackOptions.put("accessKey", cloudConfig.getAccessKey());
-        browserstackOptions.put("projectName", cloudConfig.getProjectName());
-        browserstackOptions.put("buildName", cloudConfig.getBuildName());
-        browserstackOptions.put("sessionName", cloudConfig.getSessionName());
-        browserstackOptions.put("timezone", "UTC");
-        
-        if (cloudConfig.isVideoEnabled()) {
-            browserstackOptions.put("video", true);
-        }
-        
-        if (cloudConfig.isScreenshotEnabled()) {
-            browserstackOptions.put("screenshot", true);
-        }
-        
-        if (cloudConfig.isLocalTestingEnabled()) {
-            browserstackOptions.put("local", true);
-            if (!cloudConfig.getTunnelIdentifier().isEmpty()) {
-                browserstackOptions.put("tunnelIdentifier", cloudConfig.getTunnelIdentifier());
+            TestLogManager.info(
+                "Creating Selenium cloud driver for: " + browserName);
+
+            DesiredCapabilities caps =
+                    new DesiredCapabilities(baseCaps);
+            caps.setCapability("browserName", browserName);
+
+            String provider =
+                    System.getProperty("cloud.provider", "lambdatest")
+                            .toLowerCase();
+
+            switch (provider) {
+                case "browserstack" -> caps.setCapability(
+                        "bstack:options", buildBrowserStackOptions());
+                case "saucelabs" -> caps.setCapability(
+                        "sauce:options", buildSauceOptions());
+                case "lambdatest" -> caps.setCapability(
+                        "lt:options", buildLambdaTestOptions());
+                case "crossbrowsertesting" -> caps.setCapability(
+                        "cbt:options", buildCBTOptions());
+                default -> TestLogManager.warning(
+                        "Unknown cloud provider: " + provider);
             }
+
+            URL hubUrl = URI.create(
+                    System.getProperty("cloud.hub.url")
+            ).toURL();
+
+            WebDriver driver = new RemoteWebDriver(hubUrl, caps);
+            return DriverContext.selenium(driver);
+
+        } catch (Exception e) {
+            TestLogManager.error(
+                "Failed to create Selenium cloud driver", e);
+            throw new RuntimeException(e);
         }
-        
-        capabilities.setCapability("bstack:options", browserstackOptions);
     }
-    
-    /**
-     * Add SauceLabs specific capabilities
-     */
-    private void addSauceLabsCapabilities(DesiredCapabilities capabilities) {
-        java.util.Map<String, Object> sauceOptions = new java.util.HashMap<>();
-        
-        sauceOptions.put("username", cloudConfig.getUsername());
-        sauceOptions.put("accessKey", cloudConfig.getAccessKey());
-        sauceOptions.put("name", cloudConfig.getSessionName());
-        sauceOptions.put("build", cloudConfig.getBuildName());
-        sauceOptions.put("tags", new String[]{cloudConfig.getProjectName()});
-        
-        if (cloudConfig.isVideoEnabled()) {
-            sauceOptions.put("recordVideo", true);
+
+    /* ==========================================================
+       PLAYWRIGHT CLOUD (WebSocket)
+       ========================================================== */
+
+    private DriverContext createPlaywrightCloudDriver() {
+
+        try {
+            TestLogManager.info("Creating Playwright cloud driver");
+
+            Playwright playwright = Playwright.create();
+
+            String capsJson = buildPlaywrightCapsJson();
+            String encodedCaps = Base64.getEncoder()
+                    .encodeToString(
+                            capsJson.getBytes(StandardCharsets.UTF_8));
+
+            String wsEndpoint =
+                    System.getProperty(
+                            "cloud.playwright.ws",
+                            "wss://cdp.lambdatest.com/playwright"
+                    ) + "?capabilities=" + encodedCaps;
+
+            Browser browser =
+                    playwright.chromium().connect(wsEndpoint);
+
+            BrowserContext context = browser.newContext(
+                    new Browser.NewContextOptions()
+                            .setAcceptDownloads(true)
+            );
+
+            Page page = context.newPage();
+
+            return DriverContext.playwright(
+                    playwright, browser, context, page);
+
+        } catch (Exception e) {
+            TestLogManager.error(
+                "Failed to create Playwright cloud driver", e);
+            throw new RuntimeException(e);
         }
-        
-        if (cloudConfig.isScreenshotEnabled()) {
-            sauceOptions.put("recordScreenshots", true);
-        }
-        
-        capabilities.setCapability("sauce:options", sauceOptions);
     }
-    
-    /**
-     * Add LambdaTest specific capabilities
-     */
-    private void addLambdaTestCapabilities(DesiredCapabilities capabilities) {
-        java.util.Map<String, Object> lambdaOptions = new java.util.HashMap<>();
-        
-        lambdaOptions.put("username", cloudConfig.getUsername());
-        lambdaOptions.put("accessKey", cloudConfig.getAccessKey());
-        lambdaOptions.put("build", cloudConfig.getBuildName());
-        lambdaOptions.put("name", cloudConfig.getSessionName());
-        lambdaOptions.put("project", cloudConfig.getProjectName());
-        
-        if (cloudConfig.isVideoEnabled()) {
-            lambdaOptions.put("video", true);
-        }
-        
-        if (cloudConfig.isScreenshotEnabled()) {
-            lambdaOptions.put("screenshot", true);
-        }
-        
-        capabilities.setCapability("lt:options", lambdaOptions);
+
+    /* ==========================================================
+       CAPABILITIES (System Properties)
+       ========================================================== */
+
+    private Map<String, Object> buildLambdaTestOptions() {
+        Map<String, Object> options = new HashMap<>();
+        options.put("user", System.getProperty("LT_USERNAME"));
+        options.put("accessKey", System.getProperty("LT_ACCESS_KEY"));
+        options.put("build", System.getProperty("build", "Cloud Build"));
+        options.put("name", System.getProperty("testName", "Cloud Test"));
+        options.put("platform", System.getProperty("platform", "Windows 11"));
+        options.put("video", Boolean.parseBoolean(
+                System.getProperty("video", "true")));
+        return options;
     }
-    
-    /**
-     * Add CrossBrowserTesting specific capabilities
-     */
-    private void addCrossBrowserTestingCapabilities(DesiredCapabilities capabilities) {
-        java.util.Map<String, Object> cbtOptions = new java.util.HashMap<>();
-        
-        cbtOptions.put("username", cloudConfig.getUsername());
-        cbtOptions.put("authkey", cloudConfig.getAccessKey());
-        cbtOptions.put("name", cloudConfig.getSessionName());
-        cbtOptions.put("build", cloudConfig.getBuildName());
-        
-        if (cloudConfig.isVideoEnabled()) {
-            cbtOptions.put("record_video", "true");
-        }
-        
-        if (cloudConfig.isScreenshotEnabled()) {
-            cbtOptions.put("record_network", "true");
-        }
-        
-        capabilities.setCapability("cbt:options", cbtOptions);
+
+    private Map<String, Object> buildBrowserStackOptions() {
+        Map<String, Object> options = new HashMap<>();
+        options.put("userName", System.getProperty("BS_USERNAME"));
+        options.put("accessKey", System.getProperty("BS_ACCESS_KEY"));
+        options.put("buildName", System.getProperty("build"));
+        options.put("sessionName", System.getProperty("testName"));
+        return options;
     }
-    
-    /**
-     * Create driver with specific browser and platform
-     */
-    public WebDriver createDriver(String browser, String platform, String version) {
-        DesiredCapabilities capabilities = new DesiredCapabilities();
-        capabilities.setCapability("browserName", browser);
-        capabilities.setCapability("platform", platform);
-        capabilities.setCapability("version", version);
-        
-        return createDriver(capabilities);
+
+    private Map<String, Object> buildSauceOptions() {
+        Map<String, Object> options = new HashMap<>();
+        options.put("username", System.getProperty("SAUCE_USERNAME"));
+        options.put("accessKey", System.getProperty("SAUCE_ACCESS_KEY"));
+        options.put("build", System.getProperty("build"));
+        options.put("name", System.getProperty("testName"));
+        return options;
     }
-    
-    /**
-     * Create mobile driver
-     */
-    public WebDriver createMobileDriver(String platform, String device, String version) {
-        DesiredCapabilities capabilities = new DesiredCapabilities();
-        
-        if ("android".equalsIgnoreCase(platform)) {
-            capabilities.setCapability("platformName", "Android");
-            capabilities.setCapability("deviceName", device);
-            capabilities.setCapability("platformVersion", version);
-            capabilities.setCapability("browserName", "Chrome");
-        } else if ("ios".equalsIgnoreCase(platform)) {
-            capabilities.setCapability("platformName", "iOS");
-            capabilities.setCapability("deviceName", device);
-            capabilities.setCapability("platformVersion", version);
-            capabilities.setCapability("browserName", "Safari");
-        }
-        
-        return createDriver(capabilities);
+
+    private Map<String, Object> buildCBTOptions() {
+        Map<String, Object> options = new HashMap<>();
+        options.put("username", System.getProperty("CBT_USERNAME"));
+        options.put("authkey", System.getProperty("CBT_ACCESS_KEY"));
+        options.put("build", System.getProperty("build"));
+        options.put("name", System.getProperty("testName"));
+        return options;
     }
-    
-    /**
-     * Get cloud configuration
-     */
-    public CloudConfiguration getCloudConfiguration() {
-        return cloudConfig;
+
+    private String buildPlaywrightCapsJson() {
+
+        Map<String, Object> caps = new HashMap<>();
+
+        caps.put("browser",
+                System.getProperty("browser", "chromium"));
+        caps.put("platform",
+                System.getProperty("platform", "Windows 11"));
+        caps.put("version",
+                System.getProperty("browserVersion", "latest"));
+
+        Map<String, Object> ltOptions = new HashMap<>();
+        ltOptions.put("user",
+                System.getProperty("LT_USERNAME"));
+        ltOptions.put("accessKey",
+                System.getProperty("LT_ACCESS_KEY"));
+        ltOptions.put("build",
+                System.getProperty("build", "Cloud Build"));
+        ltOptions.put("name",
+                System.getProperty("testName", "Cloud Test"));
+        ltOptions.put("video",
+                Boolean.parseBoolean(
+                        System.getProperty("video", "true")));
+
+        caps.put("LT:Options", ltOptions);
+
+        return new com.google.gson.Gson().toJson(caps);
     }
-    
 }

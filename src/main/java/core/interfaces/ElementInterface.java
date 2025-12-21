@@ -3,8 +3,6 @@ package core.interfaces;
 import java.util.List;
 import java.util.Map;
 
-import com.microsoft.playwright.Locator;
-
 public interface ElementInterface {
 
     String getTextBoxValue(Object locator, String attribute);

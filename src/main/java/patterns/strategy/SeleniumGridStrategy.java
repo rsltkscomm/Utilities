@@ -19,155 +19,141 @@ import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.safari.SafariOptions;
 
+import base.DriverContext;
 import reporting.TestLogManager;
 
-public class SeleniumGridStrategy implements DriverStrategy
-{
+public class SeleniumGridStrategy implements DriverStrategy {
 
-	@Override
-	public WebDriver createDriver()
-	{
-		return createDriver(null);
-	}
+    @Override
+    public DriverContext createDriver() {
+        return createDriver(null);
+    }
 
-	@Override
-	public WebDriver createDriver(DesiredCapabilities capabilities)
-	{
-		MutableCapabilities options = buildOptions(getBrowserName());
-		RemoteWebDriver remoteWebDriver = null;
-		try
-		{
-			remoteWebDriver = new RemoteWebDriver(new URL(getRemoteWebDriverURL()), options);
-		} catch (Exception e)
-		{
-		}
-		return remoteWebDriver;
-	}
+    @Override
+    public DriverContext createDriver(DesiredCapabilities capabilities) {
 
-	@Override
-	public String getBrowserName()
-	{
-		return "grid";
-	}
+        try {
+            String browser =
+                    System.getProperty("GRID_BROWSER", "chrome").toLowerCase();
 
-	@Override
-	public boolean supports(String browserType)
-	{
-		 return "grid".equalsIgnoreCase(browserType) || "seleniumgrid".equalsIgnoreCase(browserType);
-	}
-	
-	private static String getRemoteWebDriverURL()
-	{
-		String remoteURL = null;
-		try (DatagramSocket socket = new DatagramSocket())
-		{
-			socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
-			String ipAddress = socket.getLocalAddress().getHostAddress();
-			remoteURL = "http://" + ipAddress.concat(":") + System.getProperty("Grid_PORT");
+            MutableCapabilities options = buildOptions(browser);
 
-		} catch (Exception e)
-		{
-			TestLogManager.error("Exception in getRemoteWebDriverURL", e);
-		}
-		return remoteURL;
-	}
-	
-	private MutableCapabilities buildOptions(String browserName) {
-	    // Fetch headless flag from property (default false)
-	    boolean headless = Boolean.parseBoolean(System.getProperty("GRID_HEADLESS", "false"));
-	    String resolution = System.getProperty("GRID_RESOLUTION", "1920x1080");
+            if (capabilities != null) {
+                options.merge(capabilities);
+            }
 
-	    switch (browserName.toLowerCase()) {
-	        case "chrome" -> {
-	            ChromeOptions opts = new ChromeOptions();
+            String gridUrl = getRemoteWebDriverURL();
+            TestLogManager.info("Connecting to Selenium Grid: " + gridUrl);
 
-	            // 🧱 Common arguments for stability (especially in Docker/Grid)
-	            opts.addArguments("--no-sandbox");
-	            opts.addArguments("--disable-dev-shm-usage");
-	            opts.addArguments("--disable-gpu");
-	            opts.addArguments("--disable-notifications");
-	            opts.addArguments("--disable-popup-blocking");
-	            opts.addArguments("--disable-extensions");
-	            opts.addArguments("--incognito");
-	            opts.addArguments("--window-size=" + resolution);
+            WebDriver driver =
+                    new RemoteWebDriver(new URL(gridUrl), options);
 
-	            // ✅ Enable headless if requested
-	            if (headless) opts.addArguments("--headless=new");
+            return DriverContext.selenium(driver);
 
-	            // 🧩 Preferences (downloads, security)
-	            Map<String, Object> prefs = new HashMap<>();
-	            prefs.put("download.prompt_for_download", false);
-	            prefs.put("profile.default_content_settings.popups", 0);
-	            prefs.put("credentials_enable_service", false);
-	            prefs.put("profile.password_manager_enabled", false);
-	            prefs.put("download.default_directory",
-	                    Paths.get(System.getProperty("user.dir"), "target", "downloads").toString());
+        } catch (Exception e) {
+            TestLogManager.error("Failed to create Selenium Grid driver", e);
+            throw new RuntimeException(e);
+        }
+    }
 
-	            opts.setExperimentalOption("prefs", prefs);
-	            opts.setExperimentalOption("excludeSwitches", Collections.singletonList("enable-automation"));
-	            opts.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
+    @Override
+    public String getBrowserName() {
+        return "grid";
+    }
 
-	            return opts;
-	        }
+    @Override
+    public boolean supports(String browserType) {
+        return "grid".equalsIgnoreCase(browserType)
+                || "seleniumgrid".equalsIgnoreCase(browserType);
+    }
 
-	        case "firefox" -> {
-	            FirefoxOptions opts = new FirefoxOptions();
+    /* =========================================================
+       GRID URL
+       ========================================================= */
 
-	            if (headless) opts.addArguments("-headless");
+    private static String getRemoteWebDriverURL() {
 
-	            // 🧱 Set resolution if specified
-	            String[] res = resolution.split("x");
-	            if (res.length == 2) {
-	                opts.addArguments("--width=" + res[0]);
-	                opts.addArguments("--height=" + res[1]);
-	            }
+        try (DatagramSocket socket = new DatagramSocket()) {
+            socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
+            String ipAddress = socket.getLocalAddress().getHostAddress();
+            return "http://" + ipAddress + ":" + System.getProperty("Grid_PORT", "4444") + "/wd/hub";
+        } catch (Exception e) {
+            TestLogManager.error("Exception in getRemoteWebDriverURL", e);
+            throw new RuntimeException(e);
+        }
+    }
 
-	            // 🧩 Download prefs
-	            FirefoxProfile profile = new FirefoxProfile();
-	            profile.setPreference("browser.download.folderList", 2);
-	            profile.setPreference("browser.download.dir",
-	                    Paths.get(System.getProperty("user.dir"), "target", "downloads").toString());
-	            profile.setPreference("browser.helperApps.neverAsk.saveToDisk",
-	                    "application/pdf,application/octet-stream,text/csv");
-	            profile.setPreference("pdfjs.disabled", true);
-	            opts.setProfile(profile);
+    /* =========================================================
+       OPTIONS
+       ========================================================= */
 
-	            opts.setAcceptInsecureCerts(true);
-	            return opts;
-	        }
+    private MutableCapabilities buildOptions(String browserName) {
 
-	        case "edge" -> {
-	            EdgeOptions opts = new EdgeOptions();
+        boolean headless =
+                Boolean.parseBoolean(System.getProperty("GRID_HEADLESS", "false"));
+        String resolution =
+                System.getProperty("GRID_RESOLUTION", "1920x1080");
 
-	            opts.addArguments("--no-sandbox");
-	            opts.addArguments("--disable-dev-shm-usage");
-	            opts.addArguments("--disable-gpu");
-	            opts.addArguments("--disable-notifications");
-	            opts.addArguments("--window-size=" + resolution);
+        switch (browserName) {
 
-	            if (headless) opts.addArguments("--headless=new");
+            case "firefox" -> {
+                FirefoxOptions opts = new FirefoxOptions();
+                if (headless) opts.addArguments("-headless");
 
-	            opts.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
-	            return opts;
-	        }
+                FirefoxProfile profile = new FirefoxProfile();
+                profile.setPreference("browser.download.folderList", 2);
+                profile.setPreference("browser.download.dir",
+                        Paths.get(System.getProperty("user.dir"), "target", "downloads").toString());
+                profile.setPreference("browser.helperApps.neverAsk.saveToDisk",
+                        "application/pdf,application/octet-stream,text/csv");
+                profile.setPreference("pdfjs.disabled", true);
 
-	        case "safari" -> {
-	            SafariOptions opts = new SafariOptions();
-	            // Safari currently does not support headless mode
-	            opts.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
-	            return opts;
-	        }
+                opts.setProfile(profile);
+                opts.setAcceptInsecureCerts(true);
+                return opts;
+            }
 
-	        default -> {
-	            // Fallback: Chrome as default
-	            ChromeOptions opts = new ChromeOptions();
-	            opts.addArguments("--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu");
-	            opts.addArguments("--window-size=" + resolution);
-	            if (headless) opts.addArguments("--headless=new");
-	            return opts;
-	        }
-	    }
-	}
+            case "edge" -> {
+                EdgeOptions opts = new EdgeOptions();
+                opts.addArguments("--window-size=" + resolution);
+                if (headless) opts.addArguments("--headless=new");
+                opts.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
+                return opts;
+            }
 
+            case "safari" -> {
+                SafariOptions opts = new SafariOptions();
+                opts.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
+                return opts;
+            }
 
+            default -> {
+                ChromeOptions opts = new ChromeOptions();
+                opts.addArguments(
+                        "--no-sandbox",
+                        "--disable-dev-shm-usage",
+                        "--disable-gpu",
+                        "--disable-notifications",
+                        "--window-size=" + resolution
+                );
+
+                if (headless) opts.addArguments("--headless=new");
+
+                Map<String, Object> prefs = new HashMap<>();
+                prefs.put("download.prompt_for_download", false);
+                prefs.put("profile.default_content_settings.popups", 0);
+                prefs.put("credentials_enable_service", false);
+                prefs.put("profile.password_manager_enabled", false);
+                prefs.put("download.default_directory",
+                        Paths.get(System.getProperty("user.dir"), "target", "downloads").toString());
+
+                opts.setExperimentalOption("prefs", prefs);
+                opts.setExperimentalOption(
+                        "excludeSwitches", Collections.singletonList("enable-automation"));
+                opts.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
+
+                return opts;
+            }
+        }
+    }
 }

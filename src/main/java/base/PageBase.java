@@ -1,10 +1,18 @@
 package base;
 
+import java.awt.Color;
 import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
 import org.openqa.selenium.WebElement;
+import org.testng.ITestResult;
+import org.testng.Reporter;
+
+import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.impl.DefaultContentLengthStrategy;
 
 import core.interfaces.BrowserInterface;
 import core.interfaces.ClickInterface;
@@ -188,6 +196,11 @@ public class PageBase
 	{
 		return element().getText(locator);
 	}
+	
+	public Date convertStringToDate(String start, String format)
+	{
+		return dates().convertStringToDate(start,format);
+	}
 
 	// Screenshots
 	public void takeScreenshot()
@@ -310,11 +323,20 @@ public class PageBase
 	{
 		browser().refresh();
 	}
+	
+	public void jsMouseHover(Object loc)
+	{
+		hover().jsMouseHover(loc);
+	}
 
-	// Window helpers
 	public String getCurrentWindowHandle()
 	{
 		return window().getCurrentWindowHandle();
+	}
+	
+	public Date removeTime(Date date)
+	{
+		return dates().removeTime(date);
 	}
 
 	public boolean openNewTab()
@@ -680,4 +702,113 @@ public class PageBase
 	{
 		return dates().addTimeToName();
 	}
+	
+	public boolean switchToParentFrame()
+	{
+		return frame().switchToParentFrame();
+	}
+	
+	public List<String> getAllWindowHandles()
+	{
+		return window().getAllWindowHandles();
+	}
+	
+	public void javaScriptHighLightwithScrnShot(Object actions)
+	{
+		screenshot().javaScriptHighLightwithScrnShot(actions);
+	}
+	
+	public String getCurrentYear()
+	{
+		return dates().getCurrentYear();
+	}
+	
+	public String getCurrentTime()
+	{
+		return dates().getCurrentTime();
+	}
+	
+	public void navigateBack()
+	{
+		browser().back();
+	}
+	
+	public void switchToFrame(Object element)
+	{
+		frame().switchToFrame(element);
+	}
+	
+	public boolean switchToDefaultContent()
+	{
+		return frame().switchToDefaultContent();
+	}
+	
+	public String getWindowHandle()
+	{
+		return window().getCurrentWindowHandle();
+	}
+	
+	public String addTimeToValue()
+	{
+		return dates().addTimeToValue();
+	}
+	
+	public boolean selectByVisibleText(String locator,String text)
+	{
+		return select().deselectByVisibleText(locator, text);
+	}
+	
+	public String normalizeText(String loc)
+	{
+		return element().normalizeText(loc);
+	}
+	
+	public boolean jsSelectAllText(String loc)
+	{
+		return select().jsSelectAllText(loc);
+	}
+	
+	public boolean dragAndDrop(Object drag,Object drop){
+		return dragAndDrop().dragAndDrop(drag, drop);
+	}
+	
+	public void jsExpression(String exp)
+	{
+		DriverManager.getPage().evaluate(exp);
+	}
+	
+	public static String rgbToHexColor(String cssValue)
+	{
+		String[] RGBcolor = cssValue.replace("rgb(", "").replace(" ", "").replace(")", "").split(",");
+		int redColorValue = Integer.parseInt(RGBcolor[0]);
+		int greenColorValue = Integer.parseInt(RGBcolor[1]);
+		int blueColorValue = Integer.parseInt(RGBcolor[2]);
+		Color color = new Color(redColorValue, greenColorValue, blueColorValue);
+		String hexcolour = "#" + Integer.toHexString(color.getRGB()).substring(2);
+		return hexcolour;
+	}
+	
+	public static boolean isValidURL(String urlStr)
+	{
+		try
+		{
+			new URL(urlStr);
+			return true;
+		} catch (MalformedURLException e)
+		{
+			return false;
+		}
+	}
+	
+	public String getDescription()
+	{
+		ITestResult result = Reporter.getCurrentTestResult();
+		return result.getMethod().getDescription();
+	}
+	
+	public boolean clickHoldMoveRelease(Object drag,Object drop)
+	{
+		return dragAndDrop().clickHoldMoveRelease(drag, drop);
+	}
+	
 }

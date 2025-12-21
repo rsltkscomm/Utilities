@@ -5,17 +5,25 @@ import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.BoundingBox;
 import com.microsoft.playwright.options.MouseButton;
 
+import base.DriverContext;
 import core.interfaces.MouseHoverInterface;
 import reporting.ExtentManager;
 
 public class PlaywrightMouseHoverUtil extends PlaywrightKeyboardUtil
         implements MouseHoverInterface {
 
-    private final Page page;
+    protected final DriverContext driverContext;
 
-    public PlaywrightMouseHoverUtil(Page page) {
-        super(page);
-        this.page = page;
+    public PlaywrightMouseHoverUtil(DriverContext driverContext) {
+        super(driverContext); // ✅ FIXED
+        this.driverContext = driverContext;
+    }
+
+    /**
+     * Always returns the CURRENT active page
+     */
+    protected Page page() {
+        return driverContext.getPage();
     }
 
     /* -------------------- BASIC HOVER -------------------- */
@@ -123,10 +131,6 @@ public class PlaywrightMouseHoverUtil extends PlaywrightKeyboardUtil
     /* ===============   JS COMPATIBILITY METHODS   ================= */
     /* ============================================================= */
 
-    /**
-     * Playwright hover already fires mouseover events.
-     * This method is kept only for Selenium compatibility.
-     */
     @Override
     public boolean jsMouseHover(Object pr) {
         return mouseHover(pr);
@@ -141,7 +145,8 @@ public class PlaywrightMouseHoverUtil extends PlaywrightKeyboardUtil
     public boolean jsHoverByStyle(Object pr) {
         try {
             resolveLocator(pr).evaluate(
-                    "el => el.style.cssText += 'background: yellow; border: 2px solid red;'");
+                "el => el.style.cssText += 'background: yellow; border: 2px solid red;'"
+            );
             ExtentManager.infoTest("JS hover style applied");
             return true;
         } catch (Exception e) {
@@ -150,12 +155,13 @@ public class PlaywrightMouseHoverUtil extends PlaywrightKeyboardUtil
             return false;
         }
     }
-    
+
+    /* -------------------- CLICK & HOLD MOVE -------------------- */
+
     public void clickAndHoldMoveByOffset(Object selector, int xOffset, int yOffset) {
 
-        Locator slider = page.locator(selector.toString());
+        Locator slider = page().locator(selector.toString());
 
-        // Get center of the element
         BoundingBox box = slider.boundingBox();
         if (box == null) {
             throw new RuntimeException("Element not visible: " + selector);
@@ -164,11 +170,9 @@ public class PlaywrightMouseHoverUtil extends PlaywrightKeyboardUtil
         double startX = box.x + box.width / 2;
         double startY = box.y + box.height / 2;
 
-        page.mouse().move(startX, startY);
-        page.mouse().down();
-        page.mouse().move(startX + xOffset, startY + yOffset);
-        page.mouse().up();
+        page().mouse().move(startX, startY);
+        page().mouse().down();
+        page().mouse().move(startX + xOffset, startY + yOffset);
+        page().mouse().up();
     }
-
-
 }

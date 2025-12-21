@@ -9,7 +9,6 @@ import reporting.ExcelReportGenerator;
 import reporting.ExtentManager;
 import reporting.TestLogManager;
 import seleniumUtils.DateUtils;
-import seleniumUtils.ScreenshotUtil;
 import org.apache.poi.openxml4j.util.ZipSecureFile;
 
 import java.lang.reflect.Method;
@@ -157,8 +156,6 @@ public class BaseTest {
     public void tearDown(ITestResult result) {
 
         try {
-            ScreenshotUtil.takeScreenshot();
-
             switch (result.getStatus()) {
                 case ITestResult.SUCCESS ->
                         ExtentManager.passLabel(result.getName());

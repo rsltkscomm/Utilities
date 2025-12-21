@@ -1,15 +1,13 @@
 package base;
 
-import com.microsoft.playwright.*;
-
-import core.interfaces.EngineType;
-import patterns.strategy.DriverFactory;
-import reporting.TestLogManager;
+import java.time.Duration;
 
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.remote.DesiredCapabilities;
 
-import java.time.Duration;
+import core.interfaces.EngineType;
+import patterns.strategy.DriverFactory;
+import reporting.TestLogManager;
 
 public final class DriverManager {
 
@@ -22,15 +20,19 @@ public final class DriverManager {
        ========================= */
 
     public static void createDriver(String browser) {
-
-        EngineType engine = getEngineType();
-
         try {
-            if (engine == EngineType.SELENIUM) {
-                createSeleniumDriver(browser);
-            } else {
-                createPlaywrightDriver(browser);
+            DriverContext ctx = DriverFactory.createDriver(browser);
+
+            if (ctx.getEngineType() == EngineType.SELENIUM) {
+                WebDriver driver = ctx.getWebDriver();
+                driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
+                driver.manage().window().maximize();
             }
+
+            CONTEXT.set(ctx);
+            TestLogManager.info(
+                    ctx.getEngineType() + " driver created for browser: " + browser);
+
         } catch (Exception e) {
             TestLogManager.error("Failed to create driver", e);
             throw new RuntimeException("Driver creation failed", e);
@@ -39,62 +41,27 @@ public final class DriverManager {
 
     public static void createDriver(String browser, DesiredCapabilities capabilities) {
 
-        EngineType engine = getEngineType();
-
-        if (engine == EngineType.PLAYWRIGHT) {
+        if (getEngineType() == EngineType.PLAYWRIGHT) {
             throw new UnsupportedOperationException(
                     "DesiredCapabilities are not supported for Playwright");
         }
 
         try {
-            WebDriver driver = DriverFactory.createDriver(browser, capabilities);
+            DriverContext ctx =
+                    DriverFactory.createDriver(browser, capabilities);
+
+            WebDriver driver = ctx.getWebDriver();
             driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
             driver.manage().window().maximize();
 
-            CONTEXT.set(DriverContext.selenium(driver));
-            TestLogManager.info("Selenium driver created with capabilities: " + browser);
+            CONTEXT.set(ctx);
+            TestLogManager.info(
+                    "Selenium driver created with capabilities: " + browser);
 
         } catch (Exception e) {
             TestLogManager.error("Failed to create Selenium driver", e);
             throw new RuntimeException(e);
         }
-    }
-
-    /* =========================
-       INTERNAL CREATORS
-       ========================= */
-
-    private static void createSeleniumDriver(String browser) {
-
-        WebDriver driver = DriverFactory.createDriver(browser);
-        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10));
-        driver.manage().window().maximize();
-
-        CONTEXT.set(DriverContext.selenium(driver));
-        TestLogManager.info("Selenium driver created: " + browser);
-    }
-
-    private static void createPlaywrightDriver(String browser) {
-
-        Playwright playwright = Playwright.create();
-
-        BrowserType browserType = switch (browser.toLowerCase()) {
-            case "firefox" -> playwright.firefox();
-            case "webkit", "safari" -> playwright.webkit();
-            default -> playwright.chromium();
-        };
-
-        Browser pwBrowser = browserType.launch(
-                new BrowserType.LaunchOptions()
-                        .setHeadless(Boolean.parseBoolean(
-                                System.getProperty("headless", "false")))
-        );
-
-        BrowserContext pwContext = pwBrowser.newContext();
-        Page page = pwContext.newPage();
-
-        CONTEXT.set(DriverContext.playwright(playwright, pwBrowser, pwContext, page));
-        TestLogManager.info("Playwright browser launched: " + browser);
     }
 
     /* =========================
@@ -113,7 +80,7 @@ public final class DriverManager {
                 : null;
     }
 
-    public static Page getPage() {
+    public static com.microsoft.playwright.Page getPage() {
         DriverContext ctx = CONTEXT.get();
         return ctx != null ? ctx.getPage() : null;
     }
@@ -141,17 +108,18 @@ public final class DriverManager {
             if (ctx.getEngineType() == EngineType.SELENIUM) {
                 ctx.getWebDriver().quit();
             } else {
-                ctx.getPage().context().close();
+                ctx.getBrowserContext().close();
                 ctx.getBrowser().close();
                 ctx.getPlaywright().close();
             }
         } catch (Exception e) {
-            TestLogManager.warning("Error while quitting driver: " + e.getMessage());
+            TestLogManager.warning(
+                    "Error while quitting driver: " + e.getMessage());
         } finally {
             CONTEXT.remove();
         }
     }
-    
+
     public static void setContext(DriverContext context) {
         CONTEXT.set(context);
     }
