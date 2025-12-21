@@ -6,17 +6,25 @@ import java.util.List;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 
+import base.DriverContext;
 import core.interfaces.DropdownInterface;
 import reporting.ExtentManager;
 
 public class PlaywrightDropdownUtil extends PlaywrightAssertUtil
         implements DropdownInterface {
 
-    private final Page page;
+    protected final DriverContext driverContext;
 
-    public PlaywrightDropdownUtil(Page page) {
-        super(page);
-        this.page = page;
+    public PlaywrightDropdownUtil(DriverContext driverContext) {
+        super(driverContext); // ✅ parent now also uses DriverContext
+        this.driverContext = driverContext;
+    }
+
+    /**
+     * Always returns the CURRENT active page
+     */
+    protected Page page() {
+        return driverContext.getPage();
     }
 
     // ------------------------------------------------------------

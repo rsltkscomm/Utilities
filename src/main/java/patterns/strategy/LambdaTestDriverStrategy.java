@@ -1,214 +1,210 @@
 package patterns.strategy;
 
-import org.openqa.selenium.MutableCapabilities;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
-import org.openqa.selenium.edge.EdgeOptions;
-import org.openqa.selenium.firefox.FirefoxOptions;
-import org.openqa.selenium.remote.DesiredCapabilities;
-import org.openqa.selenium.remote.LocalFileDetector;
-import org.openqa.selenium.remote.RemoteWebDriver;
-import org.openqa.selenium.safari.SafariOptions;
-
-import base.BaseTest;
+import base.DriverContext;
+import core.interfaces.EngineType;
 import reporting.TestLogManager;
 
+import com.microsoft.playwright.*;
+
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.remote.DesiredCapabilities;
+import org.openqa.selenium.remote.RemoteWebDriver;
+
+import java.net.URI;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Driver strategy for running tests on LambdaTest Selenium Grid.
- * Usage: set system properties or environment variables, then select browser "lambdatest".
- * Required: LT_USERNAME, LT_ACCESS_KEY
- */
-public class LambdaTestDriverStrategy implements DriverStrategy
-{
-	@Override
-	public WebDriver createDriver()
-	{
-		return createDriver(null);
-	}
+public class LambdaTestDriverStrategy implements DriverStrategy {
 
-	@Override
-	public WebDriver createDriver(DesiredCapabilities capabilities) {
-	    try {
-	        String username = System.getProperty("LT_USERNAME", "lt.username");
-	        String accessKey = System.getProperty("LT_ACCESS_KEY", "lt.accessKey");
+    /* =========================
+       META
+       ========================= */
 
-	        if (isNullOrEmpty(username) || isNullOrEmpty(accessKey)) {
-	            throw new IllegalArgumentException("LambdaTest credentials not provided. Set LT_USERNAME and LT_ACCESS_KEY");
-	        }
+    @Override
+    public String getBrowserName() {
+        return System.getProperty("LT_BROWSER", "chrome");
+    }
 
-	        String gridUrl = System.getProperty("LT_GRID_URL", "lt.gridUrl");
-	        if (isNullOrEmpty(gridUrl)) {
-	            gridUrl = "https://" + username + ":" + accessKey + "@hub.lambdatest.com/wd/hub";
-	        }
+    @Override
+    public boolean supports(String browserType) {
+        return "lambdatest".equalsIgnoreCase(browserType)
+                || getBrowserName().equalsIgnoreCase(browserType);
+    }
 
-	        URL remoteUrl = new URL(gridUrl);
+    /* =========================
+       ENTRY
+       ========================= */
 
-	        // ✅ Randomization toggle
-	        boolean randomize = "yes".equalsIgnoreCase(System.getProperty("LT_RANDOM", "no"));
+    @Override
+    public DriverContext createDriver() {
+        return createDriver(new DesiredCapabilities());
+    }
 
-	        String browserName;
-	        String browserVersion;
-	        String platformName;
+    @Override
+    public DriverContext createDriver(DesiredCapabilities capabilities) {
 
-	        if (randomize) {
-	            // ✅ Valid random combinations
-	            String[][] combos = {
-	                {"chrome", "Windows 11"},
-	                {"chrome", "Windows 10"},
-	                {"chrome", "macos 26.0"},
-	                {"firefox", "Windows 11"},
-	                {"firefox", "macos 26.0"},
-	                {"edge", "Windows 11"},
-	                {"safari", "macos 26.0"},
-	                {"safari", "macos 26.0"}
-	            };
-	            String[] versions = {"latest", "latest-1"};
-	            java.util.Random rand = new java.util.Random();
+        EngineType engine = EngineType.valueOf(
+                System.getProperty("engine", "SELENIUM").toUpperCase()
+        );
 
-	            String[] pick = combos[rand.nextInt(combos.length)];
-	            browserName = pick[0];
-	            platformName = pick[1];
-	            browserVersion = versions[rand.nextInt(versions.length)];
+        return engine == EngineType.PLAYWRIGHT
+                ? createPlaywrightDriver()
+                : createSeleniumDriver(capabilities);
+    }
 
-	            TestLogManager.info("🔀 Randomized valid combo selected: " + browserName + " | " + platformName + " | " + browserVersion);
-	        } else {
-	            // ✅ Deterministic (from property file)
-	            browserName = System.getProperty("LT_BROWSER", "chrome");
-	            browserVersion = System.getProperty("LT_BROWSER_VERSION", "latest");
-	            platformName = System.getProperty("LT_PLATFORM", "Windows 11");
+    /* =========================================================
+       SELENIUM – LambdaTest Grid
+       ========================================================= */
 
-	            TestLogManager.info("⚙️ Fixed configuration run: " + browserName + " | " + platformName + " | " + browserVersion);
-	        }
+    private DriverContext createSeleniumDriver(DesiredCapabilities baseCaps) {
 
-	        MutableCapabilities options = buildOptions(browserName, capabilities);
+        try {
+            TestLogManager.info("Creating LambdaTest Selenium driver");
 
-	        Map<String, Object> ltOptions = new HashMap<>();
-	        ltOptions.put("user", username);
-	        ltOptions.put("accessKey", accessKey);
-	        ltOptions.put("build", System.getProperty("LT_BUILD", "RESUL Build"));
-//	        ltOptions.put("name", System.getProperty("LT_NAME", "LambdaTest Example"));
-	        ltOptions.put("name", BaseTest.method_name.get());
-	        ltOptions.put("platformName", platformName);
-	        ltOptions.put("selenium_version", System.getProperty("LT_SELENIUM_VERSION", "4.22.0"));
+            DesiredCapabilities caps = new DesiredCapabilities(baseCaps);
+            caps.setCapability("browserName",
+                    System.getProperty("LT_BROWSER", "chrome"));
+            caps.setCapability("browserVersion",
+                    System.getProperty("LT_BROWSER_VERSION", "latest"));
+            caps.setCapability("platformName",
+                    System.getProperty("LT_PLATFORM", "macOS 13"));
 
-	        putIfPresent(ltOptions, "resolution", System.getProperty("LT_RESOLUTION", "1920x1080"));
-	        putIfPresent(ltOptions, "network", System.getProperty("LT_NETWORK", "true"));
-	        putIfPresent(ltOptions, "video", System.getProperty("LT_VIDEO", "true"));
-	        putIfPresent(ltOptions, "console", System.getProperty("LT_CONSOLE", "true"));
-	        putIfPresent(ltOptions, "visual", System.getProperty("LT_VISUAL", "true"));
-	        putIfPresent(ltOptions, "geoLocation", System.getProperty("LT_GEO_LOCATION", "IN"));
+            caps.setCapability("LT:Options", buildSeleniumLTOptions());
 
-	        // ✅ Attach LT options to the browser-specific capabilities
-	        if (options instanceof ChromeOptions chrom) {
-	            chrom.setBrowserVersion(browserVersion);
-	            chrom.setCapability("LT:Options", ltOptions);
-	            HashMap<String, Object> prefs = new HashMap<>();
-	            prefs.put("download.prompt_for_download", false);
-	            chrom.setExperimentalOption("prefs", prefs);
-	        } else if (options instanceof FirefoxOptions fox) {
-	            fox.setBrowserVersion(browserVersion);
-	            fox.setCapability("LT:Options", ltOptions);
-	        } else if (options instanceof EdgeOptions edge) {
-	            edge.setBrowserVersion(browserVersion);
-	            edge.setCapability("LT:Options", ltOptions);
-	        } else if (options instanceof SafariOptions safari) {
-	            safari.setBrowserVersion(browserVersion);
-	            safari.setCapability("LT:Options", ltOptions);
-	        } else {
-	            options.setCapability("LT:Options", ltOptions);
-	        }
+            URL gridUrl = URI.create(
+                    System.getProperty("LT_GRID_URL")
+            ).toURL();
 
-	        TestLogManager.info("Connecting to LambdaTest Grid: " + remoteUrl);
-	        RemoteWebDriver remoteWebDriver = new RemoteWebDriver(remoteUrl, options);
-	        remoteWebDriver.setFileDetector(new LocalFileDetector());
-	        return remoteWebDriver;
-	    } catch (Exception e) {
-	        TestLogManager.error("Failed to create LambdaTest RemoteWebDriver", e);
-	        throw new RuntimeException("LambdaTest driver creation failed", e);
-	    }
-	}
+            WebDriver driver = new RemoteWebDriver(gridUrl, caps);
+            return DriverContext.selenium(driver);
 
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "Failed to create LambdaTest Selenium driver", e);
+        }
+    }
 
-	@Override
-	public String getBrowserName()
-	{
-		return "lambdatest";
-	}
+    /* =========================================================
+       PLAYWRIGHT – LambdaTest Playwright Grid
+       ========================================================= */
 
-	@Override
-	public boolean supports(String browserType)
-	{
-		return "lambdatest".equalsIgnoreCase(browserType) || "lt".equalsIgnoreCase(browserType);
-	}
+    private DriverContext createPlaywrightDriver() {
 
-	private MutableCapabilities buildOptions(String browserName, DesiredCapabilities extra)
-	{
-		String headlessFlag = System.getProperty("LT_HEADLESS", System.getProperty("headless", "false"));
-		boolean headless = Boolean.parseBoolean(headlessFlag);
-		switch (browserName.toLowerCase())
-		{
-			case "chrome" -> {
-				ChromeOptions opts = new ChromeOptions();
-				if (headless) opts.addArguments("--headless=new");
-				if (extra != null) opts.merge(extra);
-				return opts;
-			}
-			case "firefox" -> {
-				FirefoxOptions opts = new FirefoxOptions();
-				if (headless) opts.addArguments("-headless");
-				if (extra != null) opts.merge(extra);
-				return opts;
-			}
-			case "edge" -> {
-				EdgeOptions opts = new EdgeOptions();
-				if (headless) opts.addArguments("--headless=new");
-				if (extra != null) opts.merge(extra);
-				return opts;
-			}
-			case "safari" -> {
-				SafariOptions opts = new SafariOptions();
-				if (extra != null) opts.merge(extra);
-				return opts;
-			}
-			default -> {
-				ChromeOptions opts = new ChromeOptions();
-				if (headless) opts.addArguments("--headless=new");
-				if (extra != null) opts.merge(extra);
-				return opts;
-			}
-		}
-	}
+        try {
+            TestLogManager.info("Creating LambdaTest Playwright driver");
 
-	private static void putIfPresent(Map<String, Object> map, String key, Object value)
-	{
-		if (value != null) map.put(key, value);
-	}
+            Playwright playwright = Playwright.create();
 
-	private static boolean getBooleanFlag(String envKey, String sysKey)
-	{
-		String v = getEnvOrProperty(envKey, sysKey, null);
-		return v != null && ("true".equalsIgnoreCase(v) || "1".equals(v));
-	}
+            String capsJson = buildPlaywrightCapsJson();
+            String encodedCaps = Base64.getEncoder()
+                    .encodeToString(
+                            capsJson.getBytes(StandardCharsets.UTF_8));
 
-	private static String getEnvOrProperty(String envKey, String sysKey)
-	{
-		String v = System.getenv(envKey);
-		if (v == null || v.isBlank()) v = System.getProperty(sysKey);
-		return v;
-	}
+            String wsEndpoint =
+                    "wss://cdp.lambdatest.com/playwright?capabilities="
+                            + encodedCaps;
 
-	private static String getEnvOrProperty(String envKey, String sysKey, String def)
-	{
-		String v = getEnvOrProperty(envKey, sysKey);
-		return (v == null || v.isBlank()) ? def : v;
-	}
+            Browser browser =
+                    playwright.chromium().connect(wsEndpoint);
 
-	private static boolean isNullOrEmpty(String s)
-	{
-		return s == null || s.isBlank();
-	}
+            BrowserContext context = browser.newContext(
+                    new Browser.NewContextOptions()
+                            .setViewportSize(1920, 1080)
+                            .setAcceptDownloads(true)
+            );
+
+            Page page = context.newPage();
+
+            return DriverContext.playwright(
+                    playwright, browser, context, page);
+
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "Failed to create LambdaTest Playwright driver", e);
+        }
+    }
+
+    /* =========================================================
+       CAPABILITIES (LT_* based)
+       ========================================================= */
+
+    private Map<String, Object> buildSeleniumLTOptions() {
+
+        Map<String, Object> options = new HashMap<>();
+
+        options.put("user",
+                System.getProperty("LT_USERNAME"));
+        options.put("accessKey",
+                System.getProperty("LT_ACCESS_KEY"));
+
+        options.put("build",
+                System.getProperty("LT_BUILD"));
+        options.put("name",
+                System.getProperty("LT_NAME"));
+
+        options.put("selenium_version",
+                System.getProperty("LT_SELENIUM_VERSION", "4.22.0"));
+
+        options.put("resolution",
+                System.getProperty("LT_RESOLUTION", "1920x1080"));
+
+        options.put("network",
+                Boolean.parseBoolean(
+                        System.getProperty("LT_NETWORK", "true")));
+        options.put("video",
+                Boolean.parseBoolean(
+                        System.getProperty("LT_VIDEO", "true")));
+        options.put("console",
+                Boolean.parseBoolean(
+                        System.getProperty("LT_CONSOLE", "true")));
+        options.put("visual",
+                Boolean.parseBoolean(
+                        System.getProperty("LT_VISUAL", "true")));
+
+        options.put("geoLocation",
+                System.getProperty("LT_GEO_LOCATION", "IN"));
+
+        return options;
+    }
+
+    private String buildPlaywrightCapsJson() {
+
+        Map<String, Object> caps = new HashMap<>();
+
+        caps.put("browser",
+                System.getProperty("LT_BROWSER", "chromium"));
+        caps.put("version",
+                System.getProperty("LT_BROWSER_VERSION", "latest"));
+        caps.put("platform",
+                System.getProperty("LT_PLATFORM", "macOS 13"));
+
+        Map<String, Object> ltOptions = new HashMap<>();
+        ltOptions.put("user",
+                System.getProperty("LT_USERNAME"));
+        ltOptions.put("accessKey",
+                System.getProperty("LT_ACCESS_KEY"));
+        ltOptions.put("build",
+                System.getProperty("LT_BUILD"));
+        ltOptions.put("name",
+                System.getProperty("LT_NAME"));
+        ltOptions.put("video",
+                Boolean.parseBoolean(
+                        System.getProperty("LT_VIDEO", "true")));
+        ltOptions.put("network",
+                Boolean.parseBoolean(
+                        System.getProperty("LT_NETWORK", "true")));
+        ltOptions.put("console",
+                Boolean.parseBoolean(
+                        System.getProperty("LT_CONSOLE", "true")));
+        ltOptions.put("visual",
+                Boolean.parseBoolean(
+                        System.getProperty("LT_VISUAL", "true")));
+
+        caps.put("LT:Options", ltOptions);
+
+        return new com.google.gson.Gson().toJson(caps);
+    }
 }

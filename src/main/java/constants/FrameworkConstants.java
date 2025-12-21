@@ -1,7 +1,10 @@
 package constants;
 
 import config.ConfigurationFactory;
+
+import java.io.File;
 import java.nio.file.Paths;
+import java.util.NoSuchElementException;
 
 /**
  * Framework Constants with Configuration Management Integration
@@ -127,9 +130,12 @@ public class FrameworkConstants
 		try {
 			String oneDrivePath = ConfigurationFactory.getConfigValue("paths.oneDrive", 
 				Paths.get(System.getProperty("user.home"), "OneDrive - RESULTICKS DIGITALS INDIA PRIVATE LIMITED", "Automation", PROJECT_NAME).toString());
+			if (!new File(oneDrivePath).exists()) {
+				throw new NoSuchElementException();
+			}
 			return oneDrivePath;
 		} catch (Exception e) {
-			return Paths.get(System.getProperty("user.home"), "OneDrive - RESULTICKS", "Automation", "DefaultProject").toString();
+			return Paths.get(System.getProperty("user.home"), "OneDrive - RESULTICKS", "Automation", PROJECT_NAME).toString();
 		}
 	}
 	
@@ -137,7 +143,7 @@ public class FrameworkConstants
 		try {
 			return Paths.get(ONEDRIVE_BASE_PATH, "AQAcred", PROJECT_NAME).toString();
 		} catch (Exception e) {
-			return Paths.get(ONEDRIVE_BASE_PATH, "AQAcred", "DefaultProject").toString();
+			return Paths.get(ONEDRIVE_BASE_PATH, "AQAcred", PROJECT_NAME).toString();
 		}
 	}
 	

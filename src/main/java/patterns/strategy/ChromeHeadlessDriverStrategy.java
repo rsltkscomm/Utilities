@@ -13,91 +13,152 @@ import org.openqa.selenium.remote.CapabilityType;
 import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.remote.RemoteWebDriver;
 
+import com.microsoft.playwright.*;
+
+import base.DriverContext;
+import core.interfaces.EngineType;
 import io.github.bonigarcia.wdm.WebDriverManager;
 
 /**
- * Strategy implementation for Chrome WebDriver creation.
+ * Chrome Headless strategy supporting BOTH Selenium and Playwright
+ * based on EngineType.
  */
 public class ChromeHeadlessDriverStrategy implements DriverStrategy {
-    
-    private final boolean headless;
+
     private final boolean remote;
     private final String remoteUrl;
-    
+
     public ChromeHeadlessDriverStrategy() {
-        this(true, false, null);
+        this(false, null);
     }
-    
-    public ChromeHeadlessDriverStrategy(boolean headless, boolean remote, String remoteUrl) {
-        this.headless = headless;
+
+    public ChromeHeadlessDriverStrategy(boolean remote, String remoteUrl) {
         this.remote = remote;
         this.remoteUrl = remoteUrl;
     }
-    
+
+    /* ==========================================================
+       ENTRY
+       ========================================================== */
+
     @Override
-    public WebDriver createDriver() {
+    public DriverContext createDriver() {
         return createDriver(null);
     }
-    
+
     @Override
-    public WebDriver createDriver(DesiredCapabilities capabilities) {
+    public DriverContext createDriver(DesiredCapabilities capabilities) {
+
+        EngineType engine =
+                EngineType.valueOf(System.getProperty("engine", "SELENIUM"));
+
+        if (engine == EngineType.PLAYWRIGHT) {
+            return createPlaywrightChromeHeadless();
+        }
+
+        return createSeleniumChromeHeadless(capabilities);
+    }
+
+    /* ==========================================================
+       SELENIUM – HEADLESS
+       ========================================================== */
+
+    private DriverContext createSeleniumChromeHeadless(
+            DesiredCapabilities capabilities) {
+
+        WebDriverManager.chromedriver().setup();
         ChromeOptions options = createChromeOptions();
-        
+
         if (capabilities != null) {
             options.merge(capabilities);
         }
-        
+
         try {
+            WebDriver driver;
+
             if (remote && remoteUrl != null) {
-                return new RemoteWebDriver(URI.create(remoteUrl).toURL(), options);
+                driver = new RemoteWebDriver(
+                        URI.create(remoteUrl).toURL(), options);
             } else {
-                return new ChromeDriver(options);
+                driver = new ChromeDriver(options);
             }
+
+            return DriverContext.selenium(driver);
+
         } catch (Exception e) {
-            throw new RuntimeException("Failed to create Chrome driver", e);
+            throw new RuntimeException(
+                    "Failed to create Selenium Chrome Headless driver", e);
         }
     }
-    
+
     private ChromeOptions createChromeOptions() {
-        WebDriverManager.chromedriver().setup();
+
         ChromeOptions options = new ChromeOptions();
-        
-        // Set common options
-        setCommonOptions(options);
-        
-        // Set headless mode if required
-        if (headless) {
-            options.addArguments("--headless");
-        }
-        
-        return options;
-    }
-    
-    private void setCommonOptions(ChromeOptions options) {
         Map<String, Object> prefs = new HashMap<>();
-        String downloadPath = Paths.get(System.getProperty("user.dir"), "src", "main", "resources", "data", "downloadedFile")
-                .toAbsolutePath().toString();
-        
+
+        String downloadPath = Paths.get(
+                System.getProperty("user.dir"),
+                "src", "main", "resources", "data", "downloadedFile"
+        ).toAbsolutePath().toString();
+
         prefs.put("download.default_directory", downloadPath);
         prefs.put("download.prompt_for_download", false);
         prefs.put("profile.default_content_settings.popups", 0);
         prefs.put("credentials_enable_service", false);
         prefs.put("profile.password_manager_enabled", false);
-        
-        options.addArguments("--enable-geolocation","--disable-notifications", "--no-sandbox", "--disable-gpu");
+
         options.setExperimentalOption("prefs", prefs);
-        options.setExperimentalOption("excludeSwitches", Collections.singletonList("enable-automation"));
+        options.setExperimentalOption(
+                "excludeSwitches", Collections.singletonList("enable-automation"));
+
+        options.addArguments(
+                "--headless=new",
+                "--disable-gpu",
+                "--no-sandbox",
+                "--disable-notifications",
+                "--disable-dev-shm-usage"
+        );
+
         options.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
+        return options;
     }
-    
+
+    /* ==========================================================
+       PLAYWRIGHT – HEADLESS
+       ========================================================== */
+
+    private DriverContext createPlaywrightChromeHeadless() {
+
+        Playwright playwright = Playwright.create();
+
+        Browser browser = playwright.chromium().launch(
+                new BrowserType.LaunchOptions()
+                        .setHeadless(true)
+        );
+
+        BrowserContext context = browser.newContext(
+                new Browser.NewContextOptions()
+                        .setAcceptDownloads(true)
+        );
+
+        Page page = context.newPage();
+
+        return DriverContext.playwright(
+                playwright, browser, context, page);
+    }
+
+    /* ==========================================================
+       META
+       ========================================================== */
+
     @Override
     public String getBrowserName() {
-        return "chrome";
+        return "chromeheadless";
     }
-    
+
     @Override
     public boolean supports(String browserType) {
-        return "chrome".equalsIgnoreCase(browserType) || 
-               "chromeheadless".equalsIgnoreCase(browserType);
+        return "chromeheadless".equalsIgnoreCase(browserType)
+            || "chrome-headless".equalsIgnoreCase(browserType);
     }
 }

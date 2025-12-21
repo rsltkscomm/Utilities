@@ -1,9 +1,7 @@
 package base;
 
 import com.microsoft.playwright.*;
-
 import core.interfaces.EngineType;
-
 import org.openqa.selenium.WebDriver;
 
 /**
@@ -21,15 +19,11 @@ public final class DriverContext {
     private final Playwright playwright;
     private final Browser browser;
     private final BrowserContext browserContext;
-    private final Page page;
+    private Page page; // MUST be mutable
 
     // ===== Common =====
     private final AutomationContext automationContext;
     private final EngineActions engineActions;
-
-    /* =========================
-       PRIVATE CONSTRUCTORS
-       ========================= */
 
     private DriverContext(
             EngineType engineType,
@@ -37,8 +31,7 @@ public final class DriverContext {
             Playwright playwright,
             Browser browser,
             BrowserContext browserContext,
-            Page page,
-            AutomationContext automationContext
+            Page page
     ) {
         this.engineType = engineType;
         this.webDriver = webDriver;
@@ -46,7 +39,12 @@ public final class DriverContext {
         this.browser = browser;
         this.browserContext = browserContext;
         this.page = page;
-        this.automationContext = automationContext;
+
+        // AutomationContext must read page dynamically
+        this.automationContext = engineType == EngineType.PLAYWRIGHT
+                ? new PlaywrightContext(this)
+                : new SeleniumContext(webDriver);
+
         this.engineActions = EngineActions.from(this);
     }
 
@@ -61,8 +59,7 @@ public final class DriverContext {
                 null,
                 null,
                 null,
-                null,
-                new SeleniumContext(driver)
+                null
         );
     }
 
@@ -78,20 +75,19 @@ public final class DriverContext {
                 playwright,
                 browser,
                 context,
-                page,
-                new PlaywrightContext(page)
+                page
         );
     }
 
     /* =========================
-       GETTERS
+       GETTERS / SETTERS
        ========================= */
 
     public EngineType getEngineType() {
         return engineType;
     }
 
-    // Selenium (legacy-safe)
+    // Selenium
     public WebDriver getWebDriver() {
         return webDriver;
     }
@@ -111,6 +107,10 @@ public final class DriverContext {
 
     public Page getPage() {
         return page;
+    }
+
+    public void setPage(Page page) {
+        this.page = page;
     }
 
     public AutomationContext getAutomationContext() {

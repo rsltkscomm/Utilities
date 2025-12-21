@@ -4,17 +4,33 @@ import com.microsoft.playwright.ElementHandle;
 import com.microsoft.playwright.Frame;
 import com.microsoft.playwright.Page;
 
+import base.DriverContext;
 import core.interfaces.FrameInterface;
 import reporting.ExtentManager;
 
-public class PlaywrightFrameUtil extends PlaywrightSelectUtil implements FrameInterface {
+public class PlaywrightFrameUtil extends PlaywrightSelectUtil
+        implements FrameInterface {
 
-    private final Page page;
-    private Frame currentFrame;
+    protected final DriverContext driverContext;
+    protected Frame currentFrame;
 
-    public PlaywrightFrameUtil(Page page) {
-        super(page);
-        this.page = page;
+    public PlaywrightFrameUtil(DriverContext driverContext) {
+        super(driverContext); // initial page
+        this.driverContext = driverContext;
+        this.currentFrame = driverContext.getPage().mainFrame();
+    }
+
+    /**
+     * Always get the CURRENT active page
+     */
+    protected Page page() {
+        return driverContext.getPage();
+    }
+
+    /**
+     * 🔁 Called when window/tab switches
+     */
+    protected void updatePage(Page page) {
         this.currentFrame = page.mainFrame();
     }
 
@@ -23,10 +39,10 @@ public class PlaywrightFrameUtil extends PlaywrightSelectUtil implements FrameIn
     @Override
     public boolean switchToFrame(int index) {
         try {
-            if (index < 0 || index >= page.frames().size()) {
+            if (index < 0 || index >= page().frames().size()) {
                 throw new IndexOutOfBoundsException("Invalid frame index: " + index);
             }
-            currentFrame = page.frames().get(index);
+            currentFrame = page().frames().get(index);
             ExtentManager.infoTest("Switched to frame by index: " + index);
             return true;
         } catch (Exception e) {
@@ -41,7 +57,7 @@ public class PlaywrightFrameUtil extends PlaywrightSelectUtil implements FrameIn
     @Override
     public boolean switchToFrame(String nameOrId) {
         try {
-            Frame frame = page.frame(nameOrId);
+            Frame frame = page().frame(nameOrId);
             if (frame == null) {
                 throw new RuntimeException("Frame not found: " + nameOrId);
             }
@@ -55,36 +71,37 @@ public class PlaywrightFrameUtil extends PlaywrightSelectUtil implements FrameIn
         }
     }
 
-    /* -------------------- SWITCH TO FRAME BY LOCATOR STRING -------------------- */
+    /* -------------------- SWITCH TO FRAME BY LOCATOR -------------------- */
 
     @Override
     public boolean switchToFrame(Object frameElement) {
         try {
             if (!(frameElement instanceof String)) {
                 throw new IllegalArgumentException(
-                        "Playwright requires iframe locator STRING, not WebElement");
+                        "Playwright requires iframe locator STRING");
             }
 
             String iframeSelector =
-                    new PlaywrightLocatorUtil(page)
+                    new PlaywrightLocatorUtil(driverContext)
                             .getLocator(frameElement.toString())
                             .toString();
 
-            ElementHandle iframeHandle = page.querySelector(iframeSelector);
+            ElementHandle iframeHandle = page().querySelector(iframeSelector);
             if (iframeHandle == null) {
-                throw new RuntimeException("Iframe element not found: " + iframeSelector);
+                throw new RuntimeException("Iframe not found: " + iframeSelector);
             }
 
-            for (Frame frame : page.frames()) {
+            for (Frame frame : page().frames()) {
                 ElementHandle frameElementHandle = frame.frameElement();
                 if (frameElementHandle != null && frameElementHandle.equals(iframeHandle)) {
                     currentFrame = frame;
-                    ExtentManager.infoTest("Switched to frame by locator: " + iframeSelector);
+                    ExtentManager.infoTest(
+                            "Switched to frame by locator: " + iframeSelector);
                     return true;
                 }
             }
 
-            throw new RuntimeException("Matching frame not found for iframe");
+            throw new RuntimeException("Matching frame not found");
 
         } catch (Exception e) {
             ExtentManager.failTest("Switch to frame by element failed");
@@ -98,7 +115,7 @@ public class PlaywrightFrameUtil extends PlaywrightSelectUtil implements FrameIn
     @Override
     public boolean switchToParentFrame() {
         try {
-            if (currentFrame.parentFrame() != null) {
+            if (currentFrame != null && currentFrame.parentFrame() != null) {
                 currentFrame = currentFrame.parentFrame();
                 ExtentManager.infoTest("Switched to parent frame");
                 return true;
@@ -116,7 +133,7 @@ public class PlaywrightFrameUtil extends PlaywrightSelectUtil implements FrameIn
 
     @Override
     public boolean switchToDefaultContent() {
-        currentFrame = page.mainFrame();
+        currentFrame = page().mainFrame();
         ExtentManager.infoTest("Switched to default content");
         return true;
     }

@@ -399,10 +399,21 @@ public class EmailSender {
         // Copy the actual file into OneDrive
         Files.copy(Paths.get(sourceFile), Paths.get(newFilePath), StandardCopyOption.REPLACE_EXISTING);
 
-        // Store OneDrive file path
+     // ORIGINAL BEHAVIOR (UNCHANGED)
         FilePath = newFilePath;
         zipPath = newFilePath;
 
+        // ──────────────────────────────
+        // 🔹 NETLIFY ADDITION (ONLY NEW)
+        // ──────────────────────────────
+        File reportFile = new File(newFilePath);
+        String reportDir = reportFile.getParent();
+
+        String netlifyUrl = publishToNetlify(reportDir);
+        if (netlifyUrl != null) {
+            FilePath = netlifyUrl + "/" + reportFile.getName();
+        }
+        
         // Attach email files if needed
         boolean useCustomName = "yes".equalsIgnoreCase(System.getProperty("AttachMailFile", "no"));
         if (useCustomName) {
@@ -430,6 +441,61 @@ public class EmailSender {
             System.err.println("❌ Failed to attach " + filePath + ": " + e.getMessage());
         }
     }
+    
+    private static String publishToNetlify(String reportDir) {
+        try {
+        	ProcessBuilder pb = new ProcessBuilder(
+        		    "cmd.exe", "/c",
+        		    "\"C:\\Program Files\\nodejs\\node.exe\" " +
+        		    "\"C:\\Users\\Vijay M\\AppData\\Roaming\\npm\\node_modules\\netlify-cli\\bin\\run.js\" " +
+        		    "deploy --create-site --dir=\"" + reportDir + "\" --prod"
+        		);
+
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8)
+            );
+
+            String line;
+            String url = null;
+
+            while ((line = reader.readLine()) != null) {
+                System.out.println("[NETLIFY] " + line);
+
+                // remove formatting / ANSI / box chars
+                line = line
+                        .replace("│", "")
+                        .replace("╭", "")
+                        .replace("╰", "")
+                        .replace("─", "")
+                        .replace("⬥", "")
+                        .replaceAll("\\x1B\\[[;\\d]*m", "")
+                        .trim();
+
+                if (line.startsWith("Deployed to production URL:")) {
+                    url = line.replace("Deployed to production URL:", "").trim();
+                }
+                else if (line.startsWith("Website URL:")) {
+                    url = line.replace("Website URL:", "").trim();
+                }
+                else if (line.startsWith("URL:")) {
+                    url = line.replace("URL:", "").trim();
+                }
+            }
+
+            int exitCode = process.waitFor();
+            System.out.println("Netlify exit code: " + exitCode);
+
+            return url;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+    // ─────────────
 
     // ──────────────────────────────
     // 🔹 ZIP CREATOR

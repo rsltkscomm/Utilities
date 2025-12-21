@@ -4,18 +4,32 @@ import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.MouseButton;
 
+import base.DriverContext;
 import core.interfaces.ClickInterface;
 import reporting.ExtentManager;
 
-public class PlaywrightClickUtil extends PlaywrightScrollUtil implements ClickInterface {
+public class PlaywrightClickUtil extends PlaywrightScrollUtil
+        implements ClickInterface {
 
-    private final Page page;
-    private final PlaywrightLocatorUtil locatorUtil;
+    protected final DriverContext driverContext;
 
-    public PlaywrightClickUtil(Page page) {
-        super(page);
-        this.page = page;
-        this.locatorUtil = new PlaywrightLocatorUtil(page);
+    public PlaywrightClickUtil(DriverContext driverContext) {
+        super(driverContext); // ✅ parent also uses DriverContext
+        this.driverContext = driverContext;
+    }
+
+    /**
+     * Always get the CURRENT active page
+     */
+    protected Page page() {
+        return driverContext.getPage();
+    }
+
+    /**
+     * Always get locator util bound to CURRENT page
+     */
+    protected PlaywrightLocatorUtil locatorUtil() {
+        return new PlaywrightLocatorUtil(driverContext);
     }
 
     private Locator resolve(Object pr) {
@@ -23,7 +37,7 @@ public class PlaywrightClickUtil extends PlaywrightScrollUtil implements ClickIn
             return ((PlaywrightWebElement) pr).locator;
 
         if (pr instanceof String)
-            return locatorUtil.getLocator(pr.toString());
+            return locatorUtil().getLocator(pr.toString());
 
         return null;
     }
@@ -35,7 +49,8 @@ public class PlaywrightClickUtil extends PlaywrightScrollUtil implements ClickIn
             Locator loc = resolve(pr);
             loc.click();
 
-            ExtentManager.infoTest("Clicked : <b>" + PlaywrightLocatorUtil.logName.get() + "</b>");
+            ExtentManager.infoTest(
+                "Clicked : <b>" + PlaywrightLocatorUtil.logName.get() + "</b>");
             return true;
 
         } catch (Exception e) {
@@ -58,12 +73,11 @@ public class PlaywrightClickUtil extends PlaywrightScrollUtil implements ClickIn
         }
     }
 
-    /* ---------------- JS CLICK (Playwright evaluate) ---------------- */
+    /* ---------------- JS CLICK ---------------- */
     @Override
     public boolean jsClick(Object pr) {
         try {
-            Locator loc = resolve(pr);
-            loc.evaluate("el => el.click()");
+            resolve(pr).evaluate("el => el.click()");
             return true;
         } catch (Exception e) {
             ExtentManager.failTest("JS Click failed : " + e.getMessage());
@@ -96,11 +110,11 @@ public class PlaywrightClickUtil extends PlaywrightScrollUtil implements ClickIn
         }
     }
 
-    /* ---------------- ACTIONS CLICK (same as normal in Playwright) ---------------- */
+    /* ---------------- ACTIONS CLICK ---------------- */
     @Override
     public boolean actionsClickElement(String locator) {
         try {
-            locatorUtil.getLocator(locator).click();
+            locatorUtil().getLocator(locator).click();
             return true;
         } catch (Exception e) {
             ExtentManager.failTest("Actions click failed");
@@ -112,7 +126,8 @@ public class PlaywrightClickUtil extends PlaywrightScrollUtil implements ClickIn
     @Override
     public boolean rightClick(Object pr) {
         try {
-            resolve(pr).click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
+            resolve(pr)
+                .click(new Locator.ClickOptions().setButton(MouseButton.RIGHT));
             return true;
         } catch (Exception e) {
             ExtentManager.failTest("Right click failed");

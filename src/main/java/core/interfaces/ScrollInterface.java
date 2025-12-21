@@ -17,4 +17,6 @@ public interface ScrollInterface {
     void waitForScroll();
 
     void scrollStep(int pixels);
+    
+    void jsUpdate(String exp);
 }

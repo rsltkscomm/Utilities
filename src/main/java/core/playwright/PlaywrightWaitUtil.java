@@ -8,17 +8,31 @@ import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.WaitForSelectorState;
 
+import base.DriverContext;
 import core.interfaces.WaitInterface;
 
-public class PlaywrightWaitUtil extends PlaywrightDateUtil implements WaitInterface {
+public class PlaywrightWaitUtil extends PlaywrightDateUtil
+        implements WaitInterface {
 
-    private final Page page;
-    private final PlaywrightLocatorUtil locatorUtil;
+    protected final DriverContext driverContext;
 
-    public PlaywrightWaitUtil(Page page) {
-    	super(page);
-        this.page = page;
-        this.locatorUtil = new PlaywrightLocatorUtil(page);
+    public PlaywrightWaitUtil(DriverContext driverContext) {
+        super(driverContext);
+        this.driverContext = driverContext;
+    }
+
+    /**
+     * Always returns the CURRENT active page
+     */
+    protected Page page() {
+        return driverContext.getPage();
+    }
+
+    /**
+     * Always returns locator util bound to CURRENT page
+     */
+    protected PlaywrightLocatorUtil locatorUtil() {
+        return new PlaywrightLocatorUtil(driverContext);
     }
 
     @Override
@@ -28,24 +42,24 @@ public class PlaywrightWaitUtil extends PlaywrightDateUtil implements WaitInterf
 
     @Override
     public WebElement waitForClickable(Object pr, int sec) {
-        PlaywrightWebElement el = (PlaywrightWebElement) locatorUtil.getElement(pr);
+        PlaywrightWebElement el =
+                (PlaywrightWebElement) locatorUtil().getElement(pr);
 
         el.locator.waitFor(new Locator.WaitForOptions()
-                .setTimeout(sec * 1000)
+                .setTimeout(sec * 1000L)
                 .setState(WaitForSelectorState.VISIBLE));
 
-        // small stabilization delay (Selenium-like "clickable")
-        page.waitForTimeout(150);
-
+        page().waitForTimeout(150);
         return el;
     }
 
     @Override
     public WebElement waitForVisible(Object pr, int sec) {
-        PlaywrightWebElement el = (PlaywrightWebElement) locatorUtil.getElement(pr);
+        PlaywrightWebElement el =
+                (PlaywrightWebElement) locatorUtil().getElement(pr);
 
         el.locator.waitFor(new Locator.WaitForOptions()
-                .setTimeout(sec * 1000)
+                .setTimeout(sec * 1000L)
                 .setState(WaitForSelectorState.VISIBLE));
 
         return el;
@@ -53,25 +67,22 @@ public class PlaywrightWaitUtil extends PlaywrightDateUtil implements WaitInterf
 
     @Override
     public PlaywrightWebElement waitForPresence(Object pr, int sec) {
-
         PlaywrightWebElement el =
-                (PlaywrightWebElement) locatorUtil.getElement(pr);
+                (PlaywrightWebElement) locatorUtil().getElement(pr);
 
-        el.locator.waitFor(
-                new Locator.WaitForOptions()
-                        .setTimeout(sec * 1000L)
-                        .setState(WaitForSelectorState.ATTACHED)
-        );
+        el.locator.waitFor(new Locator.WaitForOptions()
+                .setTimeout(sec * 1000L)
+                .setState(WaitForSelectorState.ATTACHED));
 
         return el;
     }
 
-
     @Override
     public boolean explicitWaitTextToBePresent(String text, Object pr, int sec) {
-        PlaywrightWebElement el = (PlaywrightWebElement) locatorUtil.getElement(pr);
-        long end = System.currentTimeMillis() + sec * 1000;
+        PlaywrightWebElement el =
+                (PlaywrightWebElement) locatorUtil().getElement(pr);
 
+        long end = System.currentTimeMillis() + sec * 1000L;
         while (System.currentTimeMillis() < end) {
             if (el.getText().contains(text)) return true;
             sleep(200);
@@ -81,9 +92,10 @@ public class PlaywrightWaitUtil extends PlaywrightDateUtil implements WaitInterf
 
     @Override
     public boolean waitForInvisibility(Object pr, int sec) {
-        PlaywrightWebElement el = (PlaywrightWebElement) locatorUtil.getElement(pr);
-        long end = System.currentTimeMillis() + sec * 1000;
+        PlaywrightWebElement el =
+                (PlaywrightWebElement) locatorUtil().getElement(pr);
 
+        long end = System.currentTimeMillis() + sec * 1000L;
         while (System.currentTimeMillis() < end) {
             if (!el.isDisplayed()) return true;
             sleep(200);
@@ -93,9 +105,10 @@ public class PlaywrightWaitUtil extends PlaywrightDateUtil implements WaitInterf
 
     @Override
     public boolean waitForText(Object pr, String text, int sec) {
-        PlaywrightWebElement el = (PlaywrightWebElement) locatorUtil.getElement(pr);
-        long end = System.currentTimeMillis() + sec * 1000;
+        PlaywrightWebElement el =
+                (PlaywrightWebElement) locatorUtil().getElement(pr);
 
+        long end = System.currentTimeMillis() + sec * 1000L;
         while (System.currentTimeMillis() < end) {
             if (el.getText().contains(text)) return true;
             sleep(200);
@@ -105,10 +118,9 @@ public class PlaywrightWaitUtil extends PlaywrightDateUtil implements WaitInterf
 
     @Override
     public boolean waitForTitle(String title, int sec) {
-        long end = System.currentTimeMillis() + sec * 1000;
-
+        long end = System.currentTimeMillis() + sec * 1000L;
         while (System.currentTimeMillis() < end) {
-            if (page.title().equals(title)) return true;
+            if (page().title().equals(title)) return true;
             sleep(200);
         }
         return false;
@@ -116,10 +128,9 @@ public class PlaywrightWaitUtil extends PlaywrightDateUtil implements WaitInterf
 
     @Override
     public boolean waitForTitleContains(String partialTitle, int sec) {
-        long end = System.currentTimeMillis() + sec * 1000;
-
+        long end = System.currentTimeMillis() + sec * 1000L;
         while (System.currentTimeMillis() < end) {
-            if (page.title().contains(partialTitle)) return true;
+            if (page().title().contains(partialTitle)) return true;
             sleep(200);
         }
         return false;
@@ -127,9 +138,9 @@ public class PlaywrightWaitUtil extends PlaywrightDateUtil implements WaitInterf
 
     @Override
     public boolean waitForUrl(String url, int sec) {
-        long end = System.currentTimeMillis() + sec * 1000;
+        long end = System.currentTimeMillis() + sec * 1000L;
         while (System.currentTimeMillis() < end) {
-            if (page.url().equals(url)) return true;
+            if (page().url().equals(url)) return true;
             sleep(200);
         }
         return false;
@@ -137,9 +148,9 @@ public class PlaywrightWaitUtil extends PlaywrightDateUtil implements WaitInterf
 
     @Override
     public boolean waitForUrlContains(String partialUrl, int sec) {
-        long end = System.currentTimeMillis() + sec * 1000;
+        long end = System.currentTimeMillis() + sec * 1000L;
         while (System.currentTimeMillis() < end) {
-            if (page.url().contains(partialUrl)) return true;
+            if (page().url().contains(partialUrl)) return true;
             sleep(200);
         }
         return false;
@@ -147,13 +158,15 @@ public class PlaywrightWaitUtil extends PlaywrightDateUtil implements WaitInterf
 
     @Override
     public Alert waitForAlert(int sec) {
-        throw new UnsupportedOperationException("Playwright does not expose Selenium Alert object.");
+        throw new UnsupportedOperationException(
+                "Playwright does not expose Selenium Alert object.");
     }
 
     @Override
     public boolean waitForStaleness(WebElement element, int sec) {
         PlaywrightWebElement el = (PlaywrightWebElement) element;
-        long end = System.currentTimeMillis() + sec * 1000;
+        long end = System.currentTimeMillis() + sec * 1000L;
+
         while (System.currentTimeMillis() < end) {
             if (!el.locator.isVisible()) return true;
             sleep(200);
@@ -163,21 +176,16 @@ public class PlaywrightWaitUtil extends PlaywrightDateUtil implements WaitInterf
 
     @Override
     public boolean waitForFrame(Object pr, int sec) {
-        long end = System.currentTimeMillis() + sec * 1000;
+        long end = System.currentTimeMillis() + sec * 1000L;
 
         while (System.currentTimeMillis() < end) {
             try {
                 PlaywrightWebElement iframeEl =
-                        (PlaywrightWebElement) locatorUtil.getElement(pr);
+                        (PlaywrightWebElement) locatorUtil().getElement(pr);
 
-                // Playwright gives Frame directly from the element
                 FrameLocator frame = iframeEl.locator.contentFrame();
+                if (frame != null) return true;
 
-                if (frame != null) {
-                    // NOT switching like Selenium — Playwright operates directly on Frame
-                    // You may store this frame in your page object if needed
-                    return true;
-                }
             } catch (Exception ignored) {}
 
             sleep(200);
@@ -185,16 +193,15 @@ public class PlaywrightWaitUtil extends PlaywrightDateUtil implements WaitInterf
         return false;
     }
 
-
     @Override
     public WebElement fluentWait(Object pr, int timeoutSec, int pollingSec) {
-        long end = System.currentTimeMillis() + timeoutSec * 1000;
+        long end = System.currentTimeMillis() + timeoutSec * 1000L;
 
         while (System.currentTimeMillis() < end) {
-            WebElement el = locatorUtil.getElement(pr);
+            WebElement el = locatorUtil().getElement(pr);
             if (el != null && el.isDisplayed())
                 return el;
-            sleep(pollingSec * 1000);
+            sleep(pollingSec * 1000L);
         }
         return null;
     }
@@ -206,14 +213,14 @@ public class PlaywrightWaitUtil extends PlaywrightDateUtil implements WaitInterf
 
     @Override
     public boolean waitForJQueryLoad(int sec) {
-        return true; // Playwright pages may not use jQuery
+        return true;
     }
 
     @Override
     public boolean waitForJSReady(int sec) {
-        long end = System.currentTimeMillis() + sec * 1000;
+        long end = System.currentTimeMillis() + sec * 1000L;
         while (System.currentTimeMillis() < end) {
-            Object state = page.evaluate("() => document.readyState");
+            Object state = page().evaluate("() => document.readyState");
             if ("complete".equals(state)) return true;
             sleep(200);
         }

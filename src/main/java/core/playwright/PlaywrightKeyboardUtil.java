@@ -1,18 +1,19 @@
 package core.playwright;
 
 import com.microsoft.playwright.Locator;
-import com.microsoft.playwright.Page;
 
+import base.DriverContext;
 import core.interfaces.KeyboardInterface;
 import reporting.ExtentManager;
 
-public class PlaywrightKeyboardUtil extends PlaywrightWindowUtil implements KeyboardInterface {
+public class PlaywrightKeyboardUtil extends PlaywrightWindowUtil
+        implements KeyboardInterface {
 
-    private final Page page;
+    protected final DriverContext driverContext;
 
-    public PlaywrightKeyboardUtil(Page page) {
-        super(page);
-        this.page = page;
+    public PlaywrightKeyboardUtil(DriverContext driverContext) {
+        super(driverContext); // ✅ correct
+        this.driverContext = driverContext;
     }
 
     /* -------------------- SEND KEYS -------------------- */

@@ -10,21 +10,36 @@ import com.aventstack.extentreports.Status;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 
+import base.DriverContext;
 import core.interfaces.ScreenshotInterface;
 import reporting.ExtentManager;
 
-public class PlaywrightScreenshotUtil extends PlaywrightWaitUtil implements ScreenshotInterface {
+public class PlaywrightScreenshotUtil extends PlaywrightWaitUtil
+        implements ScreenshotInterface {
 
-    private final Page page;
-    private final PlaywrightLocatorUtil locatorUtil;
+    protected final DriverContext driverContext;
 
-    public PlaywrightScreenshotUtil(Page page) {
-    	super(page);
-        this.page = page;
-        this.locatorUtil = new PlaywrightLocatorUtil(page);
+    public PlaywrightScreenshotUtil(DriverContext driverContext) {
+        super(driverContext); // ✅ parent now uses DriverContext
+        this.driverContext = driverContext;
+    }
+
+    /**
+     * Always returns the CURRENT active page
+     */
+    protected Page page() {
+        return driverContext.getPage();
+    }
+
+    /**
+     * Always returns locator util bound to CURRENT page
+     */
+    protected PlaywrightLocatorUtil locatorUtil() {
+        return new PlaywrightLocatorUtil(driverContext);
     }
 
     // ---------------------- UTILITY: Resolve Element -----------------------
+
     private Locator resolve(Object obj) {
         if (obj == null) return null;
 
@@ -32,7 +47,7 @@ public class PlaywrightScreenshotUtil extends PlaywrightWaitUtil implements Scre
             return ((PlaywrightWebElement) obj).locator;
 
         if (obj instanceof String)
-            return locatorUtil.getLocator(obj.toString());
+            return locatorUtil().getLocator(obj.toString());
 
         return null;
     }
@@ -42,15 +57,20 @@ public class PlaywrightScreenshotUtil extends PlaywrightWaitUtil implements Scre
     }
 
     // ------------------- HIGHLIGHT METHODS ---------------------------------
+
     private void highlight(Locator locator) {
         try {
-            locator.evaluate("el => el.style.border='3px solid red'; el.style.background='yellow'");
+            locator.evaluate(
+                "el => { el.style.border='3px solid red'; el.style.background='yellow'; }"
+            );
         } catch (Exception ignored) {}
     }
 
     private void unhighlight(Locator locator) {
         try {
-            locator.evaluate("el => { el.style.border=''; el.style.background=''; }");
+            locator.evaluate(
+                "el => { el.style.border=''; el.style.background=''; }"
+            );
         } catch (Exception ignored) {}
     }
 
@@ -72,13 +92,18 @@ public class PlaywrightScreenshotUtil extends PlaywrightWaitUtil implements Scre
             String path = folder + fileName;
 
             if (loc != null) {
-                loc.screenshot(new Locator.ScreenshotOptions().setPath(Paths.get(path)));
+                loc.screenshot(new Locator.ScreenshotOptions()
+                        .setPath(Paths.get(path)));
             } else {
-                page.screenshot(new Page.ScreenshotOptions().setPath(Paths.get(path)));
+                page().screenshot(new Page.ScreenshotOptions()
+                        .setPath(Paths.get(path)));
             }
 
-            ExtentManager.getTest().log(Status.INFO, "Screenshot",
-                    MediaEntityBuilder.createScreenCaptureFromPath(path).build());
+            ExtentManager.getTest().log(
+                Status.INFO,
+                "Screenshot",
+                MediaEntityBuilder.createScreenCaptureFromPath(path).build()
+            );
 
             if (loc != null)
                 unhighlight(loc);
@@ -86,16 +111,24 @@ public class PlaywrightScreenshotUtil extends PlaywrightWaitUtil implements Scre
             return path;
 
         } catch (Exception e) {
-            ExtentManager.getTest().log(Status.WARNING, "Playwright screenshot failed: " + e.getMessage());
+            ExtentManager.getTest().log(
+                Status.WARNING,
+                "Playwright screenshot failed: " + e.getMessage()
+            );
             return null;
         }
     }
 
-    // -------------------- SIMPLE SCREENSHOT (NO ELEMENT) --------------------
+    // -------------------- SIMPLE SCREENSHOT --------------------
 
     @Override
     public void takeScreenshot() {
         takeScreenshot("Screenshot", null);
+    }
+
+    @Override
+    public String takeScreenshot(String screenshotName) {
+        return takeScreenshot(screenshotName, null);
     }
 
     // ---------------------- JS HIGHLIGHT + SCREENSHOT -----------------------
@@ -103,6 +136,7 @@ public class PlaywrightScreenshotUtil extends PlaywrightWaitUtil implements Scre
     @Override
     public void javaScriptHighLightwithScrnShot(Object obj) {
         Locator loc = resolve(obj);
+
         if (loc == null) {
             takeScreenshot("highlight", null);
             return;
@@ -123,29 +157,21 @@ public class PlaywrightScreenshotUtil extends PlaywrightWaitUtil implements Scre
             if (loc != null)
                 highlight(loc);
 
-            byte[] bytes;
-
-            if (loc != null) {
-                bytes = loc.screenshot(new Locator.ScreenshotOptions());
-            } else {
-                bytes = page.screenshot(new Page.ScreenshotOptions());
-            }
-
-            String base64 = java.util.Base64.getEncoder().encodeToString(bytes);
+            byte[] bytes = (loc != null)
+                    ? loc.screenshot(new Locator.ScreenshotOptions())
+                    : page().screenshot(new Page.ScreenshotOptions());
 
             if (loc != null)
                 unhighlight(loc);
 
-            return base64;
+            return java.util.Base64.getEncoder().encodeToString(bytes);
 
         } catch (Exception e) {
-            ExtentManager.getTest().log(Status.WARNING, "Unable to take Playwright Base64 screenshot: " + e.getMessage());
+            ExtentManager.getTest().log(
+                Status.WARNING,
+                "Unable to take Playwright Base64 screenshot: " + e.getMessage()
+            );
             return null;
         }
-    }
-
-    @Override
-    public String takeScreenshot(String screenshotName) {
-        return takeScreenshot(screenshotName, null);
     }
 }

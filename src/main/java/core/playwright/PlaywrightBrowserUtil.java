@@ -2,52 +2,62 @@ package core.playwright;
 
 import com.microsoft.playwright.Page;
 
+import base.DriverContext;
 import core.interfaces.BrowserInterface;
 import reporting.ExtentManager;
 
-public class PlaywrightBrowserUtil extends PlaywrightScreenshotUtil implements BrowserInterface {
+public class PlaywrightBrowserUtil extends PlaywrightScreenshotUtil
+        implements BrowserInterface {
 
-    private final Page page;
+    protected final DriverContext driverContext;
 
-    public PlaywrightBrowserUtil(Page page) {
-    	super(page);
-        this.page = page;
+    public PlaywrightBrowserUtil(DriverContext driverContext) {
+        super(driverContext); // ✅ Screenshot util must accept DriverContext
+        this.driverContext = driverContext;
+    }
+
+    /**
+     * Always returns the CURRENT active page
+     */
+    protected Page page() {
+        return driverContext.getPage();
     }
 
     @Override
     public void openUrl(String url) {
-        page.navigate(url);
+        page().navigate(url);
         ExtentManager.infoTest("URL launched: " + url);
     }
 
     @Override
     public void navigateTo(String url) {
-        page.navigate(url);
+        page().navigate(url);
         ExtentManager.infoTest("Navigated to: " + url);
     }
 
     @Override
     public void back() {
-        page.goBack();
+        page().goBack();
         ExtentManager.infoTest("Navigated Back");
     }
 
     @Override
     public void forward() {
-        page.goForward();
+        page().goForward();
         ExtentManager.infoTest("Navigated Forward");
     }
 
     @Override
     public void refresh() {
-        page.reload();
+        page().reload();
         ExtentManager.infoTest("Page Refreshed");
     }
 
     @Override
     public void maximizeWindow() {
-        // Playwright does NOT support maximize. Use viewport workaround.
-        page.context().browser().newContext(new com.microsoft.playwright.Browser.NewContextOptions()
+        // Playwright does not support real maximize
+        page().context().browser().newContext(
+            new com.microsoft.playwright.Browser.NewContextOptions()
                 .setViewportSize(null)
         );
         ExtentManager.infoTest("Window Maximized (Playwright simulated)");
@@ -55,27 +65,27 @@ public class PlaywrightBrowserUtil extends PlaywrightScreenshotUtil implements B
 
     @Override
     public void closeWindow() {
-        page.close();
+        page().close();
         ExtentManager.infoTest("Closed current window");
     }
 
     @Override
     public String getCurrentUrl() {
-        return page.url();
+        return page().url();
     }
 
     @Override
     public String getTitle() {
-        return page.title();
+        return page().title();
     }
 
     @Override
     public String getPageSource() {
-        return page.content();
+        return page().content();
     }
 
     @Override
     public void deleteAllCookies() {
-        page.context().clearCookies();
+        page().context().clearCookies();
     }
 }
