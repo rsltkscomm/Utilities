@@ -34,7 +34,7 @@ public final class DriverManager {
                     ctx.getEngineType() + " driver created for browser: " + browser);
 
         } catch (Exception e) {
-            TestLogManager.error("Failed to create driver", e);
+            TestLogManager.error("Failed to create driver", e);;
             throw new RuntimeException("Driver creation failed", e);
         }
     }
