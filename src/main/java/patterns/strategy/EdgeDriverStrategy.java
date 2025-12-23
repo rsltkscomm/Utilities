@@ -3,6 +3,7 @@ package patterns.strategy;
 import java.net.URI;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.openqa.selenium.WebDriver;
@@ -12,12 +13,12 @@ import org.openqa.selenium.remote.CapabilityType;
 import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.remote.RemoteWebDriver;
 
+import com.microsoft.playwright.*;
+
 import base.DriverContext;
+import core.interfaces.EngineType;
 import io.github.bonigarcia.wdm.WebDriverManager;
 
-/**
- * Strategy implementation for Edge (Selenium).
- */
 public class EdgeDriverStrategy implements DriverStrategy {
 
     private final boolean headless;
@@ -38,6 +39,21 @@ public class EdgeDriverStrategy implements DriverStrategy {
     @Override
     public DriverContext createDriver(DesiredCapabilities capabilities) {
 
+        EngineType engine =
+                EngineType.valueOf(System.getProperty("engine", "SELENIUM"));
+
+        if (engine == EngineType.PLAYWRIGHT) {
+            return createPlaywrightEdge();
+        }
+
+        return createSeleniumEdge(capabilities);
+    }
+
+    /* ===================== SELENIUM ===================== */
+
+    private DriverContext createSeleniumEdge(DesiredCapabilities capabilities) {
+
+        WebDriverManager.edgedriver().setup();
         EdgeOptions options = createEdgeOptions();
 
         if (capabilities != null) {
@@ -57,30 +73,14 @@ public class EdgeDriverStrategy implements DriverStrategy {
             return DriverContext.selenium(driver);
 
         } catch (Exception e) {
-            throw new RuntimeException("Failed to create Edge driver", e);
+            throw new RuntimeException(
+                    "Failed to create Selenium Edge driver", e);
         }
     }
-
-    /* ==========================================================
-       OPTIONS
-       ========================================================== */
 
     private EdgeOptions createEdgeOptions() {
 
-        WebDriverManager.edgedriver().setup();
         EdgeOptions options = new EdgeOptions();
-
-        setCommonOptions(options);
-
-        if (headless) {
-            options.addArguments("--headless=new");
-        }
-
-        return options;
-    }
-
-    private void setCommonOptions(EdgeOptions options) {
-
         Map<String, Object> prefs = new HashMap<>();
 
         String downloadPath = Paths.get(
@@ -98,20 +98,53 @@ public class EdgeDriverStrategy implements DriverStrategy {
         options.setExperimentalOption("prefs", prefs);
 
         options.addArguments(
-                "--enable-geolocation",
                 "--disable-notifications",
-                "--no-sandbox",
                 "--disable-gpu",
+                "--no-sandbox",
                 "--incognito"
         );
 
+        if (headless) {
+            options.addArguments("--headless=new");
+        }
+
         options.setCapability(
                 CapabilityType.ACCEPT_INSECURE_CERTS, true);
+
+        return options;
     }
 
-    /* ==========================================================
-       META
-       ========================================================== */
+    /* ===================== PLAYWRIGHT ===================== */
+
+    private DriverContext createPlaywrightEdge() {
+
+        String downloadPath = Paths.get(
+                System.getProperty("user.dir"),
+                "src", "main", "resources",
+                "data", "downloadedFile"
+        ).toAbsolutePath().toString();
+
+        Playwright playwright = Playwright.create();
+
+        Browser browser = playwright.chromium().launch(
+                new BrowserType.LaunchOptions()
+                        .setChannel("msedge")
+                        .setHeadless(headless)
+                        .setArgs(List.of("--start-maximized"))
+        );
+
+        BrowserContext context = browser.newContext(
+                new Browser.NewContextOptions()
+                        .setAcceptDownloads(true)
+        );
+
+        Page page = context.newPage();
+
+        return DriverContext.playwright(
+                playwright, browser, context, page);
+    }
+
+    /* ===================== META ===================== */
 
     @Override
     public String getBrowserName() {

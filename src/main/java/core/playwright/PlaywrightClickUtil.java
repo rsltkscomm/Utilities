@@ -3,7 +3,6 @@ package core.playwright;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.MouseButton;
-
 import base.DriverContext;
 import core.interfaces.ClickInterface;
 import reporting.ExtentManager;
@@ -45,7 +44,7 @@ public class PlaywrightClickUtil extends PlaywrightScrollUtil
     /* ---------------- NORMAL CLICK ---------------- */
     @Override
     public boolean clickElement(Object pr) {
-        try {
+    	try {
             Locator loc = resolve(pr);
             loc.click();
 

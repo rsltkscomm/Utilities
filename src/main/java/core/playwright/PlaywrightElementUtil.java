@@ -48,7 +48,7 @@ public class PlaywrightElementUtil extends PlaywrightClickUtil
 
     // ---------------- RESOLVERS ----------------
 
-    protected Locator resolveLocator(Object obj) {
+    public Locator resolveLocator(Object obj) {
         if (obj == null) return null;
 
         if (obj instanceof String)
@@ -84,11 +84,22 @@ public class PlaywrightElementUtil extends PlaywrightClickUtil
     @Override
     public String getText(Object locator) {
         try {
-            return resolveLocator(locator).innerText().trim();
+            Locator loc = resolveLocator(locator);
+            if (loc == null) {
+                return null;
+            }
+            String text;
+            try {
+                text = loc.innerText();
+            } catch (Exception ignored) {
+                text = loc.textContent();
+            }
+            return text != null ? text.trim() : null;
         } catch (Exception e) {
             return null;
         }
     }
+
 
     @Override
     public String getAttribute(Object locator, String attribute) {

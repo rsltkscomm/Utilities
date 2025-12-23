@@ -210,7 +210,6 @@ public class DetailedTestReporter
                 execution.setStartTime(new Date());
                 execution.setSteps(new ArrayList<>());
                 execution.setStatus(ExecutionStatus.PASS);
-                // Remove hardcoded total expected steps - calculate dynamically
                 execution.setTotalExpectedSteps(0); 
                 getReport().getTestExecutions().add(execution);
             } else {
@@ -220,7 +219,6 @@ public class DetailedTestReporter
                 }
             }
 
-            // Determine duplicate first based on meaningful identity
             isDuplicate = execution.getSteps().stream()
                     .anyMatch(step -> safeEquals(step.getAction(), testCase.getAction()) 
                             && safeEquals(step.getExpectedResult(), testCase.getExpectedResult()));

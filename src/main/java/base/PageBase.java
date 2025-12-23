@@ -1,5 +1,7 @@
 package base;
 
+import static org.testng.Assert.assertFalse;
+
 import java.awt.Color;
 import java.io.File;
 import java.net.MalformedURLException;
@@ -12,7 +14,10 @@ import org.openqa.selenium.WebElement;
 import org.testng.ITestResult;
 import org.testng.Reporter;
 
-import com.github.dockerjava.zerodep.shaded.org.apache.hc.core5.http.impl.DefaultContentLengthStrategy;
+import com.microsoft.playwright.ElementHandle.SelectTextOptions;
+import com.microsoft.playwright.Frame;
+import com.microsoft.playwright.Locator;
+import com.microsoft.playwright.options.WaitForSelectorState;
 
 import core.interfaces.BrowserInterface;
 import core.interfaces.ClickInterface;
@@ -29,6 +34,9 @@ import core.interfaces.ScrollInterface;
 import core.interfaces.SelectInterface;
 import core.interfaces.WaitInterface;
 import core.interfaces.WindowInterface;
+import core.playwright.PlaywrightElementUtil;
+import core.playwright.PlaywrightLocatorUtil;
+import core.playwright.PlaywrightWebElement;
 import reporting.ExtentManager;
 
 public class PageBase
@@ -196,10 +204,10 @@ public class PageBase
 	{
 		return element().getText(locator);
 	}
-	
+
 	public Date convertStringToDate(String start, String format)
 	{
-		return dates().convertStringToDate(start,format);
+		return dates().convertStringToDate(start, format);
 	}
 
 	// Screenshots
@@ -323,7 +331,7 @@ public class PageBase
 	{
 		browser().refresh();
 	}
-	
+
 	public void jsMouseHover(Object loc)
 	{
 		hover().jsMouseHover(loc);
@@ -333,7 +341,7 @@ public class PageBase
 	{
 		return window().getCurrentWindowHandle();
 	}
-	
+
 	public Date removeTime(Date date)
 	{
 		return dates().removeTime(date);
@@ -677,106 +685,107 @@ public class PageBase
 		String key = System.getProperty("Environment") != null ? System.getProperty("Environment").toUpperCase() + "_" + System.getProperty("ReleaseVersion") : null;
 		return key != null ? System.getProperty(key) : null;
 	}
-	
+
 	public String currentDateAndTime(String format)
 	{
 		return dates().currentDateAndTime(format);
 	}
-	
+
 	public boolean childWindowCloseIndex(int index)
 	{
 		return window().childWindowCloseIndex(index);
 	}
-	
+
 	public boolean switchWindowByIndex(int index)
 	{
 		return window().switchToWindow(index);
 	}
-	
-	public boolean selectListElementByIndex(String locator,int index)
+
+	public boolean selectListElementByIndex(String locator, int index)
 	{
-		return dropdown().selectListElementByIndex(locator , index);
+		return dropdown().selectListElementByIndex(locator, index);
 	}
-	
+
 	public String addTimeToName()
 	{
 		return dates().addTimeToName();
 	}
-	
+
 	public boolean switchToParentFrame()
 	{
 		return frame().switchToParentFrame();
 	}
-	
+
 	public List<String> getAllWindowHandles()
 	{
 		return window().getAllWindowHandles();
 	}
-	
+
 	public void javaScriptHighLightwithScrnShot(Object actions)
 	{
 		screenshot().javaScriptHighLightwithScrnShot(actions);
 	}
-	
+
 	public String getCurrentYear()
 	{
 		return dates().getCurrentYear();
 	}
-	
+
 	public String getCurrentTime()
 	{
 		return dates().getCurrentTime();
 	}
-	
+
 	public void navigateBack()
 	{
 		browser().back();
 	}
-	
+
 	public void switchToFrame(Object element)
 	{
 		frame().switchToFrame(element);
 	}
-	
+
 	public boolean switchToDefaultContent()
 	{
 		return frame().switchToDefaultContent();
 	}
-	
+
 	public String getWindowHandle()
 	{
 		return window().getCurrentWindowHandle();
 	}
-	
+
 	public String addTimeToValue()
 	{
 		return dates().addTimeToValue();
 	}
-	
-	public boolean selectByVisibleText(String locator,String text)
+
+	public boolean selectByVisibleText(String locator, String text)
 	{
 		return select().deselectByVisibleText(locator, text);
 	}
-	
+
 	public String normalizeText(String loc)
 	{
 		return element().normalizeText(loc);
 	}
-	
+
 	public boolean jsSelectAllText(String loc)
 	{
 		return select().jsSelectAllText(loc);
 	}
-	
-	public boolean dragAndDrop(Object drag,Object drop){
+
+	public boolean dragAndDrop(Object drag, Object drop)
+	{
 		return dragAndDrop().dragAndDrop(drag, drop);
 	}
-	
+
 	public void jsExpression(String exp)
 	{
 		DriverManager.getPage().evaluate(exp);
 	}
-	
+
 	public static String rgbToHexColor(String cssValue)
 	{
 		String[] RGBcolor = cssValue.replace("rgb(", "").replace(" ", "").replace(")", "").split(",");
@@ -787,7 +796,7 @@ public class PageBase
 		String hexcolour = "#" + Integer.toHexString(color.getRGB()).substring(2);
 		return hexcolour;
 	}
-	
+
 	public static boolean isValidURL(String urlStr)
 	{
 		try
@@ -799,16 +808,136 @@ public class PageBase
 			return false;
 		}
 	}
-	
+
 	public String getDescription()
 	{
 		ITestResult result = Reporter.getCurrentTestResult();
 		return result.getMethod().getDescription();
 	}
-	
-	public boolean clickHoldMoveRelease(Object drag,Object drop)
+
+	public boolean clickHoldMoveRelease(Object drag, Object drop)
 	{
 		return dragAndDrop().clickHoldMoveRelease(drag, drop);
 	}
-	
+
+	public String[] getRoundedTimes()
+	{
+		return dates().getRoundedTimes();
+	}
+
+	public boolean enterValueFrame(String loc, String value)
+	{
+		try
+		{
+			String selector = new PlaywrightLocatorUtil(DriverManager.getContext()).getLocator(loc).toString();
+			if (selector.startsWith("Locator@"))
+			{
+				selector = selector.replace("Locator@", "");
+			}
+			Frame currentFrame = frame().getCurrentFrame();
+			currentFrame.fill(selector, value);
+			return true;
+		} catch (Exception e)
+		{
+			return false;
+		}
+	}
+
+	public boolean selectFrameText(String loc)
+	{
+		try
+		{
+			tabAction();
+			String selector = new PlaywrightLocatorUtil(DriverManager.getContext()).getLocator(loc).toString();
+			if (selector.startsWith("Locator@"))
+			{
+				selector = selector.replace("Locator@", "");
+			}
+			Frame currentFrame = frame().getCurrentFrame();
+			Locator frameLocator = currentFrame.locator(selector);
+			frameLocator.press("Control+A");
+			return true;
+		} catch (Exception e)
+		{
+			return false;
+		}
+	}
+
+	public boolean doubleClickFrame(String loc)
+	{
+		try
+		{
+			tabAction();
+			String selector = new PlaywrightLocatorUtil(DriverManager.getContext()).getLocator(loc).toString();
+			if (selector.startsWith("Locator@"))
+			{
+				selector = selector.replace("Locator@", "");
+			}
+			Frame currentFrame = frame().getCurrentFrame();
+			Locator frameLocator = currentFrame.locator(selector);
+			frameLocator.dblclick();
+			return true;
+		} catch (Exception e)
+		{
+			return false;
+		}
+	}
+
+	public String getTextFrame(String loc)
+	{
+		try
+		{
+			tabAction();
+			String selector = new PlaywrightLocatorUtil(DriverManager.getContext()).getLocator(loc).toString();
+			if (selector.startsWith("Locator@"))
+			{
+				selector = selector.replace("Locator@", "");
+			}
+			Frame currentFrame = frame().getCurrentFrame();
+			Locator frameLocator = currentFrame.locator(selector);
+			return frameLocator.innerText();
+		} catch (Exception e)
+		{
+			return null;
+		}
+	}
+
+	public String getAttributeFrame(String loc, String attributeName)
+	{
+		try
+		{
+			tabAction();
+			String selector = new PlaywrightLocatorUtil(DriverManager.getContext()).getLocator(loc).toString();
+			if (selector.startsWith("Locator@"))
+			{
+				selector = selector.replace("Locator@", "");
+			}
+			Frame currentFrame = frame().getCurrentFrame();
+			Locator frameLocator = currentFrame.locator(selector);
+			return frameLocator.getAttribute(attributeName);
+		} catch (Exception e)
+		{
+			return null;
+		}
+	}
+
+	public boolean clickFrame(String loc)
+	{
+		try {
+	    	tabAction();
+	        String selector =
+	                new PlaywrightLocatorUtil(DriverManager.getContext())
+	                        .getLocator(loc)
+	                        .toString();
+	        if (selector.startsWith("Locator@")) {
+	            selector = selector.replace("Locator@", "");
+	        }
+	        Frame currentFrame = frame().getCurrentFrame();
+	        Locator frameLocator = currentFrame.locator(selector);
+	         frameLocator.click();
+	         return true;
+	    } catch (Exception e) {
+	    	return false;
+	    }
+	}
 }

@@ -2,6 +2,8 @@ package core.selenium;
 
 import org.openqa.selenium.WebDriver;
 
+import com.microsoft.playwright.Frame;
+
 import core.interfaces.FrameInterface;
 import reporting.ExtentManager;
 
@@ -80,4 +82,10 @@ public class SeleniumFrameUtil extends SeleniumSelectUtil implements FrameInterf
             return false;
         }
     }
+
+	@Override
+	public Frame getCurrentFrame()
+	{
+		return null;
+	}
 }

@@ -81,34 +81,41 @@ public class PlaywrightFrameUtil extends PlaywrightSelectUtil
                         "Playwright requires iframe locator STRING");
             }
 
-            String iframeSelector =
+            String locator =
                     new PlaywrightLocatorUtil(driverContext)
                             .getLocator(frameElement.toString())
                             .toString();
 
-            ElementHandle iframeHandle = page().querySelector(iframeSelector);
+            // Remove invalid framework prefixes (CRITICAL)
+            if (locator.startsWith("Locator@")) {
+                locator = locator.replace("Locator@", "");
+            }
+
+            // Locate iframe properly
+            ElementHandle iframeHandle =
+                    page().locator(locator).first().elementHandle();
+
             if (iframeHandle == null) {
-                throw new RuntimeException("Iframe not found: " + iframeSelector);
+                throw new RuntimeException("Iframe not found: " + locator);
             }
 
-            for (Frame frame : page().frames()) {
-                ElementHandle frameElementHandle = frame.frameElement();
-                if (frameElementHandle != null && frameElementHandle.equals(iframeHandle)) {
-                    currentFrame = frame;
-                    ExtentManager.infoTest(
-                            "Switched to frame by locator: " + iframeSelector);
-                    return true;
-                }
+            Frame frame = iframeHandle.contentFrame();
+            if (frame == null) {
+                throw new RuntimeException(
+                        "Unable to resolve contentFrame for iframe: " + locator);
             }
 
-            throw new RuntimeException("Matching frame not found");
+            currentFrame = frame;
+            ExtentManager.infoTest("Switched to frame: " + locator);
+            return true;
 
         } catch (Exception e) {
-            ExtentManager.failTest("Switch to frame by element failed");
+            ExtentManager.failTest("Switch to frame failed");
             ExtentManager.failTest("Reason: " + e.getMessage());
             return false;
         }
     }
+
 
     /* -------------------- SWITCH TO PARENT FRAME -------------------- */
 
@@ -140,7 +147,7 @@ public class PlaywrightFrameUtil extends PlaywrightSelectUtil
 
     /* -------------------- INTERNAL -------------------- */
 
-    protected Frame getCurrentFrame() {
+    public Frame getCurrentFrame() {
         return currentFrame;
     }
 }

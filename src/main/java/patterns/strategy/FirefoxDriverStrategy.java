@@ -9,12 +9,12 @@ import org.openqa.selenium.firefox.FirefoxOptions;
 import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.remote.RemoteWebDriver;
 
+import com.microsoft.playwright.*;
+
 import base.DriverContext;
+import core.interfaces.EngineType;
 import io.github.bonigarcia.wdm.WebDriverManager;
 
-/**
- * Strategy implementation for Firefox (Selenium).
- */
 public class FirefoxDriverStrategy implements DriverStrategy {
 
     private final boolean headless;
@@ -35,6 +35,21 @@ public class FirefoxDriverStrategy implements DriverStrategy {
     @Override
     public DriverContext createDriver(DesiredCapabilities capabilities) {
 
+        EngineType engine =
+                EngineType.valueOf(System.getProperty("engine", "SELENIUM"));
+
+        if (engine == EngineType.PLAYWRIGHT) {
+            return createPlaywrightFirefox();
+        }
+
+        return createSeleniumFirefox(capabilities);
+    }
+
+    /* ===================== SELENIUM ===================== */
+
+    private DriverContext createSeleniumFirefox(DesiredCapabilities capabilities) {
+
+        WebDriverManager.firefoxdriver().setup();
         FirefoxOptions options = createFirefoxOptions();
 
         if (capabilities != null) {
@@ -54,34 +69,18 @@ public class FirefoxDriverStrategy implements DriverStrategy {
             return DriverContext.selenium(driver);
 
         } catch (Exception e) {
-            throw new RuntimeException("Failed to create Firefox driver", e);
+            throw new RuntimeException(
+                    "Failed to create Selenium Firefox driver", e);
         }
     }
-
-    /* ==========================================================
-       OPTIONS
-       ========================================================== */
 
     private FirefoxOptions createFirefoxOptions() {
 
-        WebDriverManager.firefoxdriver().setup();
         FirefoxOptions options = new FirefoxOptions();
-
-        setCommonPreferences(options);
-
-        if (headless) {
-            options.addArguments("--headless");
-        }
-
-        return options;
-    }
-
-    private void setCommonPreferences(FirefoxOptions options) {
 
         String downloadPath = Paths.get(
                 System.getProperty("user.dir"),
-                "src", "main", "resources",
-                "data", "downloadedFile"
+                "src", "main", "resources", "data", "downloadedFile"
         ).toAbsolutePath().toString();
 
         // ---------- Downloads ----------
@@ -90,30 +89,50 @@ public class FirefoxDriverStrategy implements DriverStrategy {
         options.addPreference("browser.download.useDownloadDir", true);
         options.addPreference(
                 "browser.helperApps.neverAsk.saveToDisk",
-                "application/octet-stream,application/csv,text/csv");
-
+                "application/octet-stream,application/csv,text/csv"
+        );
         options.addPreference("pdfjs.disabled", true);
 
-        // ---------- Notifications & Media ----------
+        // ---------- Notifications ----------
         options.addPreference("dom.webnotifications.enabled", false);
         options.addPreference("dom.push.enabled", false);
         options.addPreference("geo.enabled", false);
 
-        options.addPreference("media.navigator.enabled", false);
-        options.addPreference("media.peerconnection.enabled", false);
-        options.addPreference("media.eme.enabled", false);
+        if (headless) {
+            options.addArguments("--headless");
+        }
 
-        // ---------- DRM / Widevine ----------
-        options.addPreference("media.gmp-widevinecdm.enabled", false);
-        options.addPreference("media.gmp-widevinecdm.visible", false);
-        options.addPreference("media.gmp-manager.updateEnabled", false);
-        options.addPreference("media.gmp-provider-widevinecdm.updateEnabled", false);
-        options.addPreference("media.gmp-provider-widevinecdm.visible", false);
+        return options;
     }
 
-    /* ==========================================================
-       META
-       ========================================================== */
+    /* ===================== PLAYWRIGHT ===================== */
+
+    private DriverContext createPlaywrightFirefox() {
+
+        String downloadPath = Paths.get(
+                System.getProperty("user.dir"),
+                "src", "main", "resources", "data", "downloadedFile"
+        ).toAbsolutePath().toString();
+
+        Playwright playwright = Playwright.create();
+
+        Browser browser = playwright.firefox().launch(
+                new BrowserType.LaunchOptions()
+                        .setHeadless(headless)
+        );
+
+        BrowserContext context = browser.newContext(
+                new Browser.NewContextOptions()
+                        .setAcceptDownloads(true)
+        );
+
+        Page page = context.newPage();
+
+        return DriverContext.playwright(
+                playwright, browser, context, page);
+    }
+
+    /* ===================== META ===================== */
 
     @Override
     public String getBrowserName() {
@@ -122,7 +141,6 @@ public class FirefoxDriverStrategy implements DriverStrategy {
 
     @Override
     public boolean supports(String browserType) {
-        return "firefox".equalsIgnoreCase(browserType)
-                || "firefoxheadless".equalsIgnoreCase(browserType);
+        return "firefox".equalsIgnoreCase(browserType);
     }
 }
