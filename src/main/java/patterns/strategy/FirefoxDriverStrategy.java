@@ -9,12 +9,20 @@ import org.openqa.selenium.firefox.FirefoxOptions;
 import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.remote.RemoteWebDriver;
 
-import com.microsoft.playwright.*;
+import com.microsoft.playwright.Browser;
+import com.microsoft.playwright.BrowserContext;
+import com.microsoft.playwright.BrowserType;
+import com.microsoft.playwright.Page;
+import com.microsoft.playwright.Playwright;
 
 import base.DriverContext;
 import core.interfaces.EngineType;
 import io.github.bonigarcia.wdm.WebDriverManager;
 
+/**
+ * Firefox strategy supporting BOTH Selenium and Playwright
+ * with guaranteed full-screen window on Windows.
+ */
 public class FirefoxDriverStrategy implements DriverStrategy {
 
     private final boolean headless;
@@ -66,6 +74,11 @@ public class FirefoxDriverStrategy implements DriverStrategy {
                 driver = new FirefoxDriver(options);
             }
 
+            // 🔥 REAL FIX (OS-level maximize)
+            if (!headless) {
+                driver.manage().window().maximize();
+            }
+
             return DriverContext.selenium(driver);
 
         } catch (Exception e) {
@@ -100,6 +113,9 @@ public class FirefoxDriverStrategy implements DriverStrategy {
 
         if (headless) {
             options.addArguments("--headless");
+            // Headless Firefox needs explicit size
+            options.addArguments("--width=1920");
+            options.addArguments("--height=1080");
         }
 
         return options;
@@ -108,11 +124,6 @@ public class FirefoxDriverStrategy implements DriverStrategy {
     /* ===================== PLAYWRIGHT ===================== */
 
     private DriverContext createPlaywrightFirefox() {
-
-        String downloadPath = Paths.get(
-                System.getProperty("user.dir"),
-                "src", "main", "resources", "data", "downloadedFile"
-        ).toAbsolutePath().toString();
 
         Playwright playwright = Playwright.create();
 
@@ -124,12 +135,14 @@ public class FirefoxDriverStrategy implements DriverStrategy {
         BrowserContext context = browser.newContext(
                 new Browser.NewContextOptions()
                         .setAcceptDownloads(true)
+                        .setViewportSize(null) // 🔥 FULL SCREEN FIX
         );
 
         Page page = context.newPage();
 
         return DriverContext.playwright(
-                playwright, browser, context, page);
+                playwright, browser, context, page
+        );
     }
 
     /* ===================== META ===================== */

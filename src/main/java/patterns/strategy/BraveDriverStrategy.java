@@ -2,8 +2,8 @@ package patterns.strategy;
 
 import java.net.URI;
 import java.nio.file.Paths;
-import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.openqa.selenium.WebDriver;
@@ -13,23 +13,27 @@ import org.openqa.selenium.remote.CapabilityType;
 import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.remote.RemoteWebDriver;
 
-import com.microsoft.playwright.*;
+import com.microsoft.playwright.Browser;
+import com.microsoft.playwright.BrowserContext;
+import com.microsoft.playwright.BrowserType;
+import com.microsoft.playwright.Page;
+import com.microsoft.playwright.Playwright;
 
 import base.DriverContext;
 import core.interfaces.EngineType;
 import io.github.bonigarcia.wdm.WebDriverManager;
 
 /**
- * Chrome strategy supporting BOTH Selenium and Playwright
+ * Brave strategy supporting BOTH Selenium and Playwright
  * with guaranteed full-screen window on Windows.
  */
-public class ChromeDriverStrategy implements DriverStrategy {
+public class BraveDriverStrategy implements DriverStrategy {
 
     private final boolean headless;
     private final boolean remote;
     private final String remoteUrl;
 
-    public ChromeDriverStrategy(boolean headless, boolean remote, String remoteUrl) {
+    public BraveDriverStrategy(boolean headless, boolean remote, String remoteUrl) {
         this.headless = headless;
         this.remote = remote;
         this.remoteUrl = remoteUrl;
@@ -47,18 +51,18 @@ public class ChromeDriverStrategy implements DriverStrategy {
                 EngineType.valueOf(System.getProperty("engine", "SELENIUM"));
 
         if (engine == EngineType.PLAYWRIGHT) {
-            return createPlaywrightChrome();
+            return createPlaywrightBrave();
         }
 
-        return createSeleniumChrome(capabilities);
+        return createSeleniumBrave(capabilities);
     }
 
     /* ===================== SELENIUM ===================== */
 
-    private DriverContext createSeleniumChrome(DesiredCapabilities capabilities) {
+    private DriverContext createSeleniumBrave(DesiredCapabilities capabilities) {
 
         WebDriverManager.chromedriver().setup();
-        ChromeOptions options = createChromeOptions();
+        ChromeOptions options = createBraveOptions();
 
         if (capabilities != null) {
             options.merge(capabilities);
@@ -67,14 +71,14 @@ public class ChromeDriverStrategy implements DriverStrategy {
         try {
             WebDriver driver;
 
-            if (remote && remoteUrl != null) {
+            if (remote && remoteUrl != null && !remoteUrl.isBlank()) {
                 driver = new RemoteWebDriver(
                         URI.create(remoteUrl).toURL(), options);
             } else {
                 driver = new ChromeDriver(options);
             }
 
-            // 🔥 THIS IS THE REAL FIX (Windows)
+            // 🔥 REAL FIX – OS-level maximize
             if (!headless) {
                 driver.manage().window().maximize();
             }
@@ -83,19 +87,28 @@ public class ChromeDriverStrategy implements DriverStrategy {
 
         } catch (Exception e) {
             throw new RuntimeException(
-                    "Failed to create Selenium Chrome driver", e);
+                    "Failed to create Selenium Brave driver", e);
         }
     }
 
-    private ChromeOptions createChromeOptions() {
+    private ChromeOptions createBraveOptions() {
 
         ChromeOptions options = new ChromeOptions();
         Map<String, Object> prefs = new HashMap<>();
 
         String downloadPath = Paths.get(
                 System.getProperty("user.dir"),
-                "src", "main", "resources", "data", "downloadedFile"
+                "src", "main", "resources",
+                "data", "downloadedFile"
         ).toAbsolutePath().toString();
+
+        // 🔴 REQUIRED: Brave binary path
+        // Windows default:
+        options.setBinary(
+                "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
+        );
+        // (Mac: /Applications/Brave Browser.app/Contents/MacOS/Brave Browser)
+        // (Linux: /usr/bin/brave-browser)
 
         prefs.put("download.default_directory", downloadPath);
         prefs.put("download.prompt_for_download", false);
@@ -104,14 +117,12 @@ public class ChromeDriverStrategy implements DriverStrategy {
         prefs.put("profile.password_manager_enabled", false);
 
         options.setExperimentalOption("prefs", prefs);
-        options.setExperimentalOption(
-                "excludeSwitches", Collections.singletonList("enable-automation")
-        );
 
         options.addArguments(
                 "--disable-notifications",
                 "--disable-gpu",
-                "--no-sandbox"
+                "--no-sandbox",
+                "--incognito"
         );
 
         if (headless) {
@@ -121,26 +132,29 @@ public class ChromeDriverStrategy implements DriverStrategy {
             );
         }
 
-        options.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
+        options.setCapability(
+                CapabilityType.ACCEPT_INSECURE_CERTS, true);
+
         return options;
     }
 
     /* ===================== PLAYWRIGHT ===================== */
 
-    private DriverContext createPlaywrightChrome() {
+    private DriverContext createPlaywrightBrave() {
 
         Playwright playwright = Playwright.create();
 
         Browser browser = playwright.chromium().launch(
                 new BrowserType.LaunchOptions()
+                        .setChannel("brave")   // 🔥 Brave channel
                         .setHeadless(headless)
-                        .setArgs(Collections.singletonList("--start-maximized"))
+                        .setArgs(List.of("--start-maximized"))
         );
 
         BrowserContext context = browser.newContext(
                 new Browser.NewContextOptions()
                         .setAcceptDownloads(true)
-                        .setViewportSize(null) // 🔥 REQUIRED
+                        .setViewportSize(null) // 🔥 FULL SCREEN FIX
         );
 
         Page page = context.newPage();
@@ -154,11 +168,12 @@ public class ChromeDriverStrategy implements DriverStrategy {
 
     @Override
     public String getBrowserName() {
-        return "chrome";
+        return "brave";
     }
 
     @Override
     public boolean supports(String browserType) {
-        return "chrome".equalsIgnoreCase(browserType);
+        return "brave".equalsIgnoreCase(browserType)
+                || "braveheadless".equalsIgnoreCase(browserType);
     }
 }

@@ -13,12 +13,20 @@ import org.openqa.selenium.remote.CapabilityType;
 import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.remote.RemoteWebDriver;
 
-import com.microsoft.playwright.*;
+import com.microsoft.playwright.Browser;
+import com.microsoft.playwright.BrowserContext;
+import com.microsoft.playwright.BrowserType;
+import com.microsoft.playwright.Page;
+import com.microsoft.playwright.Playwright;
 
 import base.DriverContext;
 import core.interfaces.EngineType;
 import io.github.bonigarcia.wdm.WebDriverManager;
 
+/**
+ * Edge strategy supporting BOTH Selenium and Playwright
+ * with guaranteed full-screen window on Windows.
+ */
 public class EdgeDriverStrategy implements DriverStrategy {
 
     private final boolean headless;
@@ -70,6 +78,11 @@ public class EdgeDriverStrategy implements DriverStrategy {
                 driver = new EdgeDriver(options);
             }
 
+            // 🔥 REAL FIX – OS level maximize
+            if (!headless) {
+                driver.manage().window().maximize();
+            }
+
             return DriverContext.selenium(driver);
 
         } catch (Exception e) {
@@ -101,11 +114,14 @@ public class EdgeDriverStrategy implements DriverStrategy {
                 "--disable-notifications",
                 "--disable-gpu",
                 "--no-sandbox",
-                "--incognito"
+                "--inprivate"
         );
 
         if (headless) {
-            options.addArguments("--headless=new");
+            options.addArguments(
+                    "--headless=new",
+                    "--window-size=1920,1080"
+            );
         }
 
         options.setCapability(
@@ -117,12 +133,6 @@ public class EdgeDriverStrategy implements DriverStrategy {
     /* ===================== PLAYWRIGHT ===================== */
 
     private DriverContext createPlaywrightEdge() {
-
-        String downloadPath = Paths.get(
-                System.getProperty("user.dir"),
-                "src", "main", "resources",
-                "data", "downloadedFile"
-        ).toAbsolutePath().toString();
 
         Playwright playwright = Playwright.create();
 
@@ -136,6 +146,7 @@ public class EdgeDriverStrategy implements DriverStrategy {
         BrowserContext context = browser.newContext(
                 new Browser.NewContextOptions()
                         .setAcceptDownloads(true)
+                        .setViewportSize(null) // 🔥 FULL SCREEN FIX
         );
 
         Page page = context.newPage();
