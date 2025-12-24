@@ -444,12 +444,16 @@ public class EmailSender {
     
     private static String publishToNetlify(String reportDir) {
         try {
-        	ProcessBuilder pb = new ProcessBuilder(
-        		    "cmd.exe", "/c",
-        		    "\"C:\\Program Files\\nodejs\\node.exe\" " +
-        		    "\"C:\\Users\\Vijay M\\AppData\\Roaming\\npm\\node_modules\\netlify-cli\\bin\\run.js\" " +
-        		    "deploy --create-site --dir=\"" + reportDir + "\" --prod"
-        		);
+        	String userHome = System.getProperty("user.home");
+            String nodePath = "\"C:\\Program Files\\nodejs\\node.exe\"";
+            String netlifyCLIPath = "\"" + userHome + "\\AppData\\Roaming\\npm\\node_modules\\netlify-cli\\bin\\run.js\"";
+
+            ProcessBuilder pb = new ProcessBuilder(
+                "cmd.exe", "/c",
+                nodePath + " " +
+                netlifyCLIPath + " " +
+                "deploy --create-site --dir=\"" + reportDir + "\" --prod"
+            );
 
             pb.redirectErrorStream(true);
             Process process = pb.start();
