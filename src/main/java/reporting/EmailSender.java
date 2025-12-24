@@ -412,6 +412,7 @@ public class EmailSender {
         String netlifyUrl = publishToNetlify(reportDir);
         if (netlifyUrl != null) {
             FilePath = netlifyUrl + "/" + reportFile.getName();
+            System.out.println("netlify -> "+FilePath);
         }
         
         // Attach email files if needed
