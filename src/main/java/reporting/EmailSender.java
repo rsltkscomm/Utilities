@@ -25,6 +25,8 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -445,61 +447,56 @@ public class EmailSender {
     
     private static String publishToNetlify(String reportDir) {
         try {
-        	String userHome = System.getProperty("user.home");
-            String nodePath = "\"C:\\Program Files\\nodejs\\node.exe\"";
-            String netlifyCLIPath = "\"" + userHome + "\\AppData\\Roaming\\npm\\node_modules\\netlify-cli\\bin\\run.js\"";
+            String userHome = System.getProperty("user.home");
+
+            String nodePath = "C:\\Program Files\\nodejs\\node.exe";
+            String netlifyCLIPath =
+                    userHome + "\\AppData\\Roaming\\npm\\node_modules\\netlify-cli\\bin\\run.js";
 
             ProcessBuilder pb = new ProcessBuilder(
-                "cmd.exe", "/c",
-                nodePath + " " +
-                netlifyCLIPath + " " +
-                "deploy --create-site --dir=\"" + reportDir + "\" --prod"
+                    "cmd.exe", "/c",
+                    "\"" + nodePath + "\" \"" + netlifyCLIPath + "\" deploy " +
+                    "--create-site --dir=\"" + reportDir + "\" --prod --json"
             );
 
             pb.redirectErrorStream(true);
             Process process = pb.start();
 
-            BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8)
-            );
+            StringBuilder output = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
 
-            String line;
-            String url = null;
-
-            while ((line = reader.readLine()) != null) {
-                System.out.println("[NETLIFY] " + line);
-
-                // remove formatting / ANSI / box chars
-                line = line
-                        .replace("│", "")
-                        .replace("╭", "")
-                        .replace("╰", "")
-                        .replace("─", "")
-                        .replace("⬥", "")
-                        .replaceAll("\\x1B\\[[;\\d]*m", "")
-                        .trim();
-
-                if (line.startsWith("Deployed to production URL:")) {
-                    url = line.replace("Deployed to production URL:", "").trim();
-                }
-                else if (line.startsWith("Website URL:")) {
-                    url = line.replace("Website URL:", "").trim();
-                }
-                else if (line.startsWith("URL:")) {
-                    url = line.replace("URL:", "").trim();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    System.out.println("[NETLIFY] " + line);
+                    output.append(line);
                 }
             }
 
             int exitCode = process.waitFor();
             System.out.println("Netlify exit code: " + exitCode);
 
-            return url;
+            if (exitCode != 0) {
+                return null;
+            }
+
+            // ---- JSON parsing (no external lib required) ----
+            String json = output.toString();
+            Pattern p = Pattern.compile("\"url\"\\s*:\\s*\"(https:[^\"]+)\"");
+            Matcher m = p.matcher(json);
+
+            if (m.find()) {
+                return m.group(1);
+            }
+
+            return null;
 
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
     }
+
     // ─────────────
 
     // ──────────────────────────────
