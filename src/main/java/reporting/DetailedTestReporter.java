@@ -16,7 +16,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
-import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.logging.LogEntries;
 import org.openqa.selenium.logging.LogEntry;
 import org.openqa.selenium.logging.LogType;
@@ -132,11 +131,11 @@ public class DetailedTestReporter
 
 	        // 🔹 Playwright: NO browser log API
 	        // Console logs must be collected via listeners earlier
-
+	        Page page = DriverManager.getContext().getPage();
 	        DetailedTestReporter.addStep(
 	                failConstant,
 	                StepStatus.FAIL,
-	                context,
+	                page,
 	                logPath,
 	                harFile
 	        );

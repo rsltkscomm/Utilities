@@ -149,7 +149,7 @@ public class DateUtils extends LocatorUtil {
      */
     public static String addTimeToName() {
         try {
-            SimpleDateFormat sdf = new SimpleDateFormat("ddMMyyyy_HHmmss");
+            SimpleDateFormat sdf = new SimpleDateFormat("ssHHmmddMMyyyy");
             String timestamp = sdf.format(new Date());
             TestLogManager.dataInfo("Generated timestamp", timestamp);
             return timestamp;
