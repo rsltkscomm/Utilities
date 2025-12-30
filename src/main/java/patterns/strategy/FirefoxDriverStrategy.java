@@ -133,7 +133,7 @@ public class FirefoxDriverStrategy implements DriverStrategy {
         );
 
         BrowserContext context = browser.newContext(
-                new Browser.NewContextOptions()
+                new Browser.NewContextOptions().setIgnoreHTTPSErrors(true)
                         .setAcceptDownloads(true)
                         .setViewportSize(null) // 🔥 FULL SCREEN FIX
         );
