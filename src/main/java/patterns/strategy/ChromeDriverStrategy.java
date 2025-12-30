@@ -138,7 +138,7 @@ public class ChromeDriverStrategy implements DriverStrategy {
         );
 
         BrowserContext context = browser.newContext(
-                new Browser.NewContextOptions()
+                new Browser.NewContextOptions().setIgnoreHTTPSErrors(true)
                         .setAcceptDownloads(true)
                         .setViewportSize(null) // 🔥 REQUIRED
         );

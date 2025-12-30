@@ -138,7 +138,7 @@ public class ChromeHeadlessDriverStrategy implements DriverStrategy {
 
         BrowserContext context = browser.newContext(
                 new Browser.NewContextOptions()
-                        .setAcceptDownloads(true)
+                        .setAcceptDownloads(true).setIgnoreHTTPSErrors(true)
         );
 
         Page page = context.newPage();
