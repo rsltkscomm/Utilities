@@ -139,6 +139,8 @@ public class BaseTest {
 
         datatable.set(new XLSReader(PageBase.getNormalizedPath(testDataFile)));
 
+        System.out.println(testDataFile);
+
         TestDataUtil util = new TestDataUtil();
         if (!util.isTCIDFound(this)) {
             ExtentManager.failLabel("Test data not found for: " + method_name.get());
