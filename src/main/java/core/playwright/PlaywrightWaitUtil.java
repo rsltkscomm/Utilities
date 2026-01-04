@@ -92,16 +92,24 @@ public class PlaywrightWaitUtil extends PlaywrightDateUtil
 
     @Override
     public boolean waitForInvisibility(Object pr, int sec) {
-        PlaywrightWebElement el =
-                (PlaywrightWebElement) locatorUtil().getElement(pr);
 
-        long end = System.currentTimeMillis() + sec * 1000L;
-        while (System.currentTimeMillis() < end) {
-            if (!el.isDisplayed()) return true;
-            sleep(200);
+        if (!(pr instanceof String)) {
+            throw new IllegalArgumentException(
+                    "waitForInvisibility requires locator String");
         }
-        return false;
+
+        Locator raw = locatorUtil().getRawLocator(pr.toString());
+
+        try {
+            raw.first().waitFor(new Locator.WaitForOptions()
+                    .setState(WaitForSelectorState.HIDDEN)
+                    .setTimeout(sec * 1000L));
+            return true;
+        } catch (com.microsoft.playwright.TimeoutError e) {
+            return false;
+        }
     }
+
 
     @Override
     public boolean waitForText(Object pr, String text, int sec) {

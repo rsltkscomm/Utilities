@@ -1,7 +1,5 @@
 package base;
 
-import static org.testng.Assert.assertFalse;
-
 import java.awt.Color;
 import java.io.File;
 import java.net.MalformedURLException;
@@ -14,10 +12,8 @@ import org.openqa.selenium.WebElement;
 import org.testng.ITestResult;
 import org.testng.Reporter;
 
-import com.microsoft.playwright.ElementHandle.SelectTextOptions;
 import com.microsoft.playwright.Frame;
 import com.microsoft.playwright.Locator;
-import com.microsoft.playwright.options.WaitForSelectorState;
 
 import core.interfaces.BrowserInterface;
 import core.interfaces.ClickInterface;
@@ -34,9 +30,7 @@ import core.interfaces.ScrollInterface;
 import core.interfaces.SelectInterface;
 import core.interfaces.WaitInterface;
 import core.interfaces.WindowInterface;
-import core.playwright.PlaywrightElementUtil;
 import core.playwright.PlaywrightLocatorUtil;
-import core.playwright.PlaywrightWebElement;
 import reporting.ExtentManager;
 
 public class PageBase
