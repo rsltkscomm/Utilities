@@ -108,7 +108,6 @@ public class DefectReporter
 	 */
 	public String reportDefect(String testCaseKey, String testCaseName, String failureReason, java.util.List<DetailedTestReporter.TestStep> stepResults, File screenshotFile, File logFile, File browserLogsFile, File harFile)
 	{
-
 		if (!REPORT_BUG)
 		{
 			System.out.println("⚠️  Bug reporting is disabled in configuration");

@@ -21,9 +21,6 @@ import java.util.List;
  */
 public class DefectReportingDemo {
     
-    private DefectReporter defectReporter;
-    
-    
     /**
      * Test case that demonstrates successful defect reporting when a test fails
      */
@@ -35,7 +32,6 @@ public class DefectReportingDemo {
             String logFilePath = "";
             File harFilePath = null;
             
-            defectReporter = new DefectReporter();
             List<TestExecution> testExecutions = DetailedTestReporter.getTestExecutions();
            
             for (int i = 0; i < testExecutions.size(); i++)
@@ -64,15 +60,15 @@ public class DefectReportingDemo {
                     File logFile = createDynamicLogFile(testCaseKey,testCaseName,stepResults);
                     File screenshotFile = base64ToFile(screenshot, new File(System.getProperty("user.dir")+"/logs/test_image.png").getAbsolutePath());
                     // Report the defect
-                    String bugKey = defectReporter.reportDefect(
+                    String bugKey = new DefectReporter().reportDefect(
                         testCaseKey, 
                         testCaseName, 
                         failureReason, 
                         stepResults, 
                         screenshotFile, 
-                        logFile,
-                        new File(logFilePath),
-                        harFilePath
+                        null,
+                        null,
+                        null
                     );
                     if (bugKey != null) {
                         System.out.println("✅ Defect reported successfully with key: " + bugKey);

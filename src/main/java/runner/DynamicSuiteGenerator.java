@@ -36,8 +36,8 @@ public class DynamicSuiteGenerator
 		{
 			XmlSuite suite = new XmlSuite();
 			suite.setName(System.getProperty("SuiteName"));
-			suite.setParallel(XmlSuite.ParallelMode.METHODS);
-			suite.setThreadCount(2);
+			suite.setParallel(XmlSuite.ParallelMode.TESTS);
+			suite.setThreadCount(8);
 
 			List<String> listeners = new ArrayList<>();
 			if ("yes".equalsIgnoreCase(System.getProperty("isRetry")))

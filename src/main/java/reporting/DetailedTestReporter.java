@@ -16,6 +16,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.logging.LogEntries;
 import org.openqa.selenium.logging.LogEntry;
 import org.openqa.selenium.logging.LogType;
@@ -106,7 +107,7 @@ public class DetailedTestReporter
 	    if (!status) {
 
 	        // 🔹 Selenium: capture browser logs
-	        if (automationDriver instanceof org.openqa.selenium.WebDriver) {
+	        if (automationDriver instanceof WebDriver) {
 	            try {
 	                org.openqa.selenium.WebDriver webDriver =
 	                        (org.openqa.selenium.WebDriver) automationDriver;
@@ -379,9 +380,9 @@ public class DetailedTestReporter
 	        .append("<img alt=\"Product Logo\" src=\"https://run19.resul.io/assets/resulticks-logo-white-391eec89.svg\"/>\n")
 	        .append("</div>\n")
 	        .append("<div class=\"environment-ribbon\">\n")
-	        .append("<span><strong>Environment:</strong> ").append(getSystemProperty("Environment", "Not Specified")).append("</span>\n")
-	        .append("<span><strong>Browser:</strong> ").append(getSystemProperty("Browser", "Not Specified")).append("</span>\n")
-	        .append("<span><strong>Release:</strong> ").append(getSystemProperty("ReleaseVersion", "Not Specified")).append("</span>\n")
+	        .append("<span><strong>Environment:</strong> ").append(getSystemProperty("Environment", "NA")).append("</span>\n")
+	        .append("<span><strong>Browser:</strong> ").append(getSystemProperty("Browser", "NA")).append("</span>\n")
+	        .append("<span><strong>Release:</strong> ").append(getSystemProperty("ReleaseVersion", "NA")).append("</span>\n")
 	        .append("<span><strong>Execution Date:</strong> ").append(localDateFormat.format(new java.util.Date())).append("</span>\n")
 	        .append("</div>\n")
 	        .append("<div style=\"text-align:right; padding:10px;\">\n")
