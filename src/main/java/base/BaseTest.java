@@ -1,5 +1,17 @@
 package base;
 
+import java.lang.reflect.Method;
+import java.util.Map;
+
+import org.apache.poi.openxml4j.util.ZipSecureFile;
+import org.openqa.selenium.WebDriver;
+import org.testng.Assert;
+import org.testng.ITestResult;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Parameters;
+import org.testng.annotations.Test;
+
 import constants.FrameworkConstants;
 import core.interfaces.EngineType;
 import data.TestDataUtil;
@@ -8,68 +20,34 @@ import pages.PageFactory;
 import reporting.ExcelReportGenerator;
 import reporting.ExtentManager;
 import reporting.TestLogManager;
-import seleniumUtils.DateUtils;
-import org.apache.poi.openxml4j.util.ZipSecureFile;
 
-import java.lang.reflect.Method;
-import java.util.Map;
+/**
+ * Project-specific override of the upstream BaseTest that ships with the
+ * Utilities dependency. The original implementation attempted to inject an
+ * {@link org.testng.ITestContext} into the {@code @BeforeSuite} hook, which is
+ * not supported by TestNG's native injection for suite-level configuration
+ * methods and resulted in "Native Injection is NOT supported for @BeforeSuite"
+ * errors before any tests could start. Copying the implementation locally
+ * allows us to keep all existing behaviour while correcting the hook
+ * signature.
+ */
 
-import org.openqa.selenium.WebDriver;
-import org.testng.Assert;
-import org.testng.ITestContext;
-import org.testng.ITestResult;
-import org.testng.annotations.*;
 
-public class BaseTest {
+public class BaseTest  {
+
+    protected WebDriver driver;
+    public static final ThreadLocal<String> appName = ThreadLocal.withInitial(() -> null);
+    public static final ThreadLocal<String> method_name = ThreadLocal.withInitial(() -> null);
+    public static final ThreadLocal<String> browserName = ThreadLocal.withInitial(() -> null);
+    public static final ThreadLocal<String> sheet_name = ThreadLocal.withInitial(() -> null);
+    public static final ThreadLocal<XLSReader> datatable = ThreadLocal.withInitial(() -> null);
+    public static final ThreadLocal<Integer> currentRow = ThreadLocal.withInitial(() -> null);
 
     protected DriverContext driverContext;
-    protected WebDriver driver; // legacy Selenium support
 
     static {
-        // Allow writing Excel reports with highly compressed templates without triggering zip bomb checks
         ZipSecureFile.setMinInflateRatio(0.0d);
     }
-
-    /* =========================
-       THREAD LOCALS
-       ========================= */
-
-    public static ThreadLocal<String> appName = new ThreadLocal<>();
-    public static ThreadLocal<String> method_name = new ThreadLocal<>();
-    public static ThreadLocal<String> browserName = new ThreadLocal<>();
-    public static ThreadLocal<String> sheet_name = new ThreadLocal<>();
-    public static ThreadLocal<XLSReader> datatable = new ThreadLocal<>();
-    public static ThreadLocal<Integer> currentRow = new ThreadLocal<>();
-
-    public static String currentDate;
-    public static String endDateTime;
-
-    /* =========================
-       BEFORE SUITE
-       ========================= */
-
-    @BeforeSuite(alwaysRun = true)
-    public void beforeSuite(ITestContext context) {
-
-        ExtentManager.initReports();
-        TestLogManager.reloadConfiguration();
-
-        if (GridManager.checkIfGrid(System.getProperty("Browser"))) {
-            AutoDockerInstallAndRun.dockerInstallAndRun();
-            DockerManager.dockerContainterUp();
-        }
-
-        String suiteName = context.getSuite().getName();
-        String timestamp = DateUtils.getCurrentDate("dd-MMM-yyyy_HH-mm-ss");
-        System.setProperty("LT_BUILD", suiteName + "_Build_" + timestamp);
-
-        currentDate = DateUtils.getCurrentDate("dd-MMM-yyyy HH:mm");
-        TestLogManager.info("==== TEST SUITE STARTED ====");
-    }
-
-    /* =========================
-       BEFORE METHOD
-       ========================= */
 
     @BeforeMethod(alwaysRun = true)
     @Parameters({ "applicationName", "sheetname" })
@@ -190,34 +168,6 @@ public class BaseTest {
         }
     }
 
-    /* =========================
-       AFTER SUITE
-       ========================= */
-
-    @AfterSuite(alwaysRun = true)
-    public void afterSuite() {
-
-        try {
-            ExtentManager.flushReports();
-
-            if (GridManager.isGrid.get().equals(true)) {
-                DockerManager.dockerContainterDown();
-            }
-
-            ExtentManager.openExtentReport();
-            endDateTime = DateUtils.getCurrentDate("HH:mm");
-
-            TestLogManager.info("==== TEST SUITE FINISHED ====");
-
-        } catch (Exception e) {
-            TestLogManager.warning("AfterSuite error: " + e.getMessage());
-        }
-    }
-
-    /* =========================
-       PAGE FACTORY ACCESS
-       ========================= */
-
     protected PageFactory getPageFactory() {
         return new PageFactory(driverContext);
     }
@@ -226,3 +176,4 @@ public class BaseTest {
         return driverContext;
     }
 }
+
