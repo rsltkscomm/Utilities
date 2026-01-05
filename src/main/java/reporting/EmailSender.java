@@ -411,14 +411,20 @@ public class EmailSender {
         File reportFile = new File(newFilePath);
         String reportDir = reportFile.getParent();
 
-        String netlifyUrl = publishToNetlify(reportDir);
-        if (netlifyUrl != null) {
-            FilePath = netlifyUrl + "/" + reportFile.getName();
-            System.out.println("netlify -> "+FilePath);
+//        String netlifyUrl = publishToNetlify(reportDir);
+//        if (netlifyUrl != null) {
+//            FilePath = netlifyUrl + "/" + reportFile.getName();
+//            System.out.println("netlify -> "+FilePath);
+//        }
+        
+        String githubUrl = publishToGitHubRoot(newFilePath);
+        if (githubUrl != null) {
+            FilePath = githubUrl;
+            System.out.println("GitHub Pages -> " + FilePath);
         }
         
         // Attach email files if needed
-        boolean useCustomName = "yes".equalsIgnoreCase(System.getProperty("AttachMailFile", "no"));
+        boolean useCustomName = "yes".equalsIgnoreCase(System.getProperty("AttachMailFile", "yes"));
         if (useCustomName) {
             for (int i = 0; i < paths.length; i++) {
                 attachFile(multipart, paths[i], names[i]);
@@ -710,6 +716,67 @@ public class EmailSender {
         boolean isPageLoad = "yes".equalsIgnoreCase(System.getProperty("IsPageLoadReport"));
         return isPageLoad ? System.getProperty("pageloadsubject") : System.getProperty("subject");
     }
+    
+    private static String publishToGitHubRoot(String reportFilePath) {
+        try {
+            String token = System.getProperty("GITHUB_TOKEN");
+            if (token == null || token.isBlank()) {
+                System.err.println("❌ GITHUB_TOKEN not set");
+                return null;
+            }
+
+            String repo = "rsltkscomm/Automation-Report";
+            String pagesBaseUrl = "https://rsltkscomm.github.io/Automation-Report/";
+
+            String tmpDir = System.getProperty("java.io.tmpdir")
+                    + "/gh-pages-root-" + System.currentTimeMillis();
+
+            // Clone repo
+            runGit(null,
+                    "git", "clone",
+                    "https://" + token + "@github.com/" + repo + ".git",
+                    tmpDir
+            );
+
+            // Git identity
+            runGit(tmpDir, "git", "config", "user.name", "automation-bot");
+            runGit(tmpDir, "git", "config", "user.email", "automation@company.com");
+
+            // Timestamped report
+            String timeStamp =
+                    new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+            String reportName = "report_" + timeStamp + ".html";
+
+            // Copy report to repo root
+            Files.copy(
+                    Paths.get(reportFilePath),
+                    Paths.get(tmpDir, reportName),
+                    StandardCopyOption.REPLACE_EXISTING
+            );
+
+            // Commit & push
+            runGit(tmpDir, "git", "add", reportName);
+            runGit(tmpDir, "git", "commit", "-m", "Add report " + reportName);
+            runGit(tmpDir, "git", "push");
+
+            return pagesBaseUrl + reportName;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+
+    private static void runGit(String dir, String... cmd) throws Exception {
+        ProcessBuilder pb = new ProcessBuilder(cmd);
+        if (dir != null) pb.directory(new File(dir));
+        pb.redirectErrorStream(true);
+        Process p = pb.start();
+        p.waitFor();
+    }
+
+
 
     // ──────────────────────────────
     // 🔹 EMAIL HTML TEMPLATE
