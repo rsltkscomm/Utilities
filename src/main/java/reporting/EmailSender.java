@@ -1,34 +1,63 @@
 package reporting;
 
-import base.BaseTest;
-import constants.FrameworkConstants;
-import jakarta.mail.*;
-import jakarta.mail.internet.*;
-import org.apache.poi.openxml4j.util.ZipSecureFile;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.remote.RemoteWebDriver;
-import reporting.DetailedTestReporter.ExecutionStatus;
-import reporting.DetailedTestReporter.StepStatus;
-import reporting.DetailedTestReporter.TestExecution;
-import zephyrIntegration.DuplicateDefectChecker;
-
-import javax.net.ssl.HttpsURLConnection;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+
+import javax.net.ssl.HttpsURLConnection;
+
+import org.apache.poi.openxml4j.util.ZipSecureFile;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.remote.RemoteWebDriver;
+
+import base.SuiteLifecycleListener;
+import constants.FrameworkConstants;
+import jakarta.mail.Address;
+import jakarta.mail.Authenticator;
+import jakarta.mail.Message;
+import jakarta.mail.MessagingException;
+import jakarta.mail.Multipart;
+import jakarta.mail.PasswordAuthentication;
+import jakarta.mail.SendFailedException;
+import jakarta.mail.Session;
+import jakarta.mail.Transport;
+import jakarta.mail.internet.AddressException;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeBodyPart;
+import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.internet.MimeMultipart;
+import reporting.DetailedTestReporter.ExecutionStatus;
+import reporting.DetailedTestReporter.StepStatus;
+import reporting.DetailedTestReporter.TestExecution;
+import zephyrIntegration.DuplicateDefectChecker;
 
 /**
  * EmailSender - builds and sends the HTML automation report, now with Jira bug-key lookup for top failures.
@@ -585,8 +614,8 @@ public class EmailSender {
         int passedTests = Integer.parseInt(Passed);
         PassRate = totalTests > 0 ? String.valueOf((passedTests * 100) / totalTests) : "0";
 
-        StartTime = BaseTest.currentDate;
-        EndTime = BaseTest.endDateTime;
+        StartTime = SuiteLifecycleListener.currentDate;
+        EndTime = SuiteLifecycleListener.endDateTime;
         Browser = System.getProperty("Browser");
         Env = Environment;
 
@@ -731,33 +760,33 @@ public class EmailSender {
             String tmpDir = System.getProperty("java.io.tmpdir")
                     + "/gh-pages-root-" + System.currentTimeMillis();
 
-            // Clone repo
+            // 1️⃣ Clone repo
             runGit(null,
-                    "git", "clone",
+                    "clone",
                     "https://" + token + "@github.com/" + repo + ".git",
                     tmpDir
             );
 
-            // Git identity
-            runGit(tmpDir, "git", "config", "user.name", "automation-bot");
-            runGit(tmpDir, "git", "config", "user.email", "automation@company.com");
+            // 2️⃣ Git identity
+            runGit(tmpDir, "config", "user.name", "automation-bot");
+            runGit(tmpDir, "config", "user.email", "automation@company.com");
 
-            // Timestamped report
+            // 3️⃣ Timestamped report
             String timeStamp =
                     new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
             String reportName = "report_" + timeStamp + ".html";
 
-            // Copy report to repo root
+            // 4️⃣ Copy report FIRST
             Files.copy(
                     Paths.get(reportFilePath),
                     Paths.get(tmpDir, reportName),
                     StandardCopyOption.REPLACE_EXISTING
             );
 
-            // Commit & push
-            runGit(tmpDir, "git", "add", reportName);
-            runGit(tmpDir, "git", "commit", "-m", "Add report " + reportName);
-            runGit(tmpDir, "git", "push");
+            // 5️⃣ Commit & push
+            runGit(tmpDir, "add", reportName);
+            runGit(tmpDir, "commit", "-m", "Add report " + reportName);
+            runGit(tmpDir, "push");
 
             return pagesBaseUrl + reportName;
 
@@ -767,16 +796,36 @@ public class EmailSender {
         }
     }
 
+    private static final String GIT_EXE =
+            "C:\\Program Files\\Git\\cmd\\git.exe";
 
     private static void runGit(String dir, String... cmd) throws Exception {
-        ProcessBuilder pb = new ProcessBuilder(cmd);
-        if (dir != null) pb.directory(new File(dir));
+
+        String[] fullCmd = new String[cmd.length + 1];
+        fullCmd[0] = GIT_EXE;
+        System.arraycopy(cmd, 0, fullCmd, 1, cmd.length);
+
+        ProcessBuilder pb = new ProcessBuilder(fullCmd);
+
+        if (dir != null) {
+            File d = new File(dir);
+            if (!d.exists()) {
+                throw new IOException("Git working directory does not exist: " + dir);
+            }
+            pb.directory(d);
+        }
+
         pb.redirectErrorStream(true);
+
         Process p = pb.start();
-        p.waitFor();
+        int exitCode = p.waitFor();
+
+        if (exitCode != 0) {
+            throw new RuntimeException(
+                "Git command failed: " + String.join(" ", fullCmd)
+            );
+        }
     }
-
-
 
     // ──────────────────────────────
     // 🔹 EMAIL HTML TEMPLATE
