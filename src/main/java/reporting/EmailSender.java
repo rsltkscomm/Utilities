@@ -453,7 +453,7 @@ public class EmailSender {
         }
         
         // Attach email files if needed
-        boolean useCustomName = "yes".equalsIgnoreCase(System.getProperty("AttachMailFile", "yes"));
+        boolean useCustomName = "yes".equalsIgnoreCase(System.getProperty("AttachMailFile", "no"));
         if (useCustomName) {
             for (int i = 0; i < paths.length; i++) {
                 attachFile(multipart, paths[i], names[i]);
