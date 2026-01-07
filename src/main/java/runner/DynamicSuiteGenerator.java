@@ -16,6 +16,7 @@ import org.testng.TestNG;
 import org.testng.xml.XmlClass;
 import org.testng.xml.XmlInclude;
 import org.testng.xml.XmlSuite;
+import org.testng.xml.XmlSuite.ParallelMode;
 import org.testng.xml.XmlTest;
 
 import constants.FrameworkConstants;
@@ -36,9 +37,13 @@ public class DynamicSuiteGenerator
 		{
 			XmlSuite suite = new XmlSuite();
 			suite.setName(System.getProperty("SuiteName"));
-			suite.setParallel(XmlSuite.ParallelMode.TESTS);
-			suite.setThreadCount(8);
-
+			if (System.getProperty("parallel","tests").toLowerCase().contains("tests"))
+			{
+				suite.setParallel(XmlSuite.ParallelMode.TESTS);
+			}else {
+				suite.setParallel(XmlSuite.ParallelMode.METHODS);
+			}
+			suite.setThreadCount(Integer.parseInt(System.getProperty("threadcount","8")));
 			List<String> listeners = new ArrayList<>();
 			if ("yes".equalsIgnoreCase(System.getProperty("isRetry")))
 			{
@@ -47,6 +52,7 @@ public class DynamicSuiteGenerator
 			listeners.add("listeners.TestListener");
 			listeners.add("reporting.NewCutsomHTMLReport");
 			listeners.add("smartUIComparison.SmartUIListener");
+			listeners.add("base.SuiteLifecycleListener");
 //            listeners.add("listeners.NoProdMethodSkipper");
 			suite.setListeners(listeners);
 
@@ -62,7 +68,6 @@ public class DynamicSuiteGenerator
 			{
 				xmlTests = readRunnerExcel(suite);
 			}
-
 			TestNG testng = new TestNG();
 			testng.setXmlSuites(List.of(suite));
 			testng.setVerbose(10);
@@ -76,7 +81,6 @@ public class DynamicSuiteGenerator
 				TestLogManager.error("Failed to save TestNG XML", e);
 			}
 			testng.run();
-
 		} else
 		{
 			TestNG testng = new TestNG();
@@ -184,6 +188,8 @@ public class DynamicSuiteGenerator
 					if (!methods.isEmpty())
 					{
 						XmlTest test = new XmlTest(suite);
+						test.setParallel(ParallelMode.METHODS);
+						test.setThreadCount(Integer.parseInt(System.getProperty("innerthreadcount","2")));
 						test.setName(name.split("\\.")[1]);
 						XmlClass cls = new XmlClass(name);
 						cls.setIncludedMethods(methods);
