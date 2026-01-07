@@ -2,10 +2,7 @@ package reporting;
 
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
-import java.io.OutputStreamWriter;
-import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -47,7 +44,7 @@ public class NewSummaryReportGenerator {
     }
 
     public static void recordTestResult(String testName, String status) {
-        String module = extractModuleName(testName);
+        String module = extractModuleName(testName).toUpperCase();
         ModuleStats stats = moduleStats.computeIfAbsent(module, k -> new ModuleStats());
 
         switch (status.toUpperCase()) {
@@ -88,7 +85,7 @@ public class NewSummaryReportGenerator {
         root.put("modules", buildModuleList());
 
         // ================= META (✅ THIS WAS MISSING) =================
-        root.put("meta", buildMetaJson());
+        root.put("meta", buildMetaJson());;
 
         // ================= DETAILED REPORT =================
         root.put("details", buildDetailedReportJson());
@@ -110,10 +107,10 @@ public class NewSummaryReportGenerator {
             return modules;
         }
 
-        Map<String, Long> durationMap = new HashMap<>();
+        Map<String, Long> durationMap = new HashMap<>();;
 
         for (TestExecution exec : DetailedTestReporter.getReport().getTestExecutions()) {
-            String module = Optional.ofNullable(exec.getModule()).orElse("Other");
+            String module = Optional.ofNullable(exec.getModule()).orElse("Other").toUpperCase();
 
             if (exec.getStartTime() != null && exec.getEndTime() != null) {
                 long dur = exec.getEndTime().getTime() - exec.getStartTime().getTime();
@@ -199,33 +196,30 @@ public class NewSummaryReportGenerator {
         try {
             String fileName = System.getProperty("reportFileName") + "_"
                     + DateUtils.getCurrentDate("ddMMMyyyy_HHmmss") + ".html";
+            String path = System.getProperty("user.dir") + File.separator + fileName;
 
-            String baseDir = System.getProperty("user.dir")
-                    + File.separator + "src"
-                    + File.separator + "test"
-                    + File.separator + "resources"
-                    + File.separator + "DetailedReports";
-
-            File directory = new File(baseDir);
-            if (!directory.exists()) {
-                directory.mkdirs();
-            }
-
-            File reportFile = new File(directory, fileName);
-
-            try (BufferedWriter writer = new BufferedWriter(
-                    new OutputStreamWriter(new FileOutputStream(reportFile), StandardCharsets.UTF_8))) {
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(path))) {
                 writer.write(reportHtml);
             }
-
-            System.out.println("✅ Report generated: " + reportFile.getAbsolutePath());
-
+            System.out.println("✅ Report generated: " + path);
         } catch (Exception e) {
-            System.err.println("❌ Failed to write HTML report");
             e.printStackTrace();
         }
     }
+    
+    private static void writeTextFile(String filecontent) {
+        try {
+            String fileName =  "checkbuid.txt";
+            String path = System.getProperty("user.dir") + File.separator + fileName;
 
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(path))) {
+                writer.write(filecontent);
+            }
+            System.out.println("✅ Report generated: " + path);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
     /* =========================
        EXISTING HTML BUILDER
@@ -335,11 +329,11 @@ public class NewSummaryReportGenerator {
 
 	    // Console output
 	    System.out.printf("Overall Pass Rate: %.2f%%%n", passRate);
-
+	    
 	    if (passRate >= slaThreshold) {
-	        System.out.println("This is SUCCESS build");
+	    	writeTextFile("SUCCESS build");
 	    } else {
-	        System.out.println("This is FAILURE build");
+	    	writeTextFile("FAILURE build");
 	    }
 
 	    return String.format("""
