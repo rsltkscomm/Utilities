@@ -578,7 +578,7 @@ public class EmailSender {
     // 🔹 METADATA GATHERING
     // ──────────────────────────────
     public static void setDateTime() {
-        String[] parts = NewCutsomHTMLReport.dateTime.split(" ");
+        String[] parts = NewCutsomHTMLReport.suiteStartTime.split(" ");
         CurrentDate = parts[0];
         CurrentTime = parts[1];
     }
