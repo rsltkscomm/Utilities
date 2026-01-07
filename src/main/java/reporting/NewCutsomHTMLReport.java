@@ -46,19 +46,19 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener {
     @Override
     public void onTestSuccess(ITestResult result) {
         passMethods.add(System.getProperty("method_name"));
-        NewSummaryReportGenerator.recordTestResult(result.getName(), "PASS");
+        // ❌ No listener-based counting anymore
     }
 
     @Override
     public void onTestFailure(ITestResult result) {
         failMethods.add(System.getProperty("method_name"));
-        NewSummaryReportGenerator.recordTestResult(result.getName(), "FAIL");
+        // ❌ No listener-based counting anymore
     }
 
     @Override
     public void onTestSkipped(ITestResult result) {
         noRunMethods.add(System.getProperty("method_name"));
-        NewSummaryReportGenerator.recordTestResult(result.getName(), "SKIPPED");
+        // ❌ No listener-based counting anymore
     }
 
     /* ===============================
@@ -67,7 +67,9 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener {
     @Override
     public void onFinish(ISuite suite) {
 
-        // --- External Integrations ---
+        // -------------------------------
+        // External Integrations
+        // -------------------------------
         if ("yes".equalsIgnoreCase(System.getProperty("REPORT_BUG"))) {
             new DefectReportingDemo().defectReporting();
         }
@@ -76,24 +78,22 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener {
             new JiraZephyrClient().zephyrUpdater();
         }
 
-        // Generate detailed report first
-//        DetailedTestReporter.getReport().generateReport();
-
-        // Clean skipped list
-//        filterCount(passMethods, failMethods, noRunMethods);
-
-        // Aggregate summary stats
+        // -------------------------------
+        // Aggregate execution stats
+        // -------------------------------
         NewSummaryReportGenerator.AggregatedStats agg =
                 NewSummaryReportGenerator.aggregateStats();
 
+        // -------------------------------
         // Performance report (optional)
+        // -------------------------------
         if ("yes".equalsIgnoreCase(System.getProperty("performanceReport"))) {
             PerformanceTracker.generatePerformanceReportsForSuite(suite);
         }
 
-        // ===============================
+        // -------------------------------
         // JSON → HTML REPORT FLOW
-        // ===============================
+        // -------------------------------
         String reportJson = NewSummaryReportGenerator.generateReportJson(
                 agg.totalPass,
                 agg.totalFail,
@@ -102,7 +102,6 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener {
                 suiteStartTime
         );
 
-        // Generate HTML from JSON
         NewSummaryReportGenerator.generateReportFromJson(reportJson);
 
         System.out.println("✅ Summary report generated successfully");
@@ -111,35 +110,23 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener {
     /* ===============================
        UTILS
        =============================== */
-    private void filterCount(List<String> passMethod,
-                             List<String> failMethod,
-                             List<String> noRunMethod) {
-
-        Set<String> passSet = new HashSet<>(passMethod);
-        Set<String> failSet = new HashSet<>(failMethod);
-
-        Iterator<String> iterator = noRunMethod.iterator();
-        while (iterator.hasNext()) {
-            String method = iterator.next();
-            if (passSet.contains(method) || failSet.contains(method)) {
-                iterator.remove();
-            }
-        }
-    }
 
     /**
      * Load properties from object.properties inside JAR
      */
     private void loadPropertiesFromJar() {
         String resourcePath = "/object.properties";
-        try (InputStream is = NewCutsomHTMLReport.class.getResourceAsStream(resourcePath)) {
+        try (InputStream is =
+                     NewCutsomHTMLReport.class.getResourceAsStream(resourcePath)) {
+
             if (is == null) {
                 throw new FileNotFoundException("Resource not found: " + resourcePath);
             }
 
             Properties props = new Properties();
             props.load(is);
-            props.forEach((k, v) -> System.setProperty(k.toString(), v.toString()));
+            props.forEach((k, v) ->
+                    System.setProperty(k.toString(), v.toString()));
 
         } catch (IOException e) {
             System.err.println("❌ Failed to load properties: " + e.getMessage());
@@ -153,7 +140,8 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener {
         Properties props = new Properties();
         try (FileInputStream fis = new FileInputStream(propertyFilePath)) {
             props.load(fis);
-            props.forEach((k, v) -> System.setProperty(k.toString(), v.toString()));
+            props.forEach((k, v) ->
+                    System.setProperty(k.toString(), v.toString()));
         } catch (Exception e) {
             System.err.println("❌ Property load error: " + e.getMessage());
         }

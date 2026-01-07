@@ -7,15 +7,7 @@ import java.io.FileWriter;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.*;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -31,116 +23,69 @@ public class NewSummaryReportGenerator {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static String html = "";
-    public static List<Map<String, Object>> modules;
 
-    /* =========================
-       INTERNAL STATS
-       ========================= */
-    public static final Map<String, ModuleStats> moduleStats = new ConcurrentHashMap<>();
-
-    /* =========================
-       RECORD RESULTS
-       ========================= */
-    private static String extractModuleName(String testName) {
-        int idx = testName.indexOf('_');
-        return idx > 0 ? testName.substring(0, idx) : "Other";
-    }
-
-    public static void recordTestResult(String testName, String status) {
-        String module = extractModuleName(testName).toUpperCase();
-        ModuleStats stats = moduleStats.computeIfAbsent(module, k -> new ModuleStats());
-
-        switch (status.toUpperCase()) {
-            case "PASS": stats.passed++; break;
-            case "FAIL": stats.failed++; break;
-            case "SKIP":
-            case "SKIPPED": stats.skipped++; break;
-        }
-    }
-    
-
-    /* =========================
-       JSON AGGREGATION
-       ========================= */
+    /* =========================================================
+       JSON AGGREGATION (SINGLE SOURCE OF TRUTH)
+       ========================================================= */
     public static String generateReportJson(
             int pass,
             int fail,
             int skip,
-            String duration,
+            String durationMillis,
             String startTime
     ) {
         Map<String, Object> root = new LinkedHashMap<>();
-
-        // ================= SUMMARY =================
-        Map<String, Object> summary = new LinkedHashMap<>();
         int total = pass + fail + skip;
 
+        Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("passed", pass);
         summary.put("failed", fail);
         summary.put("skipped", skip);
         summary.put("total", total);
-        summary.put("durationMillis", duration);
+        summary.put("durationMillis", durationMillis);
         summary.put("startTime", startTime);
 
         root.put("summary", summary);
-
-        // ================= MODULE SUMMARY =================
-        root.put("modules", buildModuleList());
-
-        // ================= META (✅ THIS WAS MISSING) =================
-        root.put("meta", buildMetaJson());;
-
-        // ================= DETAILED REPORT =================
+        root.put("modules", aggregateModulesFromExecutions());
+        root.put("meta", buildMetaJson());
         root.put("details", buildDetailedReportJson());
 
-        // ================= JSON OUTPUT =================
-        return new com.google.gson.GsonBuilder()
+        return new GsonBuilder()
                 .setPrettyPrinting()
                 .serializeNulls()
                 .create()
                 .toJson(root);
     }
 
-
-
-    private static List<Map<String, Object>> buildModuleList() {
+    /* =========================================================
+       MODULE AGGREGATION (EXECUTION BASED)
+       ========================================================= */
+    private static List<Map<String, Object>> aggregateModulesFromExecutions() {
+        AggregatedStats agg = aggregateStats();
         List<Map<String, Object>> modules = new ArrayList<>();
 
-        if (DetailedTestReporter.getReport() == null) {
-            return modules;
-        }
-
-        Map<String, Long> durationMap = new HashMap<>();;
-
-        for (TestExecution exec : DetailedTestReporter.getReport().getTestExecutions()) {
-            String module = Optional.ofNullable(exec.getModule()).orElse("Other").toUpperCase();
-
-            if (exec.getStartTime() != null && exec.getEndTime() != null) {
-                long dur = exec.getEndTime().getTime() - exec.getStartTime().getTime();
-                durationMap.merge(module, dur, Long::sum);
-            }
-        }
-
-        moduleStats.forEach((module, stats) -> {
+        for (Map.Entry<String, ModuleSummary> e : agg.perModule.entrySet()) {
+            ModuleSummary ms = e.getValue();
             Map<String, Object> m = new LinkedHashMap<>();
-            m.put("module", module);
-            m.put("total", stats.getTotal());
-            m.put("passed", stats.passed);
-            m.put("failed", stats.failed);
-            m.put("skipped", stats.skipped);
-            m.put("durationMillis", durationMap.getOrDefault(module, 0L));
+            m.put("module", e.getKey().toUpperCase());
+            m.put("total", ms.getTotal());
+            m.put("passed", ms.passed);
+            m.put("failed", ms.failed);
+            m.put("skipped", ms.skipped);
+            m.put("durationMillis", ms.durationMillis);
             modules.add(m);
-        });
+        }
 
         modules.sort(Comparator.comparing(o -> o.get("module").toString()));
         return modules;
     }
 
-    /* =========================
-       HTML FROM JSON (NEW)
-       ========================= */
+    /* =========================================================
+       HTML FROM JSON (UNCHANGED)
+       ========================================================= */
     public static void generateReportFromJson(String json) {
-    	writeJsonToFile(json);
+        writeJsonToFile(json);
+
         JsonObject root = GSON.fromJson(json, JsonObject.class);
         JsonObject summary = root.getAsJsonObject("summary");
 
@@ -150,54 +95,258 @@ public class NewSummaryReportGenerator {
         String duration = summary.get("durationMillis").getAsString();
         String startTime = summary.get("startTime").getAsString();
 
-        writeHtml(customReportHtml(pass, fail, skip, duration, startTime,json));
+        String htmlString = customReportHtml(pass, fail, skip, duration, startTime, json);
+        String reportPath = writeHtml(htmlString);
+        
+        if (!"yes".equalsIgnoreCase(System.getProperty("isReportSend")))
+		{
+			return;
+		}
+
+		// 3. Prepare attachments
+		List<String> filePaths = new ArrayList<>();
+		List<String> fileNames = new ArrayList<>();
+
+		// Add HTML report
+		File htmlFile = new File(reportPath);
+		if (htmlFile.exists())
+		{
+			filePaths.add(reportPath);
+			fileNames.add(System.getProperty("IsPageLoadReport").toLowerCase().equals("yes") ? "PageloadReport.html" : "TestExecutionSummary.html");
+		} else
+		{
+			System.err.println("⚠️ HTML report not found: " + reportPath);
+			return;
+		}
+
+		// Add Excel report if required
+		if ("yes".equalsIgnoreCase(System.getProperty("isExcelAttach")))
+		{
+			String excelFilePath = System.getProperty("user.dir") + File.separator + "TestSummary.xlsx";
+			File excelFile = new File(excelFilePath);
+			if (excelFile.exists())
+			{
+				filePaths.add(excelFilePath);
+				fileNames.add("TestSummary.xlsx");
+			} else
+			{
+				System.err.println("⚠️ Excel file not found: " + excelFilePath);
+			}
+		}
+
+		// 4. Send email with attachments (only once)
+		try
+		{
+			if (!filePaths.isEmpty())
+			{
+				String paths = String.join(",", filePaths);
+				String names = String.join(",", fileNames);
+
+				System.out.println("📤 Sending email with attachments:");
+				System.out.println("Paths: " + paths);
+				System.out.println("Names: " + names);
+
+				EmailSender.sendEmail(paths, names);
+			} else
+			{
+				System.err.println("⚠️ No files available to attach.");
+			}
+		} catch (Exception e)
+		{
+			System.err.println("❌ Failed to send email: " + e.getMessage());
+			e.printStackTrace();
+		}
     }
 
-    /* =========================
-       BACKWARD COMPATIBILITY
-       ========================= */
-    public static void generateReport(
-            int pass,
-            int fail,
-            int skip,
-            String duration,
-            String startTime
-    ) {
-        String json = generateReportJson(pass, fail, skip, duration, startTime);
-        generateReportFromJson(json);
+    /* =========================================================
+       AGGREGATION CORE
+       ========================================================= */
+    static class AggregatedStats {
+        int totalPass;
+        int totalFail;
+        int totalSkip;
+        long totalDurationMillis;
+        Map<String, ModuleSummary> perModule = new HashMap<>();
     }
-    
-    private static void writeJsonToFile(String json) {
-        try {
-            String fileName = System.getProperty("reportFileName", "TestSummary")
-                    + "_" + new java.text.SimpleDateFormat("ddMMMyyyy_HHmmss").format(new java.util.Date())
-                    + ".json";
 
-            String outputDir = System.getProperty("user.dir") + File.separator + "reports" + File.separator +"json";
-            File dir = new File(outputDir);
-            if (!dir.exists()) {
-                dir.mkdirs();
-            }
+    static class ModuleSummary {
+        int passed;
+        int failed;
+        int skipped;
+        long durationMillis;
 
-            File jsonFile = new File(dir, fileName);
-
-            try (FileWriter writer = new FileWriter(jsonFile)) {
-                writer.write(json);
-            }
-
-            System.out.println("✅ JSON report generated at: " + jsonFile.getAbsolutePath());
-        } catch (Exception e) {
-            System.err.println("❌ Failed to write JSON report: " + e.getMessage());
-            e.printStackTrace();
+        int getTotal() {
+            return passed + failed + skipped;
         }
     }
 
-    /* =========================
-       HTML CORE
-       ========================= */
-    private static void writeHtml(String reportHtml) {
+    public static AggregatedStats aggregateStats() {
+        AggregatedStats agg = new AggregatedStats();
+
+        if (DetailedTestReporter.getReport() == null ||
+            DetailedTestReporter.getReport().getTestExecutions() == null) {
+            return agg;
+        }
+
+        for (TestExecution exec : DetailedTestReporter.getReport().getTestExecutions()) {
+            String module = (exec.getModule() == null || exec.getModule().isBlank())
+                    ? "Other" : exec.getModule();
+
+            ModuleSummary mod = agg.perModule.computeIfAbsent(module, k -> new ModuleSummary());
+
+            switch (exec.getStatus()) {
+                case PASS -> { agg.totalPass++; mod.passed++; }
+                case FAIL -> { agg.totalFail++; mod.failed++; }
+                case SKIPPED -> { agg.totalSkip++; mod.skipped++; }
+            }
+
+            if (exec.getStartTime() != null && exec.getEndTime() != null &&
+                exec.getEndTime().after(exec.getStartTime())) {
+                long dur = exec.getEndTime().getTime() - exec.getStartTime().getTime();
+                agg.totalDurationMillis += dur;
+                mod.durationMillis += dur;
+            }
+        }
+        return agg;
+    }
+
+    /* =========================================================
+       MODULE JSON FOR UI (UNCHANGED)
+       ========================================================= */
+    public static String getModuleDataJson(String unifiedJson) {
+    	JsonObject root = new JsonParser()
+    	        .parse(unifiedJson)
+    	        .getAsJsonObject();
+        if (root.has("modules")) {
+            return root.getAsJsonArray("modules").toString();
+        }
+        return "[]";
+    }
+
+    /* =========================================================
+       DETAILS JSON (UNCHANGED)
+       ========================================================= */
+    private static List<Map<String, Object>> buildDetailedReportJson() {
+
+	    List<Map<String, Object>> details = new ArrayList<>();
+
+	    for (DetailedTestReporter.TestExecution exec :
+	            DetailedTestReporter.getTestExecutionsSafe()) {
+
+	        Map<String, Object> test = new LinkedHashMap<>();
+
+	        // ================= BASIC TEST INFO =================
+	        test.put("module", safe(exec.getModule()));
+	        test.put("scenarioId", safe(exec.getScenarioId()));
+	        test.put("testCaseId", safe(exec.getTestCaseId()));
+	        test.put("description", safe(exec.getShortDescription()));
+	        test.put("status", exec.getStatus() != null ? exec.getStatus().name() : "SKIPPED");
+
+	        String startTime = formatDate(exec.getStartTime());
+	        String endTime   = formatDate(exec.getEndTime());
+
+	        test.put("startTime", startTime);
+	        test.put("endTime", endTime);
+
+	        // ================= DURATION =================
+	        long durationMillis = 0;
+	        if (exec.getStartTime() != null && exec.getEndTime() != null) {
+	            durationMillis = exec.getEndTime().getTime() - exec.getStartTime().getTime();
+	        }
+	        test.put("durationMillis", durationMillis);
+
+	        // ================= STEPS =================
+	        List<Map<String, Object>> steps = new ArrayList<>();
+
+	        for (DetailedTestReporter.TestStep step : exec.getSteps()) {
+
+	            Map<String, Object> s = new LinkedHashMap<>();
+	            s.put("stepNo", step.getStepNo());
+	            s.put("action", safe(step.getAction()));
+	            s.put("expected", safe(step.getExpectedResult()));
+	            s.put("actual", safe(step.getActualResult()));
+	            s.put("status", step.getStatus() != null ? step.getStatus().name() : "SKIPPED");
+
+	            // Optional artifacts
+	            s.put("screenshot",
+	                    step.getScreenshotPath() != null && !step.getScreenshotPath().isBlank()
+	                            ? step.getScreenshotPath()
+	                            : null);
+
+	            s.put("logFilePath",
+	                    step.getLogFilePath() != null && !step.getLogFilePath().isBlank()
+	                            ? step.getLogFilePath()
+	                            : null);
+
+	            steps.add(s);
+	        }
+
+	        test.put("steps", steps);
+	        details.add(test);
+	    }
+
+	    return details;
+	}
+
+    /* =========================================================
+       META
+       ========================================================= */
+    private static Map<String, Object> buildMetaJson() {
+        Map<String, Object> meta = new LinkedHashMap<>();
+        meta.put("environment", System.getProperty("Environment", "NA"));
+        meta.put("browser", System.getProperty("Browser", "NA"));
+        meta.put("release", System.getProperty("ReleaseVersion", "NA"));
+        meta.put("executionDate", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
+        meta.put("generatedBy", System.getProperty("user.name", "automation"));
+        return meta;
+    }
+
+    /* =========================================================
+       UTILS
+       ========================================================= */
+    private static String safe(String v) {
+        return v == null ? "" : v;
+    }
+
+    private static String formatDate(Date d) {
+        return d == null ? "" : new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(d);
+    }
+
+    private static void writeJsonToFile(String json) {
         try {
-            String fileName = System.getProperty("reportFileName") + "_"
+            String fileName = "TestSummary_" +
+                    new SimpleDateFormat("ddMMMyyyy_HHmmss").format(new Date()) + ".json";
+
+            String dir = System.getProperty("user.dir") + File.separator + "reports" + File.separator + "json";
+            new File(dir).mkdirs();
+
+            try (FileWriter writer = new FileWriter(new File(dir, fileName))) {
+                writer.write(json);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    
+    public static void writeTextFile(String content)
+	{
+    	try {
+            String fileName = "checkbuild.txt";
+
+            String dir = System.getProperty("user.dir") + File.separator;
+            new File(dir).mkdirs();
+
+            try (FileWriter writer = new FileWriter(new File(dir, fileName))) {
+                writer.write(content);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+	}
+
+    private static String writeHtml(String reportHtml) {
+        try {
+            String fileName = System.getProperty("reportFileName", "TestSummary") + "_"
                     + DateUtils.getCurrentDate("ddMMMyyyy_HHmmss") + ".html";
 
             String baseDir = System.getProperty("user.dir")
@@ -206,51 +355,45 @@ public class NewSummaryReportGenerator {
                     + File.separator + "resources"
                     + File.separator + "DetailedReports";
 
-            File directory = new File(baseDir);
-            if (!directory.exists()) {
-                directory.mkdirs();
-            }
+            new File(baseDir).mkdirs();
 
-            File reportFile = new File(directory, fileName);
-
+            File reportFile = new File(baseDir, fileName);
             try (BufferedWriter writer = new BufferedWriter(
                     new OutputStreamWriter(new FileOutputStream(reportFile), StandardCharsets.UTF_8))) {
                 writer.write(reportHtml);
             }
-
-            System.out.println("✅ Report generated: " + reportFile.getAbsolutePath());
-
+            return reportFile.getAbsolutePath();
         } catch (Exception e) {
-            System.err.println("❌ Failed to write HTML report");
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 
+    /* =========================================================
+       HTML BUILDER (YOUR EXISTING HTML — UNCHANGED)
+       ========================================================= */
+    public static String customReportHtml(int pass, int fail, int skip, String duration, String startTime, String json) {
+        String productName = System.getProperty("ProductName");
+        int total = pass + fail + skip;
+        html = getReportHtml(productName, pass, fail, skip, total, duration, startTime, json);
+        return html;
+    }
     
-    private static void writeTextFile(String filecontent) {
+    private static String formatMillisAsHMS(String millisString) {
         try {
-            String fileName =  "checkbuid.txt";
-            String path = System.getProperty("user.dir") + File.separator + fileName;
+            long ms = Long.parseLong(millisString);
+            if (ms <= 0) return "-";
 
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter(path))) {
-                writer.write(filecontent);
-            }
-            System.out.println("✅ Report generated: " + path);
+            long totalSeconds = ms / 1000;
+            long hours = totalSeconds / 3600;
+            long minutes = (totalSeconds % 3600) / 60;
+            long seconds = totalSeconds % 60;
+
+            return String.format("%02d:%02d:%02d", hours, minutes, seconds);
         } catch (Exception e) {
-            e.printStackTrace();
+            return "-";
         }
     }
 
-    /* =========================
-       EXISTING HTML BUILDER
-       ========================= */
-    public static String customReportHtml(int pass, int fail, int noRun, String duration, String startTime,String json)
-	{
-		String productName = System.getProperty("ProductName");
-		int total = pass + fail + noRun;
-		html = getReportHtml(productName, pass, fail, noRun, total, duration, startTime,json);
-		return html;
-	}
     
     public static String getReportHtml(String productName, int pass, int fail, int noRun, int total, String durationMillis, String startTime,String json) {
 	    String detailedReportContent = DetailedTestReporter.generateHTMLContentFromJson(json);
@@ -329,13 +472,13 @@ public class NewSummaryReportGenerator {
 	    String reportTitle = System.getProperty("reportTitle");
 
 	    // Optional environment props (kept for future use)
-	    String environment = getSystemProperty("Environment", "Not Specified");
-	    String account = getSystemProperty("Account", "Not Specified");
-	    String browser = getSystemProperty("Browser", "Not Specified");
-	    String username = getSystemProperty("UserName", "Not Specified");
-	    String releaseVersion = getSystemProperty("ReleaseVersion", "Not Specified");
-	    String requestedBy = getSystemProperty("RequestedBy", getSystemProperty("user.name", "Not Specified"));
-	    String machineUser = getSystemProperty("user.name", "Not Specified");
+	    String environment = System.getProperty("Environment", "Not Specified");
+	    String account = System.getProperty("Account", "Not Specified");
+	    String browser = System.getProperty("Browser", "Not Specified");
+	    String username = System.getProperty("UserName", "Not Specified");
+	    String releaseVersion = System.getProperty("ReleaseVersion", "Not Specified");
+	    String requestedBy = System.getProperty("RequestedBy", System.getProperty("user.name", "Not Specified"));
+	    String machineUser = System.getProperty("user.name", "Not Specified");
 
 	    // SLA percentage (currently same as success rate; adjust if your SLA differs)
 	    double slaPercentage = total > 0 ? ((double) pass / total) * 100 : 0;
@@ -731,324 +874,4 @@ public class NewSummaryReportGenerator {
 	            performanceHtmlString.replace("\\", "\\\\").replace("`", "\\`")
 	    );
 	}
-    
-    private static String getSystemProperty(String key, String defaultValue) {
-	    try {
-	        String value = System.getProperty(key);
-	        return (value != null && !value.trim().isEmpty()) ? value : defaultValue;
-	    } catch (Exception e) {
-	        return defaultValue;
-	    }
-	}
-    
-    private static String formatMillisAsHMS(String millisString)
-	{
-		try
-		{
-			long ms = Long.parseLong(millisString);
-			if (ms <= 0)
-				return "-";
-			long totalSeconds = ms / 1000;
-			long hours = totalSeconds / 3600;
-			long minutes = (totalSeconds % 3600) / 60;
-			long seconds = totalSeconds % 60;
-			return String.format("%02d:%02d:%02d", hours, minutes, seconds);
-		} catch (Exception e)
-		{
-			return "-";
-		}
-	}
-    
-
-    /* =========================
-       INTERNAL CLASS
-       ========================= */
-    static class ModuleStats
-	{
-		private int passed;
-		private int failed;
-		private int skipped;
-
-		public void incrementPass()
-		{
-			passed++;
-		}
-
-		public void incrementFail()
-		{
-			failed++;
-		}
-
-		public void incrementSkip()
-		{
-			skipped++;
-		}
-
-		public int getPassed()
-		{
-			return passed;
-		}
-
-		public int getFailed()
-		{
-			return failed;
-		}
-
-		public int getSkipped()
-		{
-			return skipped;
-		}
-
-		public int getTotal()
-		{
-			return passed + failed + skipped;
-		}
-	}
-
-    
-    
-    public static class AggregatedStats
-	{
-		public int totalPass;
-		public int totalFail;
-		public int totalSkip;
-		public long totalDurationMillis;
-		public Map<String, ModuleSummary> perModule = new HashMap<>();
-	}
-
-	public static class ModuleSummary
-	{
-		public int passed;
-		public int failed;
-		public int skipped;
-		public long durationMillis;
-		public int total;
-
-		public int getTotal()
-		{
-			return passed + failed + skipped;
-		}
-	}
-
-	public static AggregatedStats aggregateStats()
-	{
-		AggregatedStats agg = new AggregatedStats();
-		if (DetailedTestReporter.getReport() == null || DetailedTestReporter.getReport().getTestExecutions() == null)
-		{
-			return agg;
-		}
-		for (TestExecution exec : DetailedTestReporter.getReport().getTestExecutions())
-		{
-			String moduleName = (exec.getModule() == null || exec.getModule().isBlank()) ? "Other" : exec.getModule();
-			ModuleSummary mod = agg.perModule.computeIfAbsent(moduleName, k -> new ModuleSummary());
-			switch (exec.getStatus())
-			{
-			case PASS:
-				agg.totalPass++;
-				mod.passed++;
-				break;
-			case FAIL:
-				agg.totalFail++;
-				mod.failed++;
-				break;
-			case SKIPPED:
-				agg.totalSkip++;
-				mod.skipped++;
-				break;
-			}
-			try
-			{
-				if (exec.getStartTime() != null && exec.getEndTime() != null && exec.getEndTime().after(exec.getStartTime()))
-				{
-					long dur = exec.getEndTime().getTime() - exec.getStartTime().getTime();
-					agg.totalDurationMillis += dur;
-					mod.durationMillis += dur;
-				}
-			} catch (Exception ignored)
-			{
-			}
-		}
-		return agg;
-	}
-
-	public static String getModuleDataJson1()
-	{
-		AggregatedStats agg = aggregateStats();
-		modules = new ArrayList<>();
-		for (Map.Entry<String, ModuleSummary> entry : agg.perModule.entrySet())
-		{
-			ModuleSummary ms = entry.getValue();
-			Map<String, Object> module = new HashMap<>();
-			module.put("module", entry.getKey());
-			module.put("total", ms.getTotal());
-			module.put("passed", ms.passed);
-			module.put("failed", ms.failed);
-			module.put("skipped", ms.skipped);
-			module.put("durationMillis", ms.durationMillis);
-			modules.add(module);
-		}
-		// Deterministic order by module name
-		modules.sort((a, b) -> String.valueOf(a.get("module")).compareToIgnoreCase(String.valueOf(b.get("module"))));
-		return new Gson().toJson(modules);
-	}
-	
-	public static String getModuleDataJson(String unifiedJson) {
-
-	    JsonObject root = new JsonParser()
-	            .parse(unifiedJson)
-	            .getAsJsonObject();
-
-	    // If modules already exist → return directly
-	    if (root.has("modules") && root.get("modules").isJsonArray()) {
-	        return root.getAsJsonArray("modules").toString();
-	    }
-
-	    // Otherwise build modules from details
-	    JsonArray details = root.getAsJsonArray("details");
-
-	    Map<String, ModuleSummary> moduleMap = new LinkedHashMap<>();
-
-	    for (JsonElement el : details) {
-	        JsonObject test = el.getAsJsonObject();
-
-	        String module = test.get("module").getAsString();
-	        String status = test.get("status").getAsString();
-	        long duration = test.has("durationMillis")
-	                ? test.get("durationMillis").getAsLong() : 0;
-
-	        ModuleSummary ms =
-	                moduleMap.computeIfAbsent(module, k -> new ModuleSummary());
-
-	        ms.total++;
-	        ms.durationMillis += duration;
-
-	        switch (status) {
-	            case "PASS" -> ms.passed++;
-	            case "FAIL" -> ms.failed++;
-	            default -> ms.skipped++;
-	        }
-	    }
-
-	    // Convert to JSON array
-	    List<Map<String, Object>> modules = new ArrayList<>();
-
-	    for (Map.Entry<String, ModuleSummary> e : moduleMap.entrySet()) {
-	        Map<String, Object> m = new LinkedHashMap<>();
-	        m.put("module", e.getKey());
-	        m.put("total", e.getValue().total);
-	        m.put("passed", e.getValue().passed);
-	        m.put("failed", e.getValue().failed);
-	        m.put("skipped", e.getValue().skipped);
-	        m.put("durationMillis", e.getValue().durationMillis);
-	        modules.add(m);
-	    }
-
-	    // Deterministic sort
-	    modules.sort((a, b) ->
-	            String.valueOf(a.get("module"))
-	                    .compareToIgnoreCase(String.valueOf(b.get("module"))));
-
-	    return new Gson().toJson(modules);
-	}
-
-	
-	
-	private static List<Map<String, Object>> buildDetailedReportJson() {
-
-	    List<Map<String, Object>> details = new ArrayList<>();
-
-	    for (DetailedTestReporter.TestExecution exec :
-	            DetailedTestReporter.getTestExecutionsSafe()) {
-
-	        Map<String, Object> test = new LinkedHashMap<>();
-
-	        // ================= BASIC TEST INFO =================
-	        test.put("module", safe(exec.getModule()));
-	        test.put("scenarioId", safe(exec.getScenarioId()));
-	        test.put("testCaseId", safe(exec.getTestCaseId()));
-	        test.put("description", safe(exec.getShortDescription()));
-	        test.put("status", exec.getStatus() != null ? exec.getStatus().name() : "SKIPPED");
-
-	        String startTime = formatDate(exec.getStartTime());
-	        String endTime   = formatDate(exec.getEndTime());
-
-	        test.put("startTime", startTime);
-	        test.put("endTime", endTime);
-
-	        // ================= DURATION =================
-	        long durationMillis = 0;
-	        if (exec.getStartTime() != null && exec.getEndTime() != null) {
-	            durationMillis = exec.getEndTime().getTime() - exec.getStartTime().getTime();
-	        }
-	        test.put("durationMillis", durationMillis);
-
-	        // ================= STEPS =================
-	        List<Map<String, Object>> steps = new ArrayList<>();
-
-	        for (DetailedTestReporter.TestStep step : exec.getSteps()) {
-
-	            Map<String, Object> s = new LinkedHashMap<>();
-	            s.put("stepNo", step.getStepNo());
-	            s.put("action", safe(step.getAction()));
-	            s.put("expected", safe(step.getExpectedResult()));
-	            s.put("actual", safe(step.getActualResult()));
-	            s.put("status", step.getStatus() != null ? step.getStatus().name() : "SKIPPED");
-
-	            // Optional artifacts
-	            s.put("screenshot",
-	                    step.getScreenshotPath() != null && !step.getScreenshotPath().isBlank()
-	                            ? step.getScreenshotPath()
-	                            : null);
-
-	            s.put("logFilePath",
-	                    step.getLogFilePath() != null && !step.getLogFilePath().isBlank()
-	                            ? step.getLogFilePath()
-	                            : null);
-
-	            steps.add(s);
-	        }
-
-	        test.put("steps", steps);
-	        details.add(test);
-	    }
-
-	    return details;
-	}
-
-	private static String safe(String value) {
-	    return value == null ? "" : value;
-	}
-
-	private static String formatDate(Date date) {
-	    if (date == null) return "";
-	    return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(date);
-	}
-	
-	private static Map<String, Object> buildMetaJson() {
-
-	    Map<String, Object> meta = new LinkedHashMap<>();
-
-	    meta.put("environment",
-	            System.getProperty("Environment", "NA"));
-
-	    meta.put("browser",
-	            System.getProperty("Browser", "NA"));
-
-	    meta.put("release",
-	            System.getProperty("ReleaseVersion", "NA"));
-
-	    meta.put("executionDate",
-	            new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-	                    .format(new Date()));
-
-	    meta.put("reportName", "Detail Test Report");
-	    meta.put("generatedBy",
-	            System.getProperty("user.name", "automation"));
-
-	    return meta;
-	}
-
-
-
-
 }
