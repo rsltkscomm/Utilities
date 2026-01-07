@@ -219,14 +219,14 @@ public class DetailedTestReporter {
 
             execution.setEndTime(new Date());
 
-            ModuleStats stats = NewSummaryReportGenerator.moduleStats
-                    .computeIfAbsent(testCase.getModuleName(), m -> new ModuleStats());
-
-            switch (execution.getStatus()) {
-                case PASS -> stats.incrementPass();
-                case FAIL -> stats.incrementFail();
-                case SKIPPED -> stats.incrementSkip();
-            }
+//            ModuleStats stats = NewSummaryReportGenerator.moduleStats
+//                    .computeIfAbsent(testCase.getModuleName(), m -> new ModuleStats());
+//
+//            switch (execution.getStatus()) {
+//                case PASS -> stats.incrementPass();
+//                case FAIL -> stats.incrementFail();
+//                case SKIPPED -> stats.incrementSkip();
+//            }
         }
     }
 

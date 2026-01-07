@@ -46,19 +46,19 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener {
     @Override
     public void onTestSuccess(ITestResult result) {
         passMethods.add(System.getProperty("method_name"));
-//        NewSummaryReportGenerator.recordTestResult(result.getName(), "PASS");
+        NewSummaryReportGenerator.recordTestResult(result.getName(), "PASS");
     }
 
     @Override
     public void onTestFailure(ITestResult result) {
         failMethods.add(System.getProperty("method_name"));
-//        NewSummaryReportGenerator.recordTestResult(result.getName(), "FAIL");
+        NewSummaryReportGenerator.recordTestResult(result.getName(), "FAIL");
     }
 
     @Override
     public void onTestSkipped(ITestResult result) {
         noRunMethods.add(System.getProperty("method_name"));
-//        NewSummaryReportGenerator.recordTestResult(result.getName(), "SKIPPED");
+        NewSummaryReportGenerator.recordTestResult(result.getName(), "SKIPPED");
     }
 
     /* ===============================
