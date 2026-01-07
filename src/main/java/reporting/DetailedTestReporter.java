@@ -4,16 +4,11 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
@@ -21,6 +16,10 @@ import org.openqa.selenium.logging.LogEntries;
 import org.openqa.selenium.logging.LogEntry;
 import org.openqa.selenium.logging.LogType;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.ScreenshotType;
 
@@ -28,350 +27,249 @@ import base.DriverContext;
 import base.DriverManager;
 import reporting.NewSummaryReportGenerator.ModuleStats;
 
-public class DetailedTestReporter
-{
-	private static final Object MUTEX = new Object();
+public class DetailedTestReporter {
 
-	public static DetailedTestReporter detailedTestReporter;
-	public static final Map<String, AtomicInteger> modulePassCount = new ConcurrentHashMap<>();
-	public static final Map<String, AtomicInteger> moduleFailCount = new ConcurrentHashMap<>();
-	public static final Map<String, AtomicInteger> moduleSkipCount = new ConcurrentHashMap<>();
+    private static final Object MUTEX = new Object();
 
-	public enum ExecutionStatus
-	{
-			PASS, FAIL, SKIPPED
-	}
+    public static DetailedTestReporter detailedTestReporter;
 
-	public enum StepStatus
-	{
-			PASS, FAIL, SKIPPED
-	}
+    public static final Map<String, AtomicInteger> modulePassCount = new ConcurrentHashMap<>();
+    public static final Map<String, AtomicInteger> moduleFailCount = new ConcurrentHashMap<>();
+    public static final Map<String, AtomicInteger> moduleSkipCount = new ConcurrentHashMap<>();
 
-	static List<TestExecution> testExecutions;
-	private static String reportPath;
-	private static String projectName;
-	private static SimpleDateFormat dateFormat;
-	private PerformanceMetrics performanceMetrics;
+    public enum ExecutionStatus { PASS, FAIL, SKIPPED }
+    public enum StepStatus { PASS, FAIL, SKIPPED }
 
-	public DetailedTestReporter(String projectName, String reportPath) {
-		DetailedTestReporter.projectName = projectName;
-		DetailedTestReporter.reportPath = reportPath;
+    public static List<TestExecution> testExecutions = new CopyOnWriteArrayList<>();
+
+    private static String reportPath;
+    private static String projectName;
+    private static SimpleDateFormat dateFormat;
+
+    private PerformanceMetrics performanceMetrics;
+
+    /* ===============================
+       CONSTRUCTOR / LIFECYCLE
+       =============================== */
+    public DetailedTestReporter(String projectName, String reportPath) {
+        DetailedTestReporter.projectName = projectName;
+        DetailedTestReporter.reportPath = reportPath;
         DetailedTestReporter.testExecutions = new CopyOnWriteArrayList<>();
-		DetailedTestReporter.dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-		this.performanceMetrics = new PerformanceMetrics();
-	}
+        DetailedTestReporter.dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        this.performanceMetrics = new PerformanceMetrics();
+    }
 
-	public void addTestExecution(String module, String scenarioId, String testCaseId, String shortDescription, ExecutionStatus status)
-	{
-		synchronized (MUTEX)
-		{
-			boolean exists = testExecutions.stream().anyMatch(e -> e.getTestCaseId().equals(testCaseId));
-			if (exists)
-			{
-				System.out.println("Duplicate Test Case ID: " + testCaseId + " — Skipping entry.");
-				return;
-			}
-			TestExecution execution = new TestExecution();
-			execution.setModule(module);
-			execution.setScenarioId(scenarioId);
-			execution.setTestCaseId(testCaseId);
-			execution.setShortDescription(shortDescription);
-			execution.setStartTime(new Date()); // auto-start time
-			execution.setStatus(status);
-			execution.setSteps(new ArrayList<>());
-			testExecutions.add(execution);
-		}
-	}
-	
-	public static void createDetailReport()
-	{
-		detailedTestReporter = new DetailedTestReporter("Detail Test Suite", "test-output");
-	}
+    public static void createDetailReport() {
+        detailedTestReporter = new DetailedTestReporter("Detail Test Suite", "test-output");
+    }
 
-	public static DetailedTestReporter getReport()
-	{
-		return detailedTestReporter;
-	}
-	
-	public static void updateStep(
-	        boolean status,
-	        TestCase failConstant,
-	        TestCase passConstant
-	) {
-	    DriverContext context = DriverManager.getContext();
-	    String logPath = null;
-	    File harFile = null;
+    public static DetailedTestReporter getReport() {
+        return detailedTestReporter;
+    }
 
-	    Object automationDriver = context.getWebDriver();
+    /* ===============================
+       SAFE ACCESS (JSON / SUMMARY)
+       =============================== */
+    public static List<TestExecution> getTestExecutionsSafe() {
+        return testExecutions == null ? Collections.emptyList() : testExecutions;
+    }
 
-	    if (!status) {
+    public static List<TestExecution> getTestExecutions() {
+        return testExecutions;
+    }
 
-	        // 🔹 Selenium: capture browser logs
-	        if (automationDriver instanceof WebDriver) {
-	            try {
-	                org.openqa.selenium.WebDriver webDriver =
-	                        (org.openqa.selenium.WebDriver) automationDriver;
-
-	                LogEntries logs = webDriver.manage()
-	                        .logs()
-	                        .get(LogType.BROWSER);
-
-	                if (logs != null && !logs.getAll().isEmpty()) {
-	                    logPath = saveBrowserLogs(
-	                            logs,
-	                            failConstant.getDescription()
-	                    );
-	                }
-	            } catch (Exception e) {
-	                System.out.println(
-	                        "❌ Could not capture Selenium browser logs: "
-	                                + e.getMessage()
-	                );
-	            }
-	        }
-
-	        // 🔹 Playwright: NO browser log API
-	        // Console logs must be collected via listeners earlier
-	        Page page = DriverManager.getContext().getPage();
-	        DetailedTestReporter.addStep(
-	                failConstant,
-	                StepStatus.FAIL,
-	                page,
-	                logPath,
-	                harFile
-	        );
-
-	    } else {
-	    	Page page = DriverManager.getContext().getPage();
-	        DetailedTestReporter.addStep(
-	                passConstant,
-	                StepStatus.PASS,
-	                page,
-	                null,
-	                null
-	        );
-	    }
-	}
-
-	
-	/**
-	 * Save browser console logs to a timestamped file
-	 */
-	private static String saveBrowserLogs(LogEntries logEntries, String stepName)
-	{
-	    try {
-	        String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-	        String fileName = "browser_logs_" + stepName + "_" + timestamp + ".txt";
-	        File file = new File("./logs/" + fileName);
-
-	        StringBuilder content = new StringBuilder();
-	        content.append("=====================================================================\n");
-	        content.append("BROWSER CONSOLE LOGS (").append(stepName).append(")\n");
-	        content.append("=====================================================================\n\n");
-
-	        int count = 1;
-	        for (LogEntry entry : logEntries) {
-	            content.append(count++)
-	                   .append(". [")
-	                   .append(entry.getLevel())
-	                   .append("] ")
-	                   .append(new SimpleDateFormat("HH:mm:ss").format(new Date(entry.getTimestamp())))
-	                   .append(" - ")
-	                   .append(entry.getMessage())
-	                   .append("\n");
-	        }
-
-	        try (FileWriter writer = new FileWriter(file)) {
-	            writer.write(content.toString());
-	        }
-
-	        System.out.println("✅ Browser logs saved: " + file.getAbsolutePath());
-	        return file.getAbsolutePath(); 
-	    } catch (Exception e) {
-	        System.out.println("❌ Failed to save browser logs: " + e.getMessage());
-	        return null;
-	    }
-	}
-
-    public static void addStep(TestCase testCase, StepStatus status, Object context,String logFilePath,File harFile) {
+    /* ===============================
+       TEST EXECUTION TRACKING
+       =============================== */
+    public void addTestExecution(
+            String module,
+            String scenarioId,
+            String testCaseId,
+            String shortDescription,
+            ExecutionStatus status
+    ) {
         synchronized (MUTEX) {
-            boolean isDuplicate = false;
-            Optional<TestExecution> executionOpt = getReport().getTestExecutions().stream()
+            boolean exists = testExecutions.stream()
+                    .anyMatch(e -> e.getTestCaseId().equals(testCaseId));
+            if (exists) {
+                System.out.println("⚠️ Duplicate Test Case ID skipped: " + testCaseId);
+                return;
+            }
+
+            TestExecution execution = new TestExecution();
+            execution.setModule(module);
+            execution.setScenarioId(scenarioId);
+            execution.setTestCaseId(testCaseId);
+            execution.setShortDescription(shortDescription);
+            execution.setStartTime(new Date());
+            execution.setStatus(status);
+            execution.setSteps(new ArrayList<>());
+
+            testExecutions.add(execution);
+        }
+    }
+
+    /* ===============================
+       STEP HANDLING
+       =============================== */
+    public static void updateStep(
+            boolean status,
+            TestCase failConstant,
+            TestCase passConstant
+    ) {
+        DriverContext context = DriverManager.getContext();
+        Object driver = context.getWebDriver();
+        String logPath = null;
+
+        if (!status && driver instanceof WebDriver) {
+            try {
+                LogEntries logs = ((WebDriver) driver)
+                        .manage()
+                        .logs()
+                        .get(LogType.BROWSER);
+                if (logs != null && !logs.getAll().isEmpty()) {
+                    logPath = saveBrowserLogs(logs, failConstant.getDescription());
+                }
+            } catch (Exception ignored) {}
+        }
+
+        Page page = DriverManager.getContext().getPage();
+        addStep(
+                status ? passConstant : failConstant,
+                status ? StepStatus.PASS : StepStatus.FAIL,
+                page,
+                logPath,
+                null
+        );
+    }
+
+    private static String saveBrowserLogs(LogEntries logEntries, String stepName) {
+        try {
+            String ts = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+            File file = new File("./logs/browser_logs_" + stepName + "_" + ts + ".txt");
+            file.getParentFile().mkdirs();
+
+            try (FileWriter writer = new FileWriter(file)) {
+                int i = 1;
+                for (LogEntry entry : logEntries) {
+                    writer.write(
+                            i++ + ". [" + entry.getLevel() + "] "
+                                    + new Date(entry.getTimestamp()) + " - "
+                                    + entry.getMessage() + "\n"
+                    );
+                }
+            }
+            return file.getAbsolutePath();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public static void addStep(
+            TestCase testCase,
+            StepStatus status,
+            Object context,
+            String logFilePath,
+            File harFile
+    ) {
+        synchronized (MUTEX) {
+
+            Optional<TestExecution> opt = getReport()
+                    .getTestExecutions()
+                    .stream()
                     .filter(e -> e.getTestCaseId().equals(testCase.getTestCaseId()))
                     .findFirst();
 
-            TestExecution execution;
-            if (!executionOpt.isPresent()) {
-                execution = new TestExecution();
-                execution.setModule(testCase.getModuleName());
-                execution.setScenarioId(testCase.getExecutionId());
-                execution.setTestCaseId(testCase.getTestCaseId());
-                execution.setShortDescription(testCase.getDescription());
-                execution.setStartTime(new Date());
-                execution.setSteps(new ArrayList<>());
-                execution.setStatus(ExecutionStatus.PASS);
-                execution.setTotalExpectedSteps(0); 
-                getReport().getTestExecutions().add(execution);
-            } else {
-                execution = executionOpt.get();
-                if (execution.getSteps() == null) {
-                    execution.setSteps(new ArrayList<>());
-                }
+            TestExecution execution = opt.orElseGet(() -> {
+                TestExecution e = new TestExecution();
+                e.setModule(testCase.getModuleName());
+                e.setScenarioId(testCase.getExecutionId());
+                e.setTestCaseId(testCase.getTestCaseId());
+                e.setShortDescription(testCase.getDescription());
+                e.setStartTime(new Date());
+                e.setStatus(ExecutionStatus.PASS);
+                e.setSteps(new ArrayList<>());
+                getReport().getTestExecutions().add(e);
+                return e;
+            });
+
+            boolean duplicate = execution.getSteps().stream()
+                    .anyMatch(s ->
+                            safeEquals(s.getAction(), testCase.getAction())
+                                    && safeEquals(s.getExpectedResult(), testCase.getExpectedResult())
+                    );
+
+            if (duplicate) return;
+
+            TestStep step = new TestStep();
+            step.setStepNo(execution.getSteps().size() + 1);
+            step.setAction(testCase.getAction());
+            step.setExpectedResult(testCase.getExpectedResult());
+            step.setActualResult(testCase.getActualResult());
+            step.setStatus(status);
+            step.setScreenshotPath(encryptScreenshot(context));
+            step.setLogFilePath(logFilePath);
+            step.setHarFilePath(harFile);
+
+            execution.getSteps().add(step);
+
+            if (status == StepStatus.FAIL) {
+                execution.setStatus(ExecutionStatus.FAIL);
             }
 
-            isDuplicate = execution.getSteps().stream()
-                    .anyMatch(step -> safeEquals(step.getAction(), testCase.getAction()) 
-                            && safeEquals(step.getExpectedResult(), testCase.getExpectedResult()));
+            execution.setEndTime(new Date());
 
-            // Increment total expected steps only for new steps
-            if (!isDuplicate) {
-                execution.setTotalExpectedSteps(execution.getTotalExpectedSteps() + 1);
-            }
+            ModuleStats stats = NewSummaryReportGenerator.moduleStats
+                    .computeIfAbsent(testCase.getModuleName(), m -> new ModuleStats());
 
-            if (!isDuplicate) {
-                getReport().addTestStep(
-                    testCase.getTestCaseId(),
-                    execution.getSteps().size() + 1,
-                    testCase.getAction(),
-                    testCase.getExpectedResult(),
-                    testCase.getActualResult(),
-                    status,
-                    encryptScreenshot(context),
-                    logFilePath,
-                    harFile
-                    
-                );
-
-                if (status == StepStatus.FAIL) {
-                    execution.setStatus(ExecutionStatus.FAIL);
-                }
-            }
-            
-            // Mark execution as complete if explicitly equal and at least one step exists
-            if (!isDuplicate && execution.getTotalExpectedSteps() > 0 && execution.getSteps().size() == execution.getTotalExpectedSteps()) {
-                execution.setEndTime(new Date());
-
-                // Update ModuleStats map
-                ModuleStats stats = NewSummaryReportGenerator.moduleStats.computeIfAbsent(
-                    testCase.getModuleName(), m -> new ModuleStats());
-
-                switch (execution.getStatus()) {
-                    case PASS:
-                        stats.incrementPass();
-                        modulePassCount.computeIfAbsent(testCase.getModuleName(), 
-                            k -> new AtomicInteger(0)).incrementAndGet();
-                        break;
-                    case FAIL:
-                        stats.incrementFail();
-                        moduleFailCount.computeIfAbsent(testCase.getModuleName(), 
-                            k -> new AtomicInteger(0)).incrementAndGet();
-                        break;
-                    case SKIPPED:
-                        stats.incrementSkip();
-                        moduleSkipCount.computeIfAbsent(testCase.getModuleName(), 
-                            k -> new AtomicInteger(0)).incrementAndGet();
-                        break;
-                }
+            switch (execution.getStatus()) {
+                case PASS -> stats.incrementPass();
+                case FAIL -> stats.incrementFail();
+                case SKIPPED -> stats.incrementSkip();
             }
         }
-	}
-	
+    }
+
     public static String encryptScreenshot(Object context) {
-        if (context == null) {
-            return null;
-        }
-
         try {
-            // Selenium
-            if (context instanceof TakesScreenshot) {
-                TakesScreenshot ts = (TakesScreenshot) context;
-                return "data:image/png;base64,"
-                        + ts.getScreenshotAs(OutputType.BASE64);
+            if (context instanceof TakesScreenshot ts) {
+                return "data:image/png;base64," + ts.getScreenshotAs(OutputType.BASE64);
             }
-
-            // Playwright
-            if (context instanceof Page) {
-                Page page = (Page) context;
-
+            if (context instanceof Page page) {
                 byte[] bytes = page.screenshot(
-                        new Page.ScreenshotOptions()
-                                .setType(ScreenshotType.PNG)
+                        new Page.ScreenshotOptions().setType(ScreenshotType.PNG)
                 );
-
-                return "data:image/png;base64,"
-                        + Base64.getEncoder().encodeToString(bytes);
+                return "data:image/png;base64," +
+                        Base64.getEncoder().encodeToString(bytes);
             }
-
-        } catch (Exception e) {
-            // Optional: log debug info
-        }
-
+        } catch (Exception ignored) {}
         return null;
     }
 
+    /* ===============================
+       REPORT GENERATION
+       =============================== */
+    public void generateReport() {
+        try {
+            File dir = new File(reportPath);
+            dir.mkdirs();
 
-    public static List<TestExecution> getTestExecutions()
-	{
-		return testExecutions;
-	}
+            File reportFile = new File(dir, "Report.html");
+            try (FileWriter writer = new FileWriter(reportFile)) {
+                writer.write(generateHTMLContent());
+            }
 
-	public void addTestStep(String testCaseId, String action, String expectedResult, String actualResult, StepStatus status, String screenshotPath,String filePath,File harFilePath)
-	{
-		addTestStep(testCaseId, -1, action, expectedResult, actualResult, status, screenshotPath,filePath,harFilePath);
-	}
+            System.out.println("✅ Detailed report generated: " + reportFile.getAbsolutePath());
+        } catch (IOException e) {
+            System.err.println("❌ Detailed report generation failed: " + e.getMessage());
+        }
+    }
 
-	public void addTestStep(String testCaseId, int stepNumber, String action, String expectedResult, String actualResult, StepStatus status, String screenshotPath,String filePath,File harFilePath)
-	{
-		synchronized (MUTEX)
-		{
-			for (TestExecution execution : testExecutions)
-			{
-				if (execution.getTestCaseId().equals(testCaseId))
-				{
-					TestStep step = new TestStep();
-					step.setStepNo(stepNumber > 0 ? stepNumber : execution.getSteps().size() + 1);
-					step.setAction(action);
-					step.setExpectedResult(expectedResult);
-					step.setActualResult(actualResult);
-					step.setStatus(status);
-					step.setScreenshotPath(screenshotPath);
-					step.setLogFilePath(filePath);
-					step.setHarFilePath(harFilePath);
-					execution.getSteps().add(step);
-					break;
-				}
-			}
-		}
-	}
-
-	public void generateReport()
-	{
-		try
-		{
-			File reportDir = new File(reportPath);
-			if (!reportDir.exists())
-			{
-				reportDir.mkdirs();
-			}
-
-			String htmlContent = generateHTMLContent();
-			File reportFile = new File(reportPath + "/Report.html");
-
-			try (FileWriter writer = new FileWriter(reportFile))
-			{
-				writer.write(htmlContent);
-			}
-
-			System.out.println("Detailed test report generated successfully at: " + reportFile.getAbsolutePath());
-
-		} catch (IOException e)
-		{
-			System.err.println("Error generating detailed test report: " + e.getMessage());
-		}
-	}
-
-	static String generateHTMLContent() {
-	    StringBuilder html = new StringBuilder();
+    /* ===============================
+       HTML CONTENT (UNCHANGED)
+       =============================== */
+    public static String generateHTMLContent() {
+    	StringBuilder html = new StringBuilder();
 	    java.text.SimpleDateFormat localDateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
 	    html.append("<div class=\"header\">\n")
@@ -422,7 +320,7 @@ public class DetailedTestReporter
 	    for (TestExecution exec : testExecutions) {
 	        String statusIcon = exec.getStatus() == ExecutionStatus.PASS ? "✅ Passed" :
 	                             exec.getStatus() == ExecutionStatus.FAIL ? "❌ Failed" : "⚠️ Skipped";
-
+	        
 	        String duration = "-";
 	        if (exec.getStartTime() != null && exec.getEndTime() != null && exec.getEndTime().after(exec.getStartTime())) {
 	            long durationMs = exec.getEndTime().getTime() - exec.getStartTime().getTime();
@@ -529,24 +427,9 @@ public class DetailedTestReporter
 	        .append("</script>\n");
 
 	    return html.toString();
-	}
-
-
-
-
-	
-	// Helper method to get status class
-	private static String getStatusClass(ExecutionStatus status) {
-	    switch (status) {
-	        case PASS: return "status-pass";
-	        case FAIL: return "status-fail";
-	        case SKIPPED: return "status-skipped";
-	        default: return "";
-	    }
-	}
-
-	// Helper method to escape HTML
-	private static String escapeHtml(String text) {
+    }
+    
+    private static String escapeHtml(String text) {
 	    if (text == null) return "";
 	    return text.replace("&", "&amp;")
 	              .replace("<", "&lt;")
@@ -554,25 +437,36 @@ public class DetailedTestReporter
 	              .replace("\"", "&quot;")
 	              .replace("'", "&#39;");
 	}
-
-	// Helper method to get system property with fallback
-	private static String getSystemProperty(String key, String defaultValue) {
-	    try {
-	        return System.getProperty(key, defaultValue);
-	    } catch (Exception e) {
-	        return defaultValue;
+    
+ // Helper method to get system property with fallback
+ 	private static String getSystemProperty(String key, String defaultValue) {
+ 	    try {
+ 	        return System.getProperty(key, defaultValue);
+ 	    } catch (Exception e) {
+ 	        return defaultValue;
+ 	    }
+ 	}
+    
+    private static String getStatusClass(ExecutionStatus status) {
+	    switch (status) {
+	        case PASS: return "status-pass";
+	        case FAIL: return "status-fail";
+	        case SKIPPED: return "status-skipped";
+	        default: return "";
 	    }
 	}
+    
+    /* ===============================
+       HELPERS
+       =============================== */
+    private static boolean safeEquals(String a, String b) {
+        return Objects.equals(a, b);
+    }
 
-	// Utility to safely compare strings (null-safe)
-	private static boolean safeEquals(String a, String b) {
-	    if (a == null && b == null) return true;
-	    if (a == null || b == null) return false;
-	    return a.equals(b);
-	}
-
-	// Performance Metrics class
-	public static class PerformanceMetrics
+    /* ===============================
+       INNER MODELS (UNCHANGED)
+       =============================== */
+    public static class PerformanceMetrics
 	{
 		private List<Long> executionTimes;
 		private Map<ExecutionStatus, Integer> statusCounts;
@@ -844,5 +738,221 @@ public class DetailedTestReporter
 			this.harFilePath = harFilePath;
 		}
 	}
+	
+	public static String generateHTMLContentFromJson(String unifiedJson) {
 
+	    JsonObject root =
+	            new JsonParser().parse(unifiedJson).getAsJsonObject();
+
+	    JsonObject meta = root.getAsJsonObject("meta");
+	    JsonArray details = root.getAsJsonArray("details");
+
+	    String environment = meta.get("environment").getAsString();
+	    String browser = meta.get("browser").getAsString();
+	    String release = meta.get("release").getAsString();
+	    String executionDate = meta.get("executionDate").getAsString();
+
+	    StringBuilder html = new StringBuilder();
+
+	    // ================= HEADER =================
+	    html.append("<div class=\"header\">")
+	        .append("<img alt=\"Company Logo\" src=\"https://www.resulticks.com/images/logos/resulticks-logo-blue.svg\"/>")
+	        .append("<h2>Detail Test Report</h2>")
+	        .append("<img alt=\"Product Logo\" src=\"https://run19.resul.io/assets/resulticks-logo-white-391eec89.svg\"/>")
+	        .append("</div>");
+
+	    // ================= ENV RIBBON =================
+	    html.append("<div class=\"environment-ribbon\">")
+	        .append("<span><strong>Environment:</strong> ").append(escapeHtml(environment)).append("</span>")
+	        .append("<span><strong>Browser:</strong> ").append(escapeHtml(browser)).append("</span>")
+	        .append("<span><strong>Release:</strong> ").append(escapeHtml(release)).append("</span>")
+	        .append("<span><strong>Execution Date:</strong> ").append(escapeHtml(executionDate)).append("</span>")
+	        .append("</div>");
+
+	    // ================= BACK LINK =================
+	    html.append("<div style=\"text-align:right; padding:10px;\">")
+	        .append("<a class=\"back-btn\" onclick=\"showSummaryReport()\">⬅ Back to Summary Report</a>")
+	        .append("</div>");
+
+	    // ================= TABLE + TOOLBAR =================
+	    html.append("<div class=\"table-container\">")
+	        .append("<h3>Test Case Results</h3>")
+
+	        // Toolbar (search + filter)
+	        .append("<div class=\"toolbar\">")
+	        .append("<div style=\"display:flex; gap:15px; flex-wrap:wrap; margin:20px 0;\">")
+
+	        .append("<div>")
+	        .append("<label><b>Search:</b></label>")
+	        .append("<input id=\"searchInput\" placeholder=\"Search test cases...\" type=\"text\"/>")
+	        .append("</div>")
+
+	        .append("<div>")
+	        .append("<label><b>Filter by Status:</b></label>")
+	        .append("<select id=\"statusFilter\">")
+	        .append("<option value=\"\">All</option>")
+	        .append("<option value=\"PASS\">Passed</option>")
+	        .append("<option value=\"FAIL\">Failed</option>")
+	        .append("<option value=\"SKIPPED\">Skipped</option>")
+	        .append("</select>")
+	        .append("</div>")
+
+	        .append("</div></div>");
+
+	    // ================= TABLE =================
+	    html.append("<table id=\"testcaseTable\">")
+	        .append("<thead><tr>")
+	        .append("<th></th><th>Module</th><th>Test Case ID</th>")
+	        .append("<th>Description</th><th>Status</th><th>Duration</th>")
+	        .append("</tr></thead><tbody>");
+
+	    int counter = 1;
+
+	    for (JsonElement el : details) {
+	        JsonObject test = el.getAsJsonObject();
+
+	        String module = getAsString(test, "module");
+	        String testCaseId = getAsString(test, "testCaseId");
+	        String desc = getAsString(test, "description");
+	        String status = getAsString(test, "status");
+
+	        long durationMs = test.has("durationMillis")
+	                ? test.get("durationMillis").getAsLong() : 0;
+
+	        String duration = durationMs > 0 ? (durationMs / 1000) + "s" : "-";
+
+	        String statusIcon =
+	                "PASS".equals(status) ? "✅ Passed" :
+	                "FAIL".equals(status) ? "❌ Failed" : "⚠️ Skipped";
+
+	        // Main row
+	        html.append("<tr data-test-id=\"tc").append(counter)
+	            .append("\" data-expanded=\"false\" onclick=\"toggleDetails(this)\">")
+	            .append("<td class=\"expand-icon\">+</td>")
+	            .append("<td>").append(escapeHtml(module)).append("</td>")
+	            .append("<td>").append(escapeHtml(testCaseId)).append("</td>")
+	            .append("<td>").append(escapeHtml(desc)).append("</td>")
+	            .append("<td class=\"").append(getStatusClass(status)).append("\">")
+	            .append(statusIcon).append("</td>")
+	            .append("<td>").append(duration).append("</td>")
+	            .append("</tr>");
+
+	        // Details row
+	        html.append("<tr class=\"details-row\" id=\"tc")
+	            .append(counter).append("-details\" style=\"display:none\">")
+	            .append("<td colspan=\"6\">")
+	            .append("<table class=\"step-table\">")
+	            .append("<tr><th>Action</th><th>Expected Result</th>")
+	            .append("<th>Actual Result</th><th>Status</th><th>Screenshot</th></tr>");
+
+	        JsonArray steps = test.getAsJsonArray("steps");
+	        for (JsonElement s : steps) {
+	            JsonObject step = s.getAsJsonObject();
+
+	            String stepStatus = getAsString(step, "status");
+	            String icon =
+	                    "PASS".equals(stepStatus) ? "✅" :
+	                    "FAIL".equals(stepStatus) ? "❌" : "⚠️";
+
+	            html.append("<tr>")
+	                .append("<td>").append(escapeHtml(getAsString(step, "action"))).append("</td>")
+	                .append("<td>").append(escapeHtml(getAsString(step, "expected"))).append("</td>")
+	                .append("<td>").append(escapeHtml(getAsString(step, "actual"))).append("</td>")
+	                .append("<td>").append(icon).append("</td>")
+	                .append("<td>")
+	                .append(step.has("screenshot") && !step.get("screenshot").isJsonNull()
+	                        ? "<img class=\"screenshot\" src=\"" + step.get("screenshot").getAsString() + "\"/>"
+	                        : "-")
+	                .append("</td>")
+	                .append("</tr>");
+	        }
+
+	        html.append("</table></td></tr>");
+	        counter++;
+	    }
+
+	    html.append("</tbody></table></div>");
+
+	    // ================= JS (same as old) =================
+	    html.append("<script>\n")
+
+        // toggle expand/collapse
+        .append("function toggleDetails(row) {\n")
+        .append("  if (!row) return;\n")
+        .append("  var testId = row.getAttribute('data-test-id');\n")
+        .append("  var detailsRow = document.getElementById(testId + '-details');\n")
+        .append("  if (!detailsRow) return;\n")
+        .append("  var expanded = row.getAttribute('data-expanded') === 'true';\n")
+        .append("  var expandIcon = row.querySelector('.expand-icon');\n")
+        .append("  if (expanded) {\n")
+        .append("    detailsRow.style.display = 'none';\n")
+        .append("    row.setAttribute('data-expanded', 'false');\n")
+        .append("    if (expandIcon) expandIcon.textContent = '+';\n")
+        .append("  } else {\n")
+        .append("    detailsRow.style.display = 'table-row';\n")
+        .append("    row.setAttribute('data-expanded', 'true');\n")
+        .append("    if (expandIcon) expandIcon.textContent = '-';\n")
+        .append("  }\n")
+        .append("}\n")
+
+        // FIXED: applySearchAndFilter ensures details rows follow main rows
+        .append("function applySearchAndFilter() {\n")
+        .append("  var searchText = document.getElementById('searchInput').value.toLowerCase().trim();\n")
+        .append("  var filterValue = document.getElementById('statusFilter').value;\n")
+        .append("  var mainRows = document.querySelectorAll('#testcaseTable tbody tr:not(.details-row)');\n")
+        .append("  mainRows.forEach(function(row) {\n")
+        .append("    var rowText = row.textContent.toLowerCase();\n")
+        .append("    var statusText = row.cells[4] ? row.cells[4].textContent.toLowerCase() : '';\n")
+        .append("    var rowStatus = statusText.includes('pass') ? 'PASS' : statusText.includes('fail') ? 'FAIL' : statusText.includes('skip') ? 'SKIPPED' : '';\n")
+        .append("    var matchesSearch = !searchText || rowText.includes(searchText);\n")
+        .append("    var matchesFilter = !filterValue || rowStatus === filterValue;\n")
+        .append("    var shouldShow = matchesSearch && matchesFilter;\n")
+        .append("    var testId = row.getAttribute('data-test-id');\n")
+        .append("    var detailsRow = document.getElementById(testId + '-details');\n")
+        .append("    if (shouldShow) {\n")
+        .append("      row.style.display = '';\n")
+        .append("      if (detailsRow) {\n")
+        .append("        var expanded = row.getAttribute('data-expanded') === 'true';\n")
+        .append("        detailsRow.style.display = expanded ? 'table-row' : 'none';\n")
+        .append("      }\n")
+        .append("    } else {\n")
+        .append("      row.style.display = 'none';\n")
+        .append("      if (detailsRow) detailsRow.style.display = 'none';\n")
+        .append("      if (row.querySelector('.expand-icon')) {\n")
+        .append("        row.querySelector('.expand-icon').textContent = '+';\n")
+        .append("        row.setAttribute('data-expanded', 'false');\n")
+        .append("      }\n")
+        .append("    }\n")
+        .append("  });\n")
+        .append("}\n")
+
+        // event listeners
+        .append("document.addEventListener('DOMContentLoaded', function() {\n")
+        .append("  var searchInput = document.getElementById('searchInput');\n")
+        .append("  var statusFilter = document.getElementById('statusFilter');\n")
+        .append("  if (searchInput) searchInput.addEventListener('input', applySearchAndFilter);\n")
+        .append("  if (statusFilter) statusFilter.addEventListener('change', applySearchAndFilter);\n")
+        .append("});\n")
+
+        .append("</script>\n");
+
+	    return html.toString();
+	}
+
+	
+	private static String getAsString(com.google.gson.JsonObject o, String key) {
+	    return o.has(key) && !o.get(key).isJsonNull()
+	            ? o.get(key).getAsString()
+	            : "";
+	}
+
+	private static String getStatusClass(String status) {
+	    return switch (status) {
+	        case "PASS" -> "status-pass";
+	        case "FAIL" -> "status-fail";
+	        case "SKIPPED" -> "status-skipped";
+	        default -> "";
+	    };
+	}
+    
 }
