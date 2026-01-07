@@ -2,7 +2,10 @@ package reporting;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -196,16 +199,33 @@ public class NewSummaryReportGenerator {
         try {
             String fileName = System.getProperty("reportFileName") + "_"
                     + DateUtils.getCurrentDate("ddMMMyyyy_HHmmss") + ".html";
-            String path = System.getProperty("user.dir") + File.separator + fileName;
 
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter(path))) {
+            String baseDir = System.getProperty("user.dir")
+                    + File.separator + "src"
+                    + File.separator + "test"
+                    + File.separator + "resources"
+                    + File.separator + "DetailedReports";
+
+            File directory = new File(baseDir);
+            if (!directory.exists()) {
+                directory.mkdirs();
+            }
+
+            File reportFile = new File(directory, fileName);
+
+            try (BufferedWriter writer = new BufferedWriter(
+                    new OutputStreamWriter(new FileOutputStream(reportFile), StandardCharsets.UTF_8))) {
                 writer.write(reportHtml);
             }
-            System.out.println("✅ Report generated: " + path);
+
+            System.out.println("✅ Report generated: " + reportFile.getAbsolutePath());
+
         } catch (Exception e) {
+            System.err.println("❌ Failed to write HTML report");
             e.printStackTrace();
         }
     }
+
     
     private static void writeTextFile(String filecontent) {
         try {
