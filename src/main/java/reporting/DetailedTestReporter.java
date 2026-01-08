@@ -33,7 +33,7 @@ public class DetailedTestReporter {
     public enum ExecutionStatus { PASS, FAIL, SKIPPED }
     public enum StepStatus { PASS, FAIL, SKIPPED }
 
-    private static List<TestExecution> testExecutions = new CopyOnWriteArrayList<>();
+    public static List<TestExecution> testExecutions = new CopyOnWriteArrayList<>();
 
     private static String reportPath;
     private static SimpleDateFormat dateFormat;
