@@ -88,9 +88,10 @@ public class TestListener implements ITestListener
 			testResults.add(buildRow(result, status));
 		}
 
-		TestExecutionExcelReport.updateResultsForDailycheckList(FrameworkConstants.ONEDRIVE_DAILYCHECKLIST_PATH + "\\Daily Checklist.xlsx", DetailedTestReporter.getTestExecutions(), false);
+		boolean updateDailyChecklistExcel = Boolean.parseBoolean(System.getProperty("updatedailychecklistexcel") != null ? System.getProperty("updatedailychecklistexcel") : "false");
 
-		// ✅ Write to a single consistent sheet
+		TestExecutionExcelReport.updateResultsForDailycheckList(FrameworkConstants.ONEDRIVE_DAILYCHECKLIST_PATH + "\\Daily Checklist.xlsx", DetailedTestReporter.getTestExecutions(), updateDailyChecklistExcel);
+
 		TestExecutionExcelReport.writeResultsToExcel(outputPath, testResults, finalSheetName);
 	}
 
