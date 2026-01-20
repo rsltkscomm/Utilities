@@ -1,6 +1,7 @@
 package constants;
 
 import config.ConfigurationFactory;
+import groovyjarjarantlr4.v4.parse.ANTLRParser.finallyClause_return;
 
 import java.io.File;
 import java.nio.file.Paths;
@@ -32,6 +33,8 @@ public class FrameworkConstants
 	public static final String DYNAMIC_PATH = getDynamicPath();
 	public static final String DYNAMIC_CSV_PREFIX = getDynamicCsvPrefix();
 	public static final String DOWNLOADED_FILE_PATH = getDownloadedFilePath();
+	public static final String ONEDRIVE_DAILYCHECKLIST_PATH = getOneDriveDailyChecklistPath();
+	
 	
 	private FrameworkConstants() {
 		// Private constructor to prevent instantiation
@@ -212,6 +215,19 @@ public class FrameworkConstants
 			ConfigurationFactory.printAllConfiguration();
 		} catch (Exception e) {
 			System.err.println("Failed to print configuration status: " + e.getMessage());
+		}
+	}
+	
+	private static String getOneDriveDailyChecklistPath() {
+		try {
+			String oneDrivePath = ConfigurationFactory.getConfigValue("paths.oneDrive",
+				Paths.get(System.getProperty("user.home"), "OneDrive - RESULTICKS DIGITALS INDIA PRIVATE LIMITED", "Automation", "Resulticks","AQAcred",PROJECT_NAME,"DailyChecklistResults").toString());
+			if (!new File(oneDrivePath).exists()) {
+				throw new NoSuchElementException();
+			}
+			return oneDrivePath;
+		} catch (Exception e) {
+			return Paths.get(System.getProperty("user.home"), "OneDrive - RESULTICKS", "Automation", "Resulticks","AQAcred",PROJECT_NAME,"DailyChecklistResults").toString();
 		}
 	}
 }

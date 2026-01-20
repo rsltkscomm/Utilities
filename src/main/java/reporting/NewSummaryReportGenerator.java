@@ -397,6 +397,9 @@ public class NewSummaryReportGenerator {
     
     public static String getReportHtml(String productName, int pass, int fail, int noRun, int total, String durationMillis, String startTime,String json) {
 	    String detailedReportContent = DetailedTestReporter.generateHTMLContentFromJson(json);
+	    
+	    String executionDate = new JsonParser().parse(json).getAsJsonObject().getAsJsonObject("meta").get("executionDate").getAsString();
+
 	    java.util.function.Function<String, String> injectBackLink = (html) -> {
 	        if (html == null || html.isEmpty()) return "";
 	        String backLink =
@@ -463,7 +466,7 @@ public class NewSummaryReportGenerator {
 	        performanceHtmlString = "";
 	    }
 
-	    String moduleDataJson = getModuleDataJson(json); // must be valid JSON; ensure your impl returns "[]"
+	    String moduleDataJson = getModuleDataJson(json);
 	    if (moduleDataJson == null || moduleDataJson.isBlank()) {
 	        moduleDataJson = "[]";
 	    }

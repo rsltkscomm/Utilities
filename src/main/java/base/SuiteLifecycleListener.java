@@ -8,6 +8,8 @@ import java.net.URISyntaxException;
 import org.testng.ISuite;
 import org.testng.ISuiteListener;
 
+import constants.FrameworkConstants;
+import reporting.DetailedTestReporter;
 import reporting.ExtentManager;
 import reporting.TestLogManager;
 import seleniumUtils.DateUtils;
@@ -43,7 +45,7 @@ public class SuiteLifecycleListener implements ISuiteListener {
             if (GridManager.isGrid.get().equals(true)) {
                 DockerManager.dockerContainterDown();
             }
-
+            
             ExtentManager.openExtentReport();
             endDateTime = DateUtils.getCurrentDate("HH:mm");
 
