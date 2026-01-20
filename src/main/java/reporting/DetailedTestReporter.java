@@ -2,7 +2,6 @@ package reporting;
 
 import java.io.File;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -287,7 +286,7 @@ public class DetailedTestReporter {
 	    String browser = meta.get("browser").getAsString();
 	    String release = meta.get("release").getAsString();
 	    String executionDate = meta.get("executionDate").getAsString();
-
+	    
 	    StringBuilder html = new StringBuilder();
 
 	    // ================= HEADER =================

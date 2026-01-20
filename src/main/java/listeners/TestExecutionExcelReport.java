@@ -1,10 +1,16 @@
 package listeners;
 
 import java.io.*;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+import reporting.DetailedTestReporter.ExecutionStatus;
+import reporting.DetailedTestReporter.TestExecution;
 
 public class TestExecutionExcelReport {
 
@@ -135,5 +141,150 @@ public class TestExecutionExcelReport {
         style.setBorderBottom(BorderStyle.THIN);
         style.setBorderLeft(BorderStyle.THIN);
         style.setBorderRight(BorderStyle.THIN);
+    }
+    
+    public static void updateResultsForDailycheckList(
+            String excelPath,
+            List<TestExecution> testExecutions,
+            boolean flag
+    ) {
+ 
+        if (!flag || testExecutions == null || testExecutions.isEmpty()) {
+            return;
+        }
+ 
+        // 🗓 Date formats
+        String monthName =
+                new SimpleDateFormat("MMMM", Locale.ENGLISH).format(new Date());
+ 
+        String runDate =
+                new SimpleDateFormat("dd.MM.yyyy").format(new Date());
+ 
+        String sheetName = "Daily CheckList " + monthName;
+        String dateColumnHeader = "Testing Status RUN " + runDate;
+ 
+        try (FileInputStream fis = new FileInputStream(excelPath);
+             Workbook workbook = new XSSFWorkbook(fis)) {
+ 
+            // 📄 Get or create sheet
+            Sheet sheet = workbook.getSheet(sheetName);
+            if (sheet == null) {
+                sheet = workbook.createSheet(sheetName);
+            }
+ 
+            // 🧾 Header row
+            Row headerRow = sheet.getRow(0);
+            if (headerRow == null) {
+                headerRow = sheet.createRow(0);
+            }
+ 
+            // 🔧 Styles
+            CellStyle passStyle = createStyle(workbook, IndexedColors.LIGHT_GREEN);
+            CellStyle failStyle = createStyle(workbook, IndexedColors.RED);
+            CellStyle skipStyle = createStyle(workbook, IndexedColors.YELLOW);
+ 
+            int methodDescCol = getOrCreateColumn(headerRow, "MethodDescription");
+            int todayCol = getOrCreateColumn(headerRow, dateColumnHeader);
+ 
+            // 🔁 Process all test executions
+            for (TestExecution execution : testExecutions) {
+ 
+                String description = execution.getShortDescription();
+ 
+                String status;
+                CellStyle statusStyle;
+ 
+                if (execution.getStatus() == ExecutionStatus.PASS) {
+                    status = "Pass";
+                    statusStyle = passStyle;
+                } else if (execution.getStatus() == ExecutionStatus.FAIL) {
+                    status = "Fail";
+                    statusStyle = failStyle;
+                } else {
+                    status = "Skip";
+                    statusStyle = skipStyle;
+                }
+ 
+                boolean rowFound = false;
+ 
+                for (int r = 1; r <= sheet.getLastRowNum(); r++) {
+                    Row row = sheet.getRow(r);
+                    if (row == null) continue;
+ 
+                    Cell descCell = row.getCell(methodDescCol);
+                    if (descCell == null) continue;
+ 
+                    String excelDesc =
+                            descCell.getStringCellValue();
+ 
+                    String runtimeDesc =
+                            description == null ? "" :
+                                    description;
+ 
+                    if (excelDesc.equalsIgnoreCase(runtimeDesc)) {
+ 
+                        Cell resultCell = row.createCell(todayCol);
+                        resultCell.setCellValue(status);
+                        resultCell.setCellStyle(statusStyle);
+ 
+                        rowFound = true;
+                        break;
+                    }
+                }
+ 
+                // ➕ Create new row if description not present
+                if (!rowFound) {
+                    int newRowNum = sheet.getLastRowNum() + 1;
+                    Row newRow = sheet.createRow(newRowNum);
+ 
+                    newRow.createCell(methodDescCol)
+                          .setCellValue(description);
+ 
+                    Cell resultCell = newRow.createCell(todayCol);
+                    resultCell.setCellValue(status);
+                    resultCell.setCellStyle(statusStyle);
+                }
+            }
+ 
+            // 💾 Save once
+            try (FileOutputStream fos = new FileOutputStream(excelPath)) {
+                workbook.write(fos);
+            }
+ 
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "Failed to update Daily CheckList Excel", e);
+        }
+ 
+        System.out.println("Daily CheckList Excel updated successfully.");
+    }
+    
+    private static int getOrCreateColumn(Row headerRow, String headerName) {
+        for (int i = 0; i < headerRow.getLastCellNum(); i++) {
+            Cell cell = headerRow.getCell(i);
+            if (cell != null &&
+                headerName.equalsIgnoreCase(cell.getStringCellValue().trim())) {
+                return i;
+            }
+        }
+ 
+        int newCol = headerRow.getLastCellNum() == -1 ? 0 : headerRow.getLastCellNum();
+        headerRow.createCell(newCol).setCellValue(headerName);
+        return newCol;
+    }
+ 
+    private static CellStyle createStyle(Workbook workbook, IndexedColors color) {
+        CellStyle style = workbook.createCellStyle();
+        style.setFillForegroundColor(color.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+ 
+        Font font = workbook.createFont();
+        font.setBold(true);
+        style.setFont(font);
+ 
+        style.setAlignment(HorizontalAlignment.CENTER);
+        style.setVerticalAlignment(VerticalAlignment.CENTER);
+ 
+        return style;
     }
 }

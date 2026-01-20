@@ -12,6 +12,9 @@ import org.testng.ITestContext;
 import org.testng.ITestListener;
 import org.testng.ITestResult;
 
+import constants.FrameworkConstants;
+import reporting.DetailedTestReporter;
+
 public class TestListener implements ITestListener
 {
 
@@ -40,7 +43,7 @@ public class TestListener implements ITestListener
 			{
 				directory.mkdirs();
 			}
-			outputPath =System.getProperty("user.dir") +"\\TestSummary.xlsx";
+			outputPath = System.getProperty("user.dir") + "\\TestSummary.xlsx";
 			System.setProperty("ResulExcelPath", outputPath);
 		}
 		testResults.clear();
@@ -84,6 +87,8 @@ public class TestListener implements ITestListener
 			};
 			testResults.add(buildRow(result, status));
 		}
+
+		TestExecutionExcelReport.updateResultsForDailycheckList(FrameworkConstants.ONEDRIVE_DAILYCHECKLIST_PATH + "\\Daily Checklist.xlsx", DetailedTestReporter.getTestExecutions(), false);
 
 		// ✅ Write to a single consistent sheet
 		TestExecutionExcelReport.writeResultsToExcel(outputPath, testResults, finalSheetName);
