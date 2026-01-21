@@ -584,7 +584,7 @@ public class EmailSender {
     }
 
     public static void GetParameter() {
-        ReportName = System.getProperty("SuiteName");
+        ReportName = System.getProperty("reportFileName");
         setDateTime();
 
         Environment = System.getProperty("Environment");
@@ -875,9 +875,10 @@ public class EmailSender {
 
         String reportName =
                 ReportName != null && ReportName.toLowerCase().contains("daily") ? "Daily Checklist" :
-                        ReportName != null && ReportName.toLowerCase().contains("deployment") ? "Post Production Checklist" :
+                        ReportName != null && ReportName.toLowerCase().contains("postproduction") ? "Post Production Checklist" :
                                 "Regression";
 
+        // Main email HTML (unchanged layout/styles)
         return "<!DOCTYPE html>" +
                 "<html>" +
                 "<body style='font-family: Arial, sans-serif; background-color: #f7f7f7; margin: 0; padding: 0;'>" +
