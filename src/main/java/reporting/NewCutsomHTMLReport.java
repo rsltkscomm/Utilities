@@ -12,6 +12,7 @@ import org.testng.ISuiteListener;
 import org.testng.ITestListener;
 import org.testng.ITestResult;
 
+import base.BaseTest;
 import performanceTracker.PerformanceTracker;
 import testManagement.JiraZephyrClient;
 import zephyrIntegration.DefectReportingDemo;
@@ -89,6 +90,7 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener {
         // -------------------------------
         if ("yes".equalsIgnoreCase(System.getProperty("performanceReport"))) {
             PerformanceTracker.generatePerformanceReportsForSuite(suite);
+            PageLevelHtmlReport.generate(BaseTest.transactions);
         }
 
         // -------------------------------
@@ -103,7 +105,7 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener {
         );
 
         NewSummaryReportGenerator.generateReportFromJson(reportJson);
-
+        
         System.out.println("✅ Summary report generated successfully");
     }
 
