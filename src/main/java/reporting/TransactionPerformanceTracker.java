@@ -24,15 +24,24 @@ public class TransactionPerformanceTracker {
             Long startTime = requestStartTimes.get(request);
             if (startTime == null) return;
 
-            // ✅ Ignore old APIs
             if (startTime < currentTransaction.transactionStartTime) return;
 
             long responseTime = System.currentTimeMillis() - startTime;
+
             String responseBody = "";
+            String requestPayload = "";
 
             try {
                 if ("xhr".equals(request.resourceType()) ||
                     "fetch".equals(request.resourceType())) {
+
+                    // ✅ REQUEST PAYLOAD
+                    requestPayload = request.postData();
+                    if (requestPayload == null) {
+                        requestPayload = "";
+                    }
+
+                    // ✅ RESPONSE BODY
                     responseBody = response.text();
                 }
             } catch (Exception e) {
@@ -46,10 +55,12 @@ public class TransactionPerformanceTracker {
                     response.status(),
                     request.resourceType(),
                     responseTime,
+                    requestPayload,   // 👈 NEW
                     responseBody
                 )
             );
         });
+
     }
 
     public void startTransaction(String pageName) {
