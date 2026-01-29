@@ -1,6 +1,8 @@
 package base;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.poi.openxml4j.util.ZipSecureFile;
@@ -19,7 +21,9 @@ import data.XLSReader;
 import pages.PageFactory;
 import reporting.ExcelReportGenerator;
 import reporting.ExtentManager;
+import reporting.PageTransaction;
 import reporting.TestLogManager;
+import reporting.TransactionPerformanceTracker;
 
 /**
  * Project-specific override of the upstream BaseTest that ships with the
@@ -44,6 +48,7 @@ public class BaseTest  {
     public static final ThreadLocal<Integer> currentRow = ThreadLocal.withInitial(() -> null);
 
     protected DriverContext driverContext;
+    public static List<PageTransaction> transactions = new ArrayList<>();
 
     static {
         ZipSecureFile.setMinInflateRatio(0.0d);

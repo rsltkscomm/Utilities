@@ -24,6 +24,9 @@ public class TransactionPerformanceTracker {
             Long startTime = requestStartTimes.get(request);
             if (startTime == null) return;
 
+            // ✅ Ignore old APIs
+            if (startTime < currentTransaction.transactionStartTime) return;
+
             long responseTime = System.currentTimeMillis() - startTime;
             String responseBody = "";
 
@@ -51,7 +54,13 @@ public class TransactionPerformanceTracker {
 
     public void startTransaction(String pageName) {
         currentTransaction = new PageTransaction(pageName);
-        currentTransaction.pageResponseTime = System.currentTimeMillis();
+
+        // ✅ mark exact transaction start
+        currentTransaction.transactionStartTime = System.currentTimeMillis();
+        currentTransaction.pageResponseTime = currentTransaction.transactionStartTime;
+
+        // ✅ clear old request cache
+        requestStartTimes.clear();
     }
 
     public PageTransaction endTransaction() {

@@ -4,7 +4,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -20,7 +22,7 @@ public class JsonReportMerger
 
 	public static String mergeJsonReports(List<Path> jsonFiles)
 	{
-		
+
 		try
 		{
 			Gson gson = new Gson();
@@ -53,7 +55,7 @@ public class JsonReportMerger
 				{
 					totalDuration += summary.get("durationMillis").getAsLong();
 				}
-				
+
 				startTime = summary.get("startTime").getAsString();
 
 				// ---------- DETAILS ----------
@@ -91,7 +93,7 @@ public class JsonReportMerger
 			finalRoot.add("details", allDetails);
 
 			return new GsonBuilder().setPrettyPrinting().create().toJson(finalRoot);
-			
+
 		} catch (Exception e)
 		{
 			return null;
@@ -114,11 +116,30 @@ public class JsonReportMerger
 		return merged;
 	}
 
-	public static void generateCumulativeReport(List<Path> files)
+	public static void generateCumulativeReport1(List<Path> files)
 	{
 		try
 		{
 			String mergedJson = JsonReportMerger.mergeJsonReports(files);
+			NewSummaryReportGenerator.generateReportFromJson(mergedJson);
+			Files.writeString(Paths.get("reports/json/merged-report.json"), mergedJson);
+		} catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+
+	public static void generateCumulativeReport(String files)
+	{
+		try
+		{
+			List<Path> reportPaths = new LinkedList<Path>();
+			String[] filePaths = files.split(",");
+			for (int i = 0; i < filePaths.length; i++)
+			{
+				reportPaths.add(Paths.get(filePaths[i]));
+			}
+			String mergedJson = JsonReportMerger.mergeJsonReports(reportPaths);
 			NewSummaryReportGenerator.generateReportFromJson(mergedJson);
 			Files.writeString(Paths.get("reports/json/merged-report.json"), mergedJson);
 		} catch (IOException e)
