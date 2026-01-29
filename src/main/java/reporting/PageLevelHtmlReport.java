@@ -9,6 +9,14 @@ public class PageLevelHtmlReport
 {
 
 	public static String html = "";
+	private static final long API_SLA_MS = 3000;
+	
+	private static String getSlaColor(long responseTime) {
+	    return responseTime <= API_SLA_MS
+	            ? "#059669"   // ✅ Green
+	            : "#dc2626";  // ❌ Red
+	}
+
 
 	public static String generate(List<PageTransaction> pages)
 	{
@@ -83,31 +91,65 @@ public class PageLevelHtmlReport
 			{
 				String apiStatusColor = getApiStatusColor(api.status);
 				String methodColor = getMethodColor(api.method);
+				String slaColor = getSlaColor(api.responseTime);
 
 				pageBlocks.append(String.format("""
-						<div class="api-card">
-						    <div class="api-header" onclick="toggleApiDetails(this)">
-						        <div class="api-method" style="background: %s">%s</div>
-						        <div class="api-url">%s</div>
-						        <div class="api-status" style="color: %s">%d</div>
-						        <div class="api-time">%d ms</div>
-						        <div class="api-toggle">▼</div>
-						    </div>
-						    <div class="api-details" style="display: none;">
-						        <div class="response-section">
-						            <div class="section-title">Response Body</div>
-						            <div class="code-block">
-						                <pre><code class="json">%s</code></pre>
-						                <button class="copy-btn" onclick="copyToClipboard(this)">📋 Copy</button>
-						            </div>
-						        </div>
-						        <div class="api-meta">
-						            <span class="meta-item">Index: %d</span>
-						            <span class="meta-item">Size: %d chars</span>
-						        </div>
-						    </div>
-						</div>
-						""", methodColor, api.method, truncateUrl(api.url, 60), apiStatusColor, api.status, api.responseTime, formatJson(escapeHtml(api.responseBody)), apiIndex, api.responseBody != null ? api.responseBody.length() : 0));
+					    <div class="api-card" style="border-left: 6px solid %s;">
+					        <div class="api-header" onclick="toggleApiDetails(this)">
+					            <div class="api-method" style="background: %s">%s</div>
+					            <div class="api-url">%s</div>
+					            <div class="api-status" style="color: %s">%d</div>
+					            <div class="api-time" style="color: %s; font-weight: 600;">%d ms</div>
+					            <div class="api-toggle">▼</div>
+					        </div>
+
+					        <div class="api-details" style="display: none;">
+
+					            <!-- REQUEST PAYLOAD -->
+					            <div class="response-section">
+					                <div class="section-title">Request Payload</div>
+					                <div class="code-block">
+					                    <pre><code class="json">%s</code></pre>
+					                    <button class="copy-btn" onclick="copyToClipboard(this)">📋 Copy</button>
+					                </div>
+					            </div>
+
+					            <!-- RESPONSE BODY -->
+					            <div class="response-section">
+					                <div class="section-title">Response Body</div>
+					                <div class="code-block">
+					                    <pre><code class="json">%s</code></pre>
+					                    <button class="copy-btn" onclick="copyToClipboard(this)">📋 Copy</button>
+					                </div>
+					            </div>
+
+					            <div class="api-meta">
+					                <span class="meta-item">Index: %d</span>
+					                <span class="meta-item">Payload: %d chars</span>
+					                <span class="meta-item">Response: %d chars</span>
+					            </div>
+					        </div>
+					    </div>
+					""",
+					    slaColor, 
+					    methodColor,
+					    api.method,
+					    truncateUrl(api.url, 60),
+					    apiStatusColor,
+					    api.status,
+					    slaColor,
+					    api.responseTime,
+
+					    // ✅ PAYLOAD
+					    formatJson(escapeHtml(api.requestPayload)),
+
+					    // ✅ RESPONSE
+					    formatJson(escapeHtml(api.responseBody)),
+
+					    apiIndex,
+					    api.requestPayload != null ? api.requestPayload.length() : 0,
+					    api.responseBody != null ? api.responseBody.length() : 0
+					));
 				apiIndex++;
 			}
 
