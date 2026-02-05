@@ -13,8 +13,8 @@ public class PageLevelHtmlReport
 	
 	private static String getSlaColor(long responseTime) {
 	    return responseTime <= API_SLA_MS
-	            ? "#059669"   // ✅ Green
-	            : "#dc2626";  // ❌ Red
+	            ? "#059669"
+	            : "#dc2626";
 	}
 
 
