@@ -36,7 +36,6 @@ import reporting.TransactionPerformanceTracker;
  * signature.
  */
 
-
 public class BaseTest  {
 
     protected WebDriver driver;
@@ -156,18 +155,6 @@ public class BaseTest  {
                         ExtentManager.skipLabel(result.getName());
             }
 
-            ExcelReportGenerator.writeToExcel(
-                    FrameworkConstants.ONEDRIVE_BASE_PATH,
-                    "Daily,Release,Account",
-                    System.getProperty("DateWiseReport") + "," +
-                            System.getProperty("ReleasewiseReport") + "," +
-                            System.getProperty("AccountWiseReport"),
-                    result.getMethod().getMethodName().toUpperCase(),
-                    System.getProperty("ReleaseVersion"),
-                    System.getProperty("Account") + "_" + System.getProperty("Environment"),
-                    System.getProperty("Account"),
-                    System.getProperty("SuiteName")
-            );
 
         } finally {
             DriverManager.quitDriver();

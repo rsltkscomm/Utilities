@@ -4,12 +4,15 @@ import java.awt.Desktop;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.List;
 
 import org.testng.ISuite;
 import org.testng.ISuiteListener;
 
 import constants.FrameworkConstants;
 import reporting.DetailedTestReporter;
+import reporting.DetailedTestReporter.TestExecution;
+import reporting.ExcelReportGenerator;
 import reporting.ExtentManager;
 import reporting.TestLogManager;
 import seleniumUtils.DateUtils;
@@ -45,6 +48,21 @@ public class SuiteLifecycleListener implements ISuiteListener {
             if (GridManager.isGrid.get().equals(true)) {
                 DockerManager.dockerContainterDown();
             }
+            
+            List<TestExecution> testExecutions = DetailedTestReporter.getTestExecutions();
+            
+            
+            ExcelReportGenerator.writeTestExecutionsToExcel(
+            		FrameworkConstants.ONEDRIVE_BASE_PATH,
+            		"Daily,Release,Account",
+            		System.getProperty("DateWiseReport") + "," +
+                            System.getProperty("ReleasewiseReport") + "," +
+                            System.getProperty("AccountWiseReport"),
+                            System.getProperty("ReleaseVersion"),
+                            System.getProperty("Account") + "_" + System.getProperty("Environment"),
+                            System.getProperty("SuiteName"),
+                    testExecutions
+            );
             
             ExtentManager.openExtentReport();
             endDateTime = DateUtils.getCurrentDate("HH:mm");
