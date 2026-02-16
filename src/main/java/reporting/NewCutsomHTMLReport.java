@@ -47,19 +47,16 @@ public class NewCutsomHTMLReport implements ITestListener, ISuiteListener {
     @Override
     public void onTestSuccess(ITestResult result) {
         passMethods.add(System.getProperty("method_name"));
-        // ❌ No listener-based counting anymore
     }
 
     @Override
     public void onTestFailure(ITestResult result) {
         failMethods.add(System.getProperty("method_name"));
-        // ❌ No listener-based counting anymore
     }
 
     @Override
     public void onTestSkipped(ITestResult result) {
         noRunMethods.add(System.getProperty("method_name"));
-        // ❌ No listener-based counting anymore
     }
 
     /* ===============================

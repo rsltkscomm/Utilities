@@ -1,4 +1,4 @@
-package reporting;
+	package reporting;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -391,12 +391,16 @@ public class NewSummaryReportGenerator {
             return "-";
         }
     }
+    
 
     
     public static String getReportHtml(String productName, int pass, int fail, int noRun, int total, String durationMillis, String startTime, String json) {
         String detailedReportContent = DetailedTestReporter.generateHTMLContentFromJson(json);
         
         String executionDate = new JsonParser().parse(json).getAsJsonObject().getAsJsonObject("meta").get("executionDate").getAsString();
+        
+        String productLogo = System.getProperty("CompanyLogo", "https://www.resulticks.com/images/logos/resulticks-logo-blue.svg");
+        String companyLogo = System.getProperty("ProductLogo", "https://run19.resul.io/assets/resulticks-logo-white-391eec89.svg");
 
         java.util.function.Function<String, String> injectBackLink = (html) -> {
             if (html == null || html.isEmpty()) return "";
@@ -538,9 +542,9 @@ public class NewSummaryReportGenerator {
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
                 <style>
                 body { font-family: 'Segoe UI', sans-serif; background:#f8f9fb; margin:0; color:#333; }
-                .header { display:flex; justify-content:space-between; align-items:center; background:linear-gradient(90deg,#002b6b,#0052cc); color:white; padding:10px 20px; }
+                .header { display:flex; justify-content:space-between; align-items:center; background:linear-gradient(33deg,#8db5f1,#021e49); color:white; padding:10px 20px; }
                 .header img { height:40px; }
-                .summary-band { background:#0052cc; color:white; display:flex; justify-content:center; gap:30px; padding:8px; font-weight:600; }
+                .summary-band { background:#0e4494; color:white; display:flex; justify-content:center; gap:30px; padding:8px; font-weight:600; }
                 .summary-band div { display:flex; align-items:center; gap:5px; }
                 .main { display:flex; gap:20px; padding:20px; }
                 .chart-container { flex:1; display:flex; justify-content:center; align-items:center; }
@@ -693,18 +697,18 @@ public class NewSummaryReportGenerator {
                 <!-- Summary Report Section -->
                 <div id="summary-section">
                     <div class="header">
-                    <img alt="Company Logo" src="https://www.resulticks.com/images/logos/resulticks-logo-blue.svg"/>
+                    <img alt="Company Logo" src="%s"/>
                     <h2>%s</h2>
-                    <img alt="Product Logo" src="https://run19.resul.io/assets/resulticks-logo-white-391eec89.svg"/>
+                    <img alt="Product Logo" src="%s"/>
                     </div>
                     <div class="summary-band">
+                    <div>📊 Total: %d</div>
                     <div>✅ Passed: %d</div>
                     <div>❌ Failed: %d</div>
                     <div>⚠️ Skipped: %d</div>
-                    <div>📊 Total: %d</div>
                     <div>⏱️ Duration: %s</div>
-                    <div>🎯 Pass Rate: %s</div>
                     <div>🎯 SLA: 90%%</div>
+                    <div>🎯 Pass Rate: %s</div>
                     </div>
                     <div class="detailed-report-link">
                     <a onclick="showDetailedReport()">📑 Detailed Report</a>
@@ -947,7 +951,7 @@ public class NewSummaryReportGenerator {
                 hasSmartUIReport ? "block" : "none",
                 hasPerformanceReport ? "block" : "none",
                 // Main content
-                reportTitle, pass, fail, noRun, total, overallDurationFormatted, slaFormatted,
+                productLogo,reportTitle,companyLogo, total,pass, fail, noRun, overallDurationFormatted, slaFormatted,
                 // Conditional report links
                 hasSmartUIReport ? "<div class='smartui-report-link'><a onclick='smartuiReport()'>📑 UI Comparison Report</a></div>" : "",
                 hasPerformanceReport ? "<div class='performance-report-link'><a onclick='performanceReport()'>📑 Performance Report</a></div>" : "",
