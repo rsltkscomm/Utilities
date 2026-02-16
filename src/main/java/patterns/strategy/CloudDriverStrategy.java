@@ -26,17 +26,12 @@ public class CloudDriverStrategy implements DriverStrategy
 	private static final Gson gson = new Gson();
 
 	public CloudDriverStrategy(String browserName) {
-		this.browserName = browserName.toLowerCase();
+		this.browserName = "lambdatest"; // Default to LambdaTest for now";
 	}
 
 	@Override
 	public DriverContext createDriver(DesiredCapabilities capabilities)
 	{
-		if (!Boolean.parseBoolean(System.getProperty("cloud.enabled", "false")))
-		{
-			throw new IllegalStateException("Cloud testing is disabled. Enable cloud.enabled=true");
-		}
-
 		EngineType engine = EngineType.valueOf(System.getProperty("engine", "SELENIUM").toUpperCase());
 
 		return engine == EngineType.PLAYWRIGHT ? createPlaywrightCloudDriver() : createSeleniumCloudDriver(capabilities);
@@ -70,7 +65,7 @@ public class CloudDriverStrategy implements DriverStrategy
 			Map<String, Object> capabilities = new HashMap<>();
 
 			// REQUIRED: Core capabilities
-			capabilities.put("browserName", System.getProperty("LT_BROWSER","Chrome"));
+			capabilities.put("browserName", System.getProperty("Browser","Chrome"));
 			capabilities.put("browserVersion", System.getProperty("LT_BROWSER_VERSION","latest"));
 			capabilities.put("platform", System.getProperty("LT_PLATFORM", "Windows 11"));
 
@@ -85,6 +80,7 @@ public class CloudDriverStrategy implements DriverStrategy
 			ltOptions.put("console", System.getProperty("LT_CONSOLE","true"));
 			ltOptions.put("network", System.getProperty("LT_NETWORK","true"));
 			ltOptions.put("visual", System.getProperty("LT_VISUAL","true"));
+			ltOptions.put("geoLocation", System.getProperty("LT_GEO_LOCATION","true"));
 			ltOptions.put("resolution", System.getProperty("LT_RESOLUTION","1920x1080"));
 
 			capabilities.put("lt:options", ltOptions);
@@ -239,7 +235,7 @@ public class CloudDriverStrategy implements DriverStrategy
 	@Override
 	public boolean supports(String browserType)
 	{
-		return browserName.equalsIgnoreCase(browserType) && Boolean.parseBoolean(System.getProperty("cloud.enabled", "false"));
+		return Boolean.parseBoolean(System.getProperty("cloud.enabled", "false"));
 	}
 
 	@Override

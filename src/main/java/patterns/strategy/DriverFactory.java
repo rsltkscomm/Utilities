@@ -37,23 +37,29 @@ public final class DriverFactory {
 
         String remoteUrl =
                 System.getProperty("remoteUrl");
+        
+        if (!Boolean.parseBoolean(System.getProperty("cloud.enabled", "false")))
+		{
+        	register(new ChromeDriverStrategy(headless, remote, remoteUrl));
+            register(new ChromeHeadlessDriverStrategy(remote, remoteUrl));
+            register(new FirefoxDriverStrategy(headless, remote, remoteUrl));
+            register(new EdgeDriverStrategy(headless, remote, remoteUrl));
+
+            // ---------- Cross-platform alias ----------
+            register(new CrossPlatformDriverStrategy("chrome"));
+            register(new CrossPlatformDriverStrategy("chromeheadless"));
+            register(new CrossPlatformDriverStrategy("firefox"));
+            register(new CrossPlatformDriverStrategy("edge"));
+
+            // ---------- Cloud ----------
+//            register(new CloudDriverStrategy("browserstack"));
+//            register(new CloudDriverStrategy("saucelabs"));
+		}else {
+			 register(new CloudDriverStrategy("lambdatest"));
+		}
 
         // ---------- Local / Remote Browsers ----------
-        register(new ChromeDriverStrategy(headless, remote, remoteUrl));
-        register(new ChromeHeadlessDriverStrategy(remote, remoteUrl));
-        register(new FirefoxDriverStrategy(headless, remote, remoteUrl));
-        register(new EdgeDriverStrategy(headless, remote, remoteUrl));
-
-        // ---------- Cross-platform alias ----------
-        register(new CrossPlatformDriverStrategy("chrome"));
-        register(new CrossPlatformDriverStrategy("chromeheadless"));
-        register(new CrossPlatformDriverStrategy("firefox"));
-        register(new CrossPlatformDriverStrategy("edge"));
-
-        // ---------- Cloud ----------
-//        register(new CloudDriverStrategy("browserstack"));
-        register(new CloudDriverStrategy("lambdatest"));
-//        register(new CloudDriverStrategy("saucelabs"));
+        
     }
 
     private static void register(DriverStrategy strategy) {

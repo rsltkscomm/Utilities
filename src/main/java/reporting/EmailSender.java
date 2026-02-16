@@ -650,7 +650,7 @@ public class EmailSender
 
 	public static void GetParameter()
 	{
-		ReportName = System.getProperty("reportFileName");
+		ReportName = System.getProperty("SuiteName");
 		setDateTime();
 
 		Environment = System.getProperty("Environment");
@@ -833,10 +833,14 @@ public class EmailSender
 			String repo = "rsltkscomm/Automation-Report";
 			String pagesBaseUrl = "https://rsltkscomm.github.io/Automation-Report/";
 
-			String tmpDir = System.getProperty("java.io.tmpdir") + "/gh-pages-root-" + System.currentTimeMillis();
+			String tmpDir = "C:/automation/github-pages";
 
 			// 1️⃣ Clone repo
-			runGit(null, "clone", "https://" + token + "@github.com/" + repo + ".git", tmpDir);
+			if (!new File(tmpDir).exists()) {
+			    runGit(null, "clone", "https://" + token + "@github.com/" + repo + ".git", tmpDir);
+			} else {
+			    runGit(tmpDir, "pull");
+			}
 
 			// 2️⃣ Git identity
 			runGit(tmpDir, "config", "user.name", "automation-bot");
@@ -925,9 +929,17 @@ public class EmailSender
 	// ──────────────────────────────
 	private static String getMailHtml()
 	{
+		
+		String executionReportLink = "";
 
-		// Helper: extract a reasonable System property key from a failure line.
-		// Supports either "... Test: <key>" or "... FailureReason: <key>"
+		if (FilePath != null && 
+		    FilePath.contains("https://rsltkscomm.github.io/Automation-Report/")) {
+
+		    executionReportLink =
+		        "<li>Execution report: <a href='" + FilePath +
+		        "' style='color: #007bff;'>[Report Link]</a></li>";
+		}
+
 		java.util.function.Function<String, String> extractBugKey = (failure) -> {
 			if (failure == null)
 				return null;
@@ -995,8 +1007,7 @@ public class EmailSender
 				+ "%</b></li>" + "            <li>Execution window: <b>" + StartTime + " : " + EndTime + " IST</b></li>" + "            <li>Trigger type: <b>" + TriggerType + "</b> | Branch: <b>" + Branch + "</b> | Commit: <b>" + ShortSHA
 				+ "</b></li>" + "          </ul>" +
 
-				"          <h4 style='color: #34495e; margin-top: 25px;'>Quick Links</h4>" + "          <ul style='list-style-type: disc; margin-left: 25px;'>" + "            <li>Execution report: <a href='" + FilePath
-				+ "' style='color: #007bff;'>[Report Link]</a></li>" + "            <li>Logs / screenshots (if any): <a href='" + LogsLink + "' style='color: #007bff;'>[OneDrive Evidence Link]</a></li>" + "          </ul>" +
+				"          <h4 style='color: #34495e; margin-top: 25px;'>Quick Links</h4>" + "          <ul style='list-style-type: disc; margin-left: 25px;'>" + executionReportLink + "            <li>Logs / screenshots (if any): <a href='" + LogsLink + "' style='color: #007bff;'>[OneDrive Evidence Link]</a></li>" + "          </ul>" +
 
 				failuresSection +
 
