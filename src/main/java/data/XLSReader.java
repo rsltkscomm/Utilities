@@ -26,6 +26,7 @@ public class XLSReader
 		this.path = path;
 		try
 		{
+			System.out.println("Path is :" + path);;
 			fis = new FileInputStream(path);
 			TestLogManager.info("Path is :" + path);
 			workbook = new XSSFWorkbook(fis);
