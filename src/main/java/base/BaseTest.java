@@ -115,10 +115,10 @@ public class BaseTest
 		if (!util.isTCIDFound(this))
 		{
 			ExtentManager.failLabel("Test data not found for: " + method_name.get());
-			System.out.println("Method Name found: " + method_name.get());
+			System.out.println("Method Name not found: " + method_name.get());
 			Assert.fail("No test data found for method: " + method_name.get());
 		}
-		System.out.println("Method Name not found: " + method_name.get());
+		System.out.println("Method Name found: " + method_name.get());
 		TestDataUtil.createDataRef();
 	}
 
